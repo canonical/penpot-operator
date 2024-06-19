@@ -16,7 +16,7 @@ from pytest_operator.plugin import OpsTest
 logger = logging.getLogger(__name__)
 
 CHARMCRAFT = yaml.safe_load(Path("./charmcraft.yaml").read_text(encoding="utf-8"))
-APP_NAME = METADATA["name"]
+APP_NAME = CHARMCRAFT["name"]
 
 
 @pytest.mark.abort_on_fail
