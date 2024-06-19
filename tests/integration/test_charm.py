@@ -25,6 +25,7 @@ async def test_build_and_deploy(ops_test: OpsTest, pytestconfig: pytest.Config):
 
     Assert on the unit status before any relations/configurations take place.
     """
+    charm = pytestconfig.getoption("--charm-file")
     # Deploy the charm and wait for active/idle status
     assert ops_test.model
     await asyncio.gather(
