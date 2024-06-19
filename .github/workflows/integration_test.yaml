@@ -9,6 +9,6 @@ jobs:
     secrets: inherit
     with:
       channel: 1.28-strict/stable
-      juju-channel: 3.3/stable
+      juju-channel: 3.4/stable
       self-hosted-runner: true
       self-hosted-runner-label: "edge"
