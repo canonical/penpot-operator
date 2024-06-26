@@ -1,26 +1,48 @@
 <!--
-Avoid using this README file for information that is maintained or published elsewhere, e.g.:
-
-* metadata.yaml > published on Charmhub
-* documentation > published on (or linked to from) Charmhub
-* detailed contribution guide > documentation or CONTRIBUTING.md
-
-Use links instead.
+[![CharmHub Badge](https://charmhub.io/penpot/badge.svg)](https://charmhub.io/penpot)
+[![Publish to edge](https://github.com/canonical/penpot-operator/actions/workflows/publish_charm.yaml/badge.svg)](https://github.com/canonical/penpot-operator/actions/workflows/publish_charm.yaml)
+[![Promote charm](https://github.com/canonical/penpot-operator/actions/workflows/promote_charm.yaml/badge.svg)](https://github.com/canonical/penpot-operator/actions/workflows/promote_charm.yaml)
+[![Discourse Status](https://img.shields.io/discourse/status?server=https%3A%2F%2Fdiscourse.charmhub.io&style=flat&label=CharmHub%20Discourse)](https://discourse.charmhub.io)
 -->
 
-# is-charms-template
+A Juju charm deploying and managing Penpot on Kubernetes. Penpot is the
+web-based open-source design tool that bridges the gap between designers and
+developers.
 
-Charmhub package name: operator-template
-More information: https://charmhub.io/is-charms-template
+<!--
+This charm simplifies initial deployment and "day N" operations of Penpot,
+such as scaling the number of instances, integration with external
+authentication providers, access to S3 for redundant file storage and more. It
+allows for deployment on many different Kuberenetes platforms, from [MicroK8s](https://microk8s.io) to
+[Charmed Kubernetes](https://ubuntu.com/kubernetes) to public cloud Kubernetes
+offerings.
+-->
 
-Describe your charm in one or two sentences.
+As such, the charm makes it easy for those looking to take control of their
+own Penpot deployment while keeping operations sumple, and gives them the
+freedom to deploy on the Kubernetes platform of their choice.
 
-## Other resources
+<!--
+For DevOps or SRE teams this charm will make operating Penpot simple and
+straightforward through Juju's clean interface. It will allow easy deployment
+into multiple environments for testing of changes, and supports scaling out for
+enterprise deployments.
+-->
 
-<!-- If your charm is documented somewhere else other than Charmhub, provide a link separately. -->
+## Project and community
 
-- [Read more](https://example.com)
+The Penpot Operator is a member of the Ubuntu family. It's an
+open source project that warmly welcomes community projects, contributions,
+suggestions, fixes and constructive feedback.
+* [Code of conduct](https://ubuntu.com/community/code-of-conduct)
+* [Get support](https://discourse.charmhub.io/)
+<!--
+* [Contribute](https://charmhub.io/penpot/docs/contributing)
+* [Roadmap](https://charmhub.io/penpot/docs/roadmap)
+-->
+Thinking about using Penpot for your next project? [Get in touch](https://chat.charmhub.io/charmhub/channels/charm-dev)!
 
-- [Contributing](CONTRIBUTING.md) <!-- or link to other contribution documentation -->
-
-- See the [Juju SDK documentation](https://juju.is/docs/sdk) for more information about developing and improving charms.
+---
+<!--
+For further details, [see the charm's detailed documentation](https://charmhub.io/penpot/docs).
+-->
