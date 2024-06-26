@@ -1,13 +1,26 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-# This file configures Charmcraft.
-# See https://juju.is/docs/sdk/charmcraft-config for guidance.
 
 type: charm
 bases:
   - build-on:
     - name: ubuntu
       channel: "22.04"
+      architectures: [amd64]
     run-on:
     - name: ubuntu
-      channel: "22.04"
+      channel: "24.04"
+      architectures: [amd64]
+
+name: penpot
+title: Penpot
+description: |
+  A Juju charm deploying and managing Penpot on Kubernetes. Penpot is the
+  web-based open-source design tool that bridges the gap between designers
+  and developers.
+summary: An operator deploying and managing Penpot.
+links:
+  issues: https://github.com/canonical/penpot-operator/issues
+  source: https://github.com/canonical/penpot-operator
+  contact:
+    - https://launchpad.net/~canonical-is-devops
