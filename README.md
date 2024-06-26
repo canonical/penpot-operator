@@ -13,7 +13,7 @@ developers.
 This charm simplifies initial deployment and "day N" operations of Penpot,
 such as scaling the number of instances, integration with external
 authentication providers, access to S3 for redundant file storage and more. It
-allows for deployment on many different Kuberenetes platforms, from [MicroK8s](https://microk8s.io) to
+allows for deployment on many different Kubernetes platforms, from [MicroK8s](https://microk8s.io) to
 [Charmed Kubernetes](https://ubuntu.com/kubernetes) to public cloud Kubernetes
 offerings.
 -->
