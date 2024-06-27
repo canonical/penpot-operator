@@ -5,7 +5,7 @@
 [![Discourse Status](https://img.shields.io/discourse/status?server=https%3A%2F%2Fdiscourse.charmhub.io&style=flat&label=CharmHub%20Discourse)](https://discourse.charmhub.io)
 -->
 
-A Juju charm deploying and managing [Penpot](https://penpot.app) on Kubernetes. Penpot is the
+A Juju charm that deploys and manages [Penpot](https://penpot.app) on Kubernetes. Penpot is the
 web-based open-source design tool that bridges the gap between designers and
 developers.
 
