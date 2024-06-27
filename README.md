@@ -19,7 +19,7 @@ offerings.
 -->
 
 As such, the charm makes it easy for those looking to take control of their
-own Penpot deployment while keeping operations sumple, and gives them the
+own Penpot deployment while keeping operations simple, and gives them the
 freedom to deploy on the Kubernetes platform of their choice.
 
 <!--
