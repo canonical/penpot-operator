@@ -1,0 +1,269 @@
+name: penpot
+summary: Web-based open-source design tool.
+description: Penpot is the web-based open-source design tool that bridges the gap between designers and developers.
+version: 2.1.1
+license: MPL-2.0
+
+base: ubuntu@24.04
+build-base: ubuntu@24.04
+platforms:
+  amd64:
+
+run-user: _daemon_
+
+services:
+  frontend:
+    command: nginx -g "daemon off;"
+    override: replace
+    startup: enabled
+    after:
+      - backend
+  backend:
+    command: /opt/penpot/backend/run.sh
+    override: replace
+    working-dir: /opt/penpot/backend/
+    startup: enabled
+    environment:
+      JAVA_HOME: /usr/lib/jvm/java-21-openjdk-amd64
+      PENPOT_FLAGS: >-
+        enable-registration 
+        enable-login-with-password 
+        disable-email-verification 
+        enable-smtp 
+        enable-prepl-server 
+        disable-secure-session-cookies
+      PENPOT_PUBLIC_URI: http://172.16.0.1:9001
+      PENPOT_DATABASE_URI: postgresql://penpot-postgres/penpot
+      PENPOT_DATABASE_USERNAME: penpot
+      PENPOT_DATABASE_PASSWORD: penpot
+      PENPOT_REDIS_URI: redis://penpot-redis/0
+      PENPOT_ASSETS_STORAGE_BACKEND: assets-fs
+      PENPOT_STORAGE_ASSETS_FS_DIRECTORY: /opt/data/assets
+      PENPOT_TELEMETRY_ENABLED: "false"
+      PENPOT_SMTP_DEFAULT_FROM: no-reply@example.com
+      PENPOT_SMTP_DEFAULT_REPLY_TO: no-reply@example.com
+      PENPOT_SMTP_HOST: penpot-mailcatch
+      PENPOT_SMTP_PORT: "1025"
+      PENPOT_SMTP_USERNAME: ""
+      PENPOT_SMTP_PASSWORD: ""
+      PENPOT_SMTP_TLS: "false"
+      PENPOT_SMTP_SSL: "false"
+      PENPOT_SECRET_KEY: TDOD
+  exporter:
+    command: node app.js
+    working-dir: /opt/penpot/exporter/
+    override: replace
+    startup: enabled
+    after:
+      - backend
+      - frontend
+    environment:
+      PENPOT_PUBLIC_URI: http://127.0.0.1:8080
+      PENPOT_REDIS_URI: redis://penpot-redis/0
+      PLAYWRIGHT_BROWSERS_PATH: /opt/penpot/exporter/browsers
+
+parts:
+  frontend:
+    plugin: nil
+    source-type: git
+    source: https://github.com/penpot/penpot.git
+    source-tag: 2.1.1
+    stage-packages:
+      - nginx-full
+    build-packages:
+      - openjdk-21-jdk
+      - rlwrap
+      - npm
+      - rsync
+      - gettext-base
+    build-environment:
+      - VERSION: 2.1.1
+    override-build: |
+      craftctl default
+      
+      # install clojure
+      curl -L https://github.com/clojure/brew-install/releases/download/1.11.3.1463/linux-install.sh -o install-clojure
+      echo "0c41063a2fefb53a31bc1bc236899955f759c5103dc0495489cdd74bf8f114bb  install-clojure" | shasum -c
+      chmod +x install-clojure
+      ./install-clojure
+      
+      cd frontend
+
+      # install yarn
+      npm install --global corepack
+      corepack enable
+      corepack prepare yarn@4.2.2
+      
+      # build assets
+      export NODE_ENV=production
+      yarn install
+      clojure -M:dev:shadow-cljs release main --config-merge "{:release-version \"$(git rev-parse --short HEAD)-$(date +%s)\"}"
+      yarn run compile
+      sed -i -re "s/\%version\%/${VERSION}/g" ./resources/public/index.html
+      sed -i -re "s/\%buildDate\%/$(date -R);/g" ./resources/public/index.html
+      echo ${VERSION} > ./resources/public/version.txt
+      
+      mkdir -p $CRAFT_PART_INSTALL/var/www/
+      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/
+      
+      cd ..
+      cp -r ./frontend/resources/public $CRAFT_PART_INSTALL/var/www/app
+      cp ./docker/images/files/nginx-mime.types $CRAFT_PART_INSTALL/etc/nginx/mime.types
+
+      # TODO: do this in the charm
+      cp ./docker/images/files/config.js $CRAFT_PART_INSTALL/var/www/app/js/config.js
+      sed -i -e "s|^//var penpotFlags = .*;|var penpotFlags = \"enable-registration enable-login-with-password\";|g" $CRAFT_PART_INSTALL/var/www/app/js/config.js
+      
+      export PENPOT_BACKEND_URI=http://127.0.0.1:6060
+      export PENPOT_EXPORTER_URI=http://127.0.0.1:6061
+      export PENPOT_INTERNAL_RESOLVER=127.0.0.11
+      envsubst "\$PENPOT_BACKEND_URI,\$PENPOT_EXPORTER_URI,\$PENPOT_INTERNAL_RESOLVER" < ./docker/images/files/nginx.conf > $CRAFT_PART_INSTALL/etc/nginx/nginx.conf
+
+    override-stage: |
+      # nginx runs as non-root user
+      sed -i "s/listen 80 default_server;/listen 8080 default_server;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf
+      sed -i "s/pid \\/run\\/nginx.pid;/pid nginx.pid;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf
+      sed -i "s/user www-data;/user _daemon_;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/etc/nginx/
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/var/www/app/
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/var/lib/nginx/
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/usr/share/nginx/
+      
+      craftctl default
+
+  backend:
+    plugin: nil
+    source-type: git
+    source: https://github.com/penpot/penpot.git
+    source-tag: 2.1.1
+    build-packages:
+      - openjdk-21-jdk
+      - rlwrap
+      - npm
+      - rsync
+    stage-packages:
+      - openjdk-21-jdk
+    build-environment:
+      - VERSION: 2.1.1
+    override-build: |
+      craftctl default
+
+      # install clojure
+      curl -L https://github.com/clojure/brew-install/releases/download/1.11.3.1463/linux-install.sh -o install-clojure
+      echo "0c41063a2fefb53a31bc1bc236899955f759c5103dc0495489cdd74bf8f114bb  install-clojure" | shasum -c
+      chmod +x install-clojure
+      ./install-clojure
+
+      # install babashka
+      curl -L https://raw.githubusercontent.com/babashka/babashka/v1.3.191/install -o install-babashka
+      echo "b1fa184c87f5115251cc38bcc999221c23b458df608cfeb6395a427185eb708c  install-babashka" | shasum -c
+      chmod +x install-babashka
+      ./install-babashka
+
+      cd backend
+      
+      mkdir -p target/classes
+      mkdir -p target/dist
+      echo $VERSION > target/classes/version.txt
+      cp ../CHANGES.md target/classes/changelog.md
+
+      clojure -T:build jar
+      mv target/penpot.jar target/dist/penpot.jar
+      cp resources/log4j2.xml target/dist/log4j2.xml
+      cp scripts/run.template.sh target/dist/run.sh
+      cp scripts/manage.py target/dist/manage.py
+      chmod +x target/dist/run.sh
+      chmod +x target/dist/manage.py
+
+      # Prefetch templates
+      mkdir builtin-templates
+      
+      bb ./scripts/prefetch-templates.clj resources/app/onboarding.edn builtin-templates/
+      cp -r builtin-templates target/dist/
+      
+      mkdir -p $CRAFT_PART_INSTALL/opt/penpot/
+      cp -r target/dist/ $CRAFT_PART_INSTALL/opt/penpot/backend/
+
+    override-stage: |
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/backend/
+      rm -rf $CRAFT_PART_INSTALL/dev
+      
+      craftctl default
+
+  exporter:
+    plugin: nil
+    source-type: git
+    source: https://github.com/penpot/penpot.git
+    source-tag: 2.1.1
+    build-packages:
+      - openjdk-21-jdk
+      - rlwrap
+      - npm
+      - rsync
+    stage-packages:
+      - nodejs
+      - libasound2t64
+      - libatk-bridge2.0-0t64
+      - libatk1.0-0t64
+      - libatspi2.0-0t64
+      - libcairo2
+      - libcups2t64
+      - libdbus-1-3
+      - libdrm2
+      - libgbm1
+      - libglib2.0-0t64
+      - libnspr4
+      - libnss3
+      - libpango-1.0-0
+      - libx11-6
+      - libxcb1
+      - libxcomposite1
+      - libxdamage1
+      - libxext6
+      - libxfixes3
+      - libxkbcommon0
+      - libxrandr2
+
+    build-environment:
+      - VERSION: 2.1.1
+    override-build: |
+      craftctl default
+
+      # install clojure
+      curl -L https://github.com/clojure/brew-install/releases/download/1.11.3.1463/linux-install.sh -o install-clojure
+      echo "0c41063a2fefb53a31bc1bc236899955f759c5103dc0495489cdd74bf8f114bb  install-clojure" | shasum -c
+      chmod +x install-clojure
+      ./install-clojure
+      
+      cd exporter
+      
+      # install yarn
+      npm install --global corepack
+      corepack enable
+      corepack prepare yarn@4.2.2
+
+      export NODE_ENV=production
+      yarn install
+      clojure -J-Xms100M -J-Xmx1000M -J-XX:+UseSerialGC -M:dev:shadow-cljs release main
+      mkdir -p target
+      rm -rf target/app
+      cp ../.yarnrc.yml target/
+      cp yarn.lock target/
+      cp package.json target/
+      sed -i -re "s/\%version\%/$VERSION/g" ./target/app.js
+      
+      mkdir -p $CRAFT_PART_INSTALL/opt/penpot/
+      cp -r target/ $CRAFT_PART_INSTALL/opt/penpot/exporter
+      
+      cd $CRAFT_PART_INSTALL/opt/penpot/exporter
+      yarn install
+      
+      mkdir -p $CRAFT_PART_INSTALL/opt/penpot/exporter/browsers
+      
+      export PLAYWRIGHT_BROWSERS_PATH=$CRAFT_PART_INSTALL/opt/penpot/exporter/browsers
+      yarn run playwright install chromium
+
+    override-stage: |
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/exporter/
+      
+      craftctl default
