@@ -68,7 +68,11 @@ class PenpotCharm(ops.CharmBase):
         Args:
             event: Action event.
         """
-        if not self.container.can_connect() or "backend" not in self.container.get_plan().services:
+        if (
+            not self.container.can_connect()
+            or "backend" not in self.container.get_plan().services
+            or not self.container.get_service("backend").is_running()
+        ):
             event.fail("penpot is not ready")
             return
         email = event.params["email"]
@@ -93,7 +97,11 @@ class PenpotCharm(ops.CharmBase):
         Args:
             event: Action event.
         """
-        if not self.container.can_connect() or "backend" not in self.container.get_plan().services:
+        if (
+            not self.container.can_connect()
+            or "backend" not in self.container.get_plan().services
+            or not self.container.get_service("backend").is_running()
+        ):
             event.fail("penpot is not ready")
             return
         email = event.params["email"]
@@ -316,22 +324,22 @@ class PenpotCharm(ops.CharmBase):
             True if penpot is ready to start.
         """
         if not self._get_penpot_secret_key():
-            self.unit.status = ops.WaitingStatus("waiting for peer integration")
+            self.unit.status = ops.BlockedStatus("waiting for peer integration")
             return False
         if not self._get_postgresql_credentials():
-            self.unit.status = ops.WaitingStatus("waiting for postgresql")
+            self.unit.status = ops.BlockedStatus("waiting for postgresql")
             return False
         if not self._get_redis_credentials():
-            self.unit.status = ops.WaitingStatus("waiting for redis")
+            self.unit.status = ops.BlockedStatus("waiting for redis")
             return False
         if not self._get_s3_credentials():
-            self.unit.status = ops.WaitingStatus("waiting for s3")
+            self.unit.status = ops.BlockedStatus("waiting for s3")
             return False
         if not self._get_public_uri():
-            self.unit.status = ops.WaitingStatus("waiting for ingress")
+            self.unit.status = ops.BlockedStatus("waiting for ingress")
             return False
         if not self.container.can_connect():
-            self.unit.status = ops.WaitingStatus("waiting for penpot container")
+            self.unit.status = ops.BlockedStatus("waiting for penpot container")
             return False
         return True
 
