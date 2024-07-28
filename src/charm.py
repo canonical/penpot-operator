@@ -188,6 +188,32 @@ class PenpotCharm(ops.CharmBase):
         }
         return plan
 
+    def _check_ready(self) -> bool:
+        """Check if penpot is ready to start.
+
+        Returns:
+            True if penpot is ready to start.
+        """
+        if not self._get_penpot_secret_key():
+            self.unit.status = ops.BlockedStatus("waiting for peer integration")
+            return False
+        if not self._get_postgresql_credentials():
+            self.unit.status = ops.BlockedStatus("waiting for postgresql")
+            return False
+        if not self._get_redis_credentials():
+            self.unit.status = ops.BlockedStatus("waiting for redis")
+            return False
+        if not self._get_s3_credentials():
+            self.unit.status = ops.BlockedStatus("waiting for s3")
+            return False
+        if not self._get_public_uri():
+            self.unit.status = ops.BlockedStatus("waiting for ingress")
+            return False
+        if not self.container.can_connect():
+            self.unit.status = ops.BlockedStatus("waiting for penpot container")
+            return False
+        return True
+
     def _get_penpot_secret_key(self) -> dict[str, str] | None:
         """Retrieve or generate a Penpot secret key.
 
@@ -316,32 +342,6 @@ class PenpotCharm(ops.CharmBase):
             Penpot public URI.
         """
         return self.ingress.url
-
-    def _check_ready(self) -> bool:
-        """Check if penpot is ready to start.
-
-        Returns:
-            True if penpot is ready to start.
-        """
-        if not self._get_penpot_secret_key():
-            self.unit.status = ops.BlockedStatus("waiting for peer integration")
-            return False
-        if not self._get_postgresql_credentials():
-            self.unit.status = ops.BlockedStatus("waiting for postgresql")
-            return False
-        if not self._get_redis_credentials():
-            self.unit.status = ops.BlockedStatus("waiting for redis")
-            return False
-        if not self._get_s3_credentials():
-            self.unit.status = ops.BlockedStatus("waiting for s3")
-            return False
-        if not self._get_public_uri():
-            self.unit.status = ops.BlockedStatus("waiting for ingress")
-            return False
-        if not self.container.can_connect():
-            self.unit.status = ops.BlockedStatus("waiting for penpot container")
-            return False
-        return True
 
     def _get_penpot_frontend_options(self) -> list[str]:
         """Retrieve the penpot options for the penpot frontend.
