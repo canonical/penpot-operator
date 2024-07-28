@@ -1,7 +1,7 @@
 name: penpot
 summary: Web-based open-source design tool.
 description: Penpot is the web-based open-source design tool that bridges the gap between designers and developers.
-version: 2.1.1
+version: &penpot-version 2.1.1
 license: MPL-2.0
 
 base: ubuntu@24.04
@@ -16,7 +16,7 @@ parts:
     plugin: nil
     source-type: git
     source: https://github.com/penpot/penpot.git
-    source-tag: 2.1.1
+    source-tag: *penpot-version
     stage-packages:
       - nginx-full
       - gettext-base
@@ -26,7 +26,7 @@ parts:
       - npm
       - rsync
     build-environment:
-      - VERSION: 2.1.1
+      - VERSION: *penpot-version
     override-build: |
       craftctl default
       
@@ -83,7 +83,7 @@ parts:
     plugin: nil
     source-type: git
     source: https://github.com/penpot/penpot.git
-    source-tag: 2.1.1
+    source-tag: *penpot-version
     build-packages:
       - openjdk-21-jdk
       - rlwrap
@@ -101,7 +101,7 @@ parts:
       - python3-tabulate
       - fontforge
     build-environment:
-      - VERSION: 2.1.1
+      - VERSION: *penpot-version
     override-build: |
       craftctl default
 
@@ -154,7 +154,7 @@ parts:
     plugin: nil
     source-type: git
     source: https://github.com/penpot/penpot.git
-    source-tag: 2.1.1
+    source-tag: *penpot-version
     build-packages:
       - openjdk-21-jdk
       - rlwrap
@@ -185,7 +185,7 @@ parts:
       - libxrandr2
 
     build-environment:
-      - VERSION: 2.1.1
+      - VERSION: *penpot-version
     override-build: |
       craftctl default
 

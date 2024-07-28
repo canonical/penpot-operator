@@ -14,41 +14,15 @@ links:
   contact:
     - https://launchpad.net/~canonical-is-devops
 
-type: charm
-base: ubuntu@24.04
-build-base: ubuntu@24.04
-platforms:
-  amd64:
-
-peers:
-  penpot_peer:
-    interface: penpot_peer
-
-requires:
-  postgresql:
-    interface: postgresql_client
-    limit: 1
-  redis:
-    interface: redis
-    limit: 1
-  smtp:
-    interface: smtp
-    limit: 1
-  s3:
-    interface: s3
-    limit: 1
-  ingress:
-    interface: ingress
-    limit: 1
-
-resources:
-  penpot-image:
-    type: oci-image
-    description: OCI image for penpot
-
-containers:
-  penpot:
-    resource: penpot-image
+config:
+  options:
+    email-address:
+      description: >-
+        The default "from" address penpot uses to send emails.
+        If unspecified, it is automatically derived from the SMTP integration, typically `<user>@<domain>`, 
+        or `no-reply@<domain>` if the SMTP username is not provided in the SMTP integration.
+        For more detailed information on SMTP integration, visit https://charmhub.io/smtp-integrator/configuration.
+      type: string
 
 actions:
   create-profile:
@@ -64,6 +38,43 @@ actions:
     params:
       email:
         type: string
+
+peers:
+  penpot_peer:
+    interface: penpot_peer
+
+requires:
+  postgresql:
+    interface: postgresql_client
+    limit: 1
+  redis:
+    interface: redis
+    limit: 1
+  s3:
+    interface: s3
+    limit: 1
+  ingress:
+    interface: ingress
+    limit: 1
+  smtp:
+    interface: smtp
+    limit: 1
+    optional: true
+
+resources:
+  penpot-image:
+    type: oci-image
+    description: OCI image for penpot
+
+containers:
+  penpot:
+    resource: penpot-image
+
+type: charm
+base: ubuntu@24.04
+build-base: ubuntu@24.04
+platforms:
+  amd64:
 
 parts:
   charm:

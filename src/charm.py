@@ -49,22 +49,31 @@ class PenpotCharm(ops.CharmBase):
         self.framework.observe(self.on.secret_changed, self._reconcile)
         self.framework.observe(self.postgresql.on.database_created, self._reconcile)
         self.framework.observe(self.postgresql.on.endpoints_changed, self._reconcile)
+        self.framework.observe(self.on.postgresql_relation_broken, self._reconcile)
         self.framework.observe(self.redis.charm.on.redis_relation_updated, self._reconcile)
+        self.framework.observe(self.on.redis_relation_broken, self._reconcile)
         self.framework.observe(self.s3.on.credentials_changed, self._reconcile)
         self.framework.observe(self.s3.on.credentials_gone, self._reconcile)
+        self.framework.observe(self.smtp.on.smtp_data_available, self._reconcile)
+        self.framework.observe(self.on.smtp_relation_broken, self._reconcile)
         self.framework.observe(self.ingress.on.ready, self._reconcile)
         self.framework.observe(self.ingress.on.revoked, self._reconcile)
         self.framework.observe(self.on.penpot_pebble_ready, self._reconcile)
         self.framework.observe(self.on.create_profile_action, self._on_create_profile_action)
         self.framework.observe(self.on.delete_profile_action, self._on_delete_profile_action)
 
-    def _on_create_profile_action(self, event: ops.ActionEvent):
+    def _on_create_profile_action(self, event: ops.ActionEvent) -> None:
+        """Handle create-profile action.
+
+        Args:
+            event: Action event.
+        """
         if not self.container.can_connect() or "backend" not in self.container.get_plan().services:
             event.fail("penpot is not ready")
             return
         email = event.params["email"]
         fullname = event.params["fullname"]
-        password = secrets.token_urlsafe(8)
+        password = secrets.token_urlsafe(10)
         process = self.container.exec(
             ["python3", "manage.py", "create-profile", "--email", email, "--fullname", fullname],
             service_context="backend",
@@ -79,6 +88,11 @@ class PenpotCharm(ops.CharmBase):
         event.set_results({"email": email, "fullname": fullname, "password": password})
 
     def _on_delete_profile_action(self, event: ops.ActionEvent):
+        """Handle delete-profile action.
+
+        Args:
+            event: Action event.
+        """
         if not self.container.can_connect() or "backend" not in self.container.get_plan().services:
             event.fail("penpot is not ready")
             return
@@ -95,154 +109,30 @@ class PenpotCharm(ops.CharmBase):
             return
         event.set_results({"email": email})
 
-    def _get_penpot_secret_key(self) -> dict[str, str] | None:
-        peer_relation = self.model.get_relation("penpot_peer")
-        if peer_relation is None:
-            return None
-        secret_id = peer_relation.data[self.app].get("secrets")
-        if secret_id is None:
-            if self.unit.is_leader():
-                new_secret = {"penpot-secret-key": secrets.token_urlsafe(64)}
-                secret = self.app.add_secret(new_secret)
-                secret.set_content(new_secret)
-                peer_relation.data[self.app]["secrets"] = secret.id
-                return {k.replace("-", "_").upper(): v for k, v in new_secret.items()}
-            else:
-                return
-        secret = self.model.get_secret(id=secret_id)
-        return {
-            k.replace("-", "_").upper(): v for k, v in secret.get_content(refresh=True).items()
-        }
-
-    def _get_postgresql_credentials(self) -> dict[str, str] | None:
-        relation = self.model.get_relation("postgresql")
-        if not relation or not relation.app:
-            return None
-        endpoint = self.postgresql.fetch_relation_field(relation.id, "endpoints")
-        database = self.postgresql.fetch_relation_field(relation.id, "database")
-        username = self.postgresql.fetch_relation_field(relation.id, "username")
-        password = self.postgresql.fetch_relation_field(relation.id, "password")
-        if not all((endpoint, database, username, password)):
-            return None
-        return {
-            "PENPOT_DATABASE_URI": f"postgresql://{endpoint}/{database}",
-            "PENPOT_DATABASE_USERNAME": username,
-            "PENPOT_DATABASE_PASSWORD": password,
-        }
-
-    def _get_redis_credentials(self) -> dict[str, str] | None:
-        relation = self.model.get_relation("redis")
-        if not relation or not relation.app:
-            return None
-        relation_data = self.redis.relation_data
-        if not relation_data:
-            return None
-        return {"PENPOT_REDIS_URI": self.redis.url}
-
-    def _get_smtp_credentials(self) -> dict[str, str] | None:
-        relation = self.model.get_relation("smtp")
-        if not relation or not relation.app:
-            return None
-        smtp_data = self.smtp.get_relation_data()
-        if not smtp_data:
-            return None
-        smtp_credentials = {
-            "PENPOT_SMTP_DEFAULT_FROM": "no-reply@example.com",
-            "PENPOT_SMTP_DEFAULT_REPLY_TO": "no-reply@example.com",
-            "PENPOT_SMTP_HOST": smtp_data.host,
-            "PENPOT_SMTP_PORT": str(smtp_data.port),
-            "PENPOT_SMTP_TLS": "false",
-            "PENPOT_SMTP_SSL": "false",
-        }
-        if smtp_data.user:
-            smtp_credentials["PENPOT_SMTP_USERNAME"] = smtp_data.user
-        if smtp_data.password:
-            smtp_credentials["PENPOT_SMTP_PASSWORD"] = smtp_data.password
-        if smtp_data.password_id:
-            password_secret = self.model.get_secret(id=smtp_data.password_id)
-            password_secret_content = password_secret.get_content(refresh=True)
-            smtp_credentials["PENPOT_SMTP_PASSWORD"] = password_secret_content["password"]
-        if smtp_data.transport_security == TransportSecurity.TLS:
-            smtp_credentials["PENPOT_SMTP_TLS"] = "true"
-        if smtp_data.transport_security == TransportSecurity.STARTTLS:
-            smtp_credentials["PENPOT_SMTP_SSL"] = "true"
-        return smtp_credentials
-
-    def _get_s3_credentials(self) -> dict[str, str] | None:
-        relation = self.model.get_relation("s3")
-        if not relation or not relation.app:
-            return None
-        s3_data = self.s3.get_s3_connection_info()
-        if not s3_data:
-            return None
-        return {
-            "AWS_ACCESS_KEY_ID": s3_data["access-key"],
-            "AWS_SECRET_ACCESS_KEY": s3_data["secret-key"],
-            "PENPOT_ASSETS_STORAGE_BACKEND": "assets-s3",
-            "PENPOT_STORAGE_ASSETS_S3_REGION": s3_data.get("region", "us-east-1"),
-            "PENPOT_STORAGE_ASSETS_S3_BUCKET": s3_data["bucket"],
-            "PENPOT_STORAGE_ASSETS_S3_ENDPOINT": s3_data["endpoint"],
-        }
-
-    def _get_public_uri(self) -> str | None:
-        return self.ingress.url
-
-    def _check_ready(self) -> bool:
-        if not self._get_penpot_secret_key():
-            self.unit.status = ops.WaitingStatus("waiting for peer integration")
-            return False
-        if not self._get_postgresql_credentials():
-            self.unit.status = ops.WaitingStatus("waiting for postgresql")
-            return False
-        if not self._get_redis_credentials():
-            self.unit.status = ops.WaitingStatus("waiting for redis")
-            return False
-        if not self._get_smtp_credentials():
-            self.unit.status = ops.WaitingStatus("waiting for smtp")
-            return False
-        if not self._get_s3_credentials():
-            self.unit.status = ops.WaitingStatus("waiting for s3")
-            return False
-        if not self._get_public_uri():
-            self.unit.status = ops.WaitingStatus("waiting for ingress")
-            return False
-        if not self.container.can_connect():
-            self.unit.status = ops.WaitingStatus("waiting for penpot container")
-            return False
-        return True
-
-    def _get_penpot_frontend_options(self) -> list[str]:
-        return [
-            "enable-login-with-password",
-            "disable-registration",
-            "disable-onboarding-questions",
-        ]
-
-    def _get_penpot_backend_options(self) -> list[str]:
-        return [
-            "enable-login-with-password",
-            "enable-smtp",
-            "enable-prepl-server",
-            "disable-registration",
-            "disable-onboarding-questions",
-            # TODO: remove me
-            "disable-secure-session-cookies",
-        ]
-
-    def _get_local_resolver(self) -> str:
-        return dns.resolver.Resolver().nameservers[0]
-
-    def _get_penpot_exporter_unit(self):
-        relation = self.model.get_relation("penpot_peer")
-        units = list(relation.units)
-        units.append(self.unit)
-        return sorted(units, key=lambda u: int(u.name.split("/")[-1]))[0].name
-
-    def _get_penpot_exporter_uri(self):
-        unit_name = self._get_penpot_exporter_unit().replace("/", "-")
-        return f"http://{unit_name}.{self.app.name}-endpoints.{self.model.name}.svc.cluster.local:6061"
+    def _reconcile(self, _: ops.EventBase) -> None:
+        """Reconcile penpot services."""
+        if not self._check_ready():
+            if self.container.can_connect() and self.container.get_services():
+                self.container.stop("backend")
+                self.container.stop("frontend")
+                self.container.stop("exporter")
+            return
+        self.container.add_layer("penpot", self._gen_pebble_plan(), combine=True)
+        self.container.replan()
+        self.container.start("backend")
+        self.container.start("frontend")
+        if self.unit.name == self._get_penpot_exporter_unit():
+            self.container.start("exporter")
+        else:
+            self.container.stop("exporter")
+        self.unit.status = ops.ActiveStatus()
 
     def _gen_pebble_plan(self) -> dict:
+        """Generate penpot pebble plan.
+
+        Returns:
+            Penpot pebble plan.
+        """
         plan = {
             "summary": "penpot services",
             "description": "penpot services",
@@ -290,19 +180,221 @@ class PenpotCharm(ops.CharmBase):
         }
         return plan
 
-    def _reconcile(self, _: ops.EventBase) -> None:
-        """Handle changed configuration."""
-        if not self._check_ready():
-            return
-        self.container.add_layer("penpot", self._gen_pebble_plan(), combine=True)
-        self.container.replan()
-        self.container.start("backend")
-        self.container.start("frontend")
-        if self.unit.name == self._get_penpot_exporter_unit():
-            self.container.start("exporter")
-        else:
-            self.container.stop("exporter")
-        self.unit.status = ops.ActiveStatus()
+    def _get_penpot_secret_key(self) -> dict[str, str] | None:
+        """Retrieve or generate a Penpot secret key.
+
+        Checks if the Penpot secret key already exists within the peer relation.
+        If it does not exist, a new secret key is generated and stored in the peer relation.
+        This key is then returned.
+
+        Returns:
+            Penpot secret key.
+        """
+        peer_relation = self.model.get_relation("penpot_peer")
+        if peer_relation is None:
+            return None
+        secret_id = peer_relation.data[self.app].get("secrets")
+        if secret_id is None:
+            if self.unit.is_leader():
+                new_secret = {"penpot-secret-key": secrets.token_urlsafe(64)}
+                secret = self.app.add_secret(new_secret)
+                secret.set_content(new_secret)
+                peer_relation.data[self.app]["secrets"] = secret.id
+                return {k.replace("-", "_").upper(): v for k, v in new_secret.items()}
+            else:
+                return
+        secret = self.model.get_secret(id=secret_id)
+        return {
+            k.replace("-", "_").upper(): v for k, v in secret.get_content(refresh=True).items()
+        }
+
+    def _get_postgresql_credentials(self) -> dict[str, str] | None:
+        """Get penpot postgresql credentials from the postgresql integration.
+
+        Returns:
+            Penpot postgresql credentials.
+        """
+        relation = self.model.get_relation("postgresql")
+        if not relation or not relation.app:
+            return None
+        endpoint = self.postgresql.fetch_relation_field(relation.id, "endpoints")
+        database = self.postgresql.fetch_relation_field(relation.id, "database")
+        username = self.postgresql.fetch_relation_field(relation.id, "username")
+        password = self.postgresql.fetch_relation_field(relation.id, "password")
+        if not all((endpoint, database, username, password)):
+            return None
+        return {
+            "PENPOT_DATABASE_URI": f"postgresql://{endpoint}/{database}",
+            "PENPOT_DATABASE_USERNAME": username,
+            "PENPOT_DATABASE_PASSWORD": password,
+        }
+
+    def _get_redis_credentials(self) -> dict[str, str] | None:
+        """Get penpot redis credentials from the redis integration.
+
+        Returns:
+            Penpot redis credentials.
+        """
+        relation = self.model.get_relation("redis")
+        if not relation or not relation.app:
+            return None
+        relation_data = self.redis.relation_data
+        if not relation_data:
+            return None
+        return {"PENPOT_REDIS_URI": self.redis.url}
+
+    def _get_smtp_credentials(self) -> dict[str, str]:
+        """Get penpot smtp credentials from the smtp integration.
+
+        Returns:
+            Penpot smtp credentials.
+        """
+        relation = self.model.get_relation("smtp")
+        if not relation or not relation.app:
+            return {}
+        smtp_data = self.smtp.get_relation_data()
+        if not smtp_data:
+            return {}
+        from_address = f"{smtp_data.user or 'no-reply'}@{smtp_data.domain}"
+        if self.config.get("email-address"):
+            from_address = self.config["email-address"]
+        smtp_credentials = {
+            "PENPOT_SMTP_DEFAULT_FROM": from_address,
+            "PENPOT_SMTP_DEFAULT_REPLY_TO": from_address,
+            "PENPOT_SMTP_HOST": smtp_data.host,
+            "PENPOT_SMTP_PORT": str(smtp_data.port),
+            "PENPOT_SMTP_TLS": "false",
+            "PENPOT_SMTP_SSL": "false",
+        }
+        if smtp_data.user:
+            smtp_credentials["PENPOT_SMTP_USERNAME"] = smtp_data.user
+        if smtp_data.password:
+            smtp_credentials["PENPOT_SMTP_PASSWORD"] = smtp_data.password
+        if smtp_data.password_id:
+            password_secret = self.model.get_secret(id=smtp_data.password_id)
+            password_secret_content = password_secret.get_content(refresh=True)
+            smtp_credentials["PENPOT_SMTP_PASSWORD"] = password_secret_content["password"]
+        if smtp_data.transport_security == TransportSecurity.TLS:
+            smtp_credentials["PENPOT_SMTP_TLS"] = "true"
+        if smtp_data.transport_security == TransportSecurity.STARTTLS:
+            smtp_credentials["PENPOT_SMTP_SSL"] = "true"
+        return smtp_credentials
+
+    def _get_s3_credentials(self) -> dict[str, str] | None:
+        """Get penpot s3 credentials from the s3 integration.
+
+        Returns:
+            Penpot s3 credentials.
+        """
+        relation = self.model.get_relation("s3")
+        if not relation or not relation.app:
+            return None
+        s3_data = self.s3.get_s3_connection_info()
+        if not s3_data:
+            return None
+        return {
+            "AWS_ACCESS_KEY_ID": s3_data["access-key"],
+            "AWS_SECRET_ACCESS_KEY": s3_data["secret-key"],
+            "PENPOT_ASSETS_STORAGE_BACKEND": "assets-s3",
+            "PENPOT_STORAGE_ASSETS_S3_REGION": s3_data.get("region", "us-east-1"),
+            "PENPOT_STORAGE_ASSETS_S3_BUCKET": s3_data["bucket"],
+            "PENPOT_STORAGE_ASSETS_S3_ENDPOINT": s3_data["endpoint"],
+        }
+
+    def _get_public_uri(self) -> str | None:
+        """Get penpot public URI.
+
+        Returns:
+            Penpot public URI.
+        """
+        return self.ingress.url
+
+    def _check_ready(self) -> bool:
+        """Check if penpot is ready to start.
+
+        Returns:
+            True if penpot is ready to start.
+        """
+        if not self._get_penpot_secret_key():
+            self.unit.status = ops.WaitingStatus("waiting for peer integration")
+            return False
+        if not self._get_postgresql_credentials():
+            self.unit.status = ops.WaitingStatus("waiting for postgresql")
+            return False
+        if not self._get_redis_credentials():
+            self.unit.status = ops.WaitingStatus("waiting for redis")
+            return False
+        if not self._get_s3_credentials():
+            self.unit.status = ops.WaitingStatus("waiting for s3")
+            return False
+        if not self._get_public_uri():
+            self.unit.status = ops.WaitingStatus("waiting for ingress")
+            return False
+        if not self.container.can_connect():
+            self.unit.status = ops.WaitingStatus("waiting for penpot container")
+            return False
+        return True
+
+    def _get_penpot_frontend_options(self) -> list[str]:
+        """Retrieve the penpot options for the penpot frontend.
+
+        Returns:
+            Penpot frontend options.
+        """
+        return sorted(
+            [
+                "enable-login-with-password",
+                "disable-registration",
+                "disable-onboarding-questions",
+            ]
+        )
+
+    def _get_penpot_backend_options(self) -> list[str]:
+        """Retrieve the penpot options for the penpot backend.
+
+        Returns:
+            Penpot backend options.
+        """
+        return sorted(
+            [
+                "enable-login-with-password",
+                "enable-prepl-server",
+                "disable-registration",
+                "disable-telemetry",
+                "disable-onboarding-questions",
+                "disable-secure-session-cookies",
+                "disable-log-emails",
+                ("enable" if self._get_smtp_credentials() else "disable") + "-smtp",
+            ]
+        )
+
+    def _get_local_resolver(self) -> str:
+        """Retrieves the current nameserver address being used.
+        .
+        Returns:
+            The address of the nameserver.
+        """
+        return dns.resolver.Resolver().nameservers[0]
+
+    def _get_penpot_exporter_unit(self):
+        """Retrieve the name of the unit designated to run the penpot exporter.
+        .
+        Returns:
+            Exporter unit name.
+        """
+        relation = self.model.get_relation("penpot_peer")
+        units = list(relation.units)
+        units.append(self.unit)
+        return sorted(units, key=lambda u: int(u.name.split("/")[-1]))[0].name
+
+    def _get_penpot_exporter_uri(self):
+        """Retrieve the address of the unit designated to run the penpot exporter.
+        .
+        Returns:
+            Exporter unit address.
+        """
+        unit_name = self._get_penpot_exporter_unit().replace("/", "-")
+        return f"http://{unit_name}.{self.app.name}-endpoints.{self.model.name}.svc.cluster.local:6061"
 
 
 if __name__ == "__main__":  # pragma: nocover

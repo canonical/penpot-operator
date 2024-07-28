@@ -6,7 +6,9 @@
 """Integration tests."""
 
 import logging
+import time
 
+import juju.action
 import pytest
 import requests
 from pytest_operator.plugin import OpsTest
@@ -70,27 +72,46 @@ async def test_build_and_deploy(
     await ops_test.model.wait_for_idle(timeout=900, status="active")
 
 
-async def test_create_profile(ops_test: OpsTest):
+async def test_create_profile(ops_test: OpsTest, ingress_address):
     email = "test@test.com"
-    app = ops_test.model.applications["penpot"]
-    action = await app.run_action("create-profile", email=email, fullname="test")
-    await action.wait()
-    password = action.results["password"]
+    unit = ops_test.model.applications["penpot"].units[0]
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        action: juju.action.Action = await unit.run_action(
+            "create-profile", email=email, fullname="test"
+        )
+        await action.wait()
+        if "password" in action.results:
+            password = action.results["password"]
+            break
+        else:
+            logger.info(f"waiting for penpot started: {action.results}")
+            time.sleep(5)
+    else:
+        raise TimeoutError(f"timed out waiting for profile creation success")
+    logger.info(f"create test penpot user {email} with password: {password}")
     session = requests.Session()
-    session.trust_env = False
-    response = session.post(
-        "http://172.16.0.1/api/rpc/command/login-with-password",
-        headers={"Host": "penpot.local"},
-        json={"~:email": email, "~:password": password},
-        timeout=10,
-    )
-    assert response.status_code == 200
-    action = await app.run_action("delete-profile", email=email)
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        response = session.post(
+            f"http://{ingress_address}/api/rpc/command/login-with-password",
+            headers={"Host": "penpot.local"},
+            json={"~:email": email, "~:password": password},
+            timeout=10,
+        )
+        if response.status_code == 200:
+            break
+        else:
+            logger.info(f"penpot login status: {response.status_code}")
+            time.sleep(5)
+    else:
+        raise TimeoutError(f"timed out waiting for login success")
+    action = await unit.run_action("delete-profile", email=email)
     await action.wait()
     response = session.post(
-        "http://172.16.0.1/api/rpc/command/login-with-password",
+        f"http://{ingress_address}/api/rpc/command/login-with-password",
         headers={"Host": "penpot.local"},
         json={"~:email": email, "~:password": password},
         timeout=10,
     )
-    assert response.status_code == 200
+    assert response.status_code == 400

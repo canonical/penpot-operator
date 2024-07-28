@@ -152,3 +152,8 @@ def mailcatcher(load_kube_config, ops_test: OpsTest):
         host=f"mailcatcher-service.{namespace}.svc.cluster.local",
         port=1025,
     )
+
+
+@pytest.fixture(scope="module")
+def ingress_address(pytestconfig: pytest.Config):
+    return pytestconfig.getoption("--ingress-address", default="127.0.0.1")
