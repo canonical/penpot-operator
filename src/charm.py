@@ -369,8 +369,8 @@ class PenpotCharm(ops.CharmBase):
         )
 
     def _get_local_resolver(self) -> str:
-        """Retrieves the current nameserver address being used.
-        .
+        """Retrieve the current nameserver address being used.
+
         Returns:
             The address of the nameserver.
         """
@@ -378,7 +378,7 @@ class PenpotCharm(ops.CharmBase):
 
     def _get_penpot_exporter_unit(self):
         """Retrieve the name of the unit designated to run the penpot exporter.
-        .
+
         Returns:
             Exporter unit name.
         """
@@ -389,12 +389,13 @@ class PenpotCharm(ops.CharmBase):
 
     def _get_penpot_exporter_uri(self):
         """Retrieve the address of the unit designated to run the penpot exporter.
-        .
+
         Returns:
             Exporter unit address.
         """
         unit_name = self._get_penpot_exporter_unit().replace("/", "-")
-        return f"http://{unit_name}.{self.app.name}-endpoints.{self.model.name}.svc.cluster.local:6061"
+        hostname = f"{unit_name}.{self.app.name}-endpoints.{self.model.name}.svc.cluster.local"
+        return f"http://{hostname}:6061"
 
 
 if __name__ == "__main__":  # pragma: nocover

@@ -72,7 +72,7 @@ def minio(load_kube_config, ops_test: OpsTest):
                 break
         except kubernetes.client.ApiException:
             pass
-        logger.info(f"waiting for minio pod")
+        logger.info("waiting for minio pod")
         time.sleep(1)
     pod_ip = pod.status.pod_ip
     s3 = boto3.client(
@@ -145,7 +145,7 @@ def mailcatcher(load_kube_config, ops_test: OpsTest):
                 break
         except kubernetes.client.ApiException:
             pass
-        logger.info(f"waiting for mailcatcher pod")
+        logger.info("waiting for mailcatcher pod")
         time.sleep(1)
     SmtpCredential = collections.namedtuple("SmtpCredential", "host port")
     return SmtpCredential(

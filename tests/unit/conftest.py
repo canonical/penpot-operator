@@ -58,14 +58,12 @@ class Harness:
         )
 
     def setup_ingress_integration(self):
-        self.harness.add_network('10.0.0.10')
+        self.harness.add_network("10.0.0.10")
         self.harness.add_relation(
             "ingress",
             "nginx-ingress-integrator",
             app_data={"ingress": '{"url": "http://penpot.local/"}'},
-
         )
-
 
     def setup_smtp_integration(self, use_password: bool = False):
         smtp_integrator_app = "smtp-integrator"

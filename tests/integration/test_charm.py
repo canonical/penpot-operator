@@ -88,7 +88,7 @@ async def test_create_profile(ops_test: OpsTest, ingress_address):
             logger.info(f"waiting for penpot started: {action.results}")
             time.sleep(5)
     else:
-        raise TimeoutError(f"timed out waiting for profile creation success")
+        raise TimeoutError("timed out waiting for profile creation success")
     logger.info(f"create test penpot user {email} with password: {password}")
     session = requests.Session()
     deadline = time.time() + 300
@@ -105,7 +105,7 @@ async def test_create_profile(ops_test: OpsTest, ingress_address):
             logger.info(f"penpot login status: {response.status_code}")
             time.sleep(5)
     else:
-        raise TimeoutError(f"timed out waiting for login success")
+        raise TimeoutError("timed out waiting for login success")
     action = await unit.run_action("delete-profile", email=email)
     await action.wait()
     response = session.post(

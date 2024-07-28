@@ -184,7 +184,9 @@ def test_penpot_pebble_layer(harness):
                 "command": './nginx-entrypoint.sh nginx -g "daemon ' 'off;"',
                 "environment": {
                     "PENPOT_BACKEND_URI": "http://127.0.0.1:6060",
-                    "PENPOT_EXPORTER_URI": "http://penpot-0.penpot-endpoints.test.svc.cluster.local:6061",
+                    "PENPOT_EXPORTER_URI": (
+                        "http://penpot-0.penpot-endpoints.test.svc.cluster.local:6061"
+                    ),
                     "PENPOT_FLAGS": "disable-onboarding-questions "
                     "disable-registration "
                     "enable-login-with-password",
