@@ -11,57 +11,6 @@ platforms:
 
 run-user: _daemon_
 
-services:
-  frontend:
-    command: nginx -g "daemon off;"
-    override: replace
-    startup: enabled
-    after:
-      - backend
-  backend:
-    command: /opt/penpot/backend/run.sh
-    override: replace
-    working-dir: /opt/penpot/backend/
-    startup: enabled
-    environment:
-      JAVA_HOME: /usr/lib/jvm/java-21-openjdk-amd64
-      PENPOT_FLAGS: >-
-        enable-registration 
-        enable-login-with-password 
-        disable-email-verification 
-        enable-smtp 
-        enable-prepl-server 
-        disable-secure-session-cookies
-      PENPOT_PUBLIC_URI: http://172.16.0.1:9001
-      PENPOT_DATABASE_URI: postgresql://penpot-postgres/penpot
-      PENPOT_DATABASE_USERNAME: penpot
-      PENPOT_DATABASE_PASSWORD: penpot
-      PENPOT_REDIS_URI: redis://penpot-redis/0
-      PENPOT_ASSETS_STORAGE_BACKEND: assets-fs
-      PENPOT_STORAGE_ASSETS_FS_DIRECTORY: /opt/data/assets
-      PENPOT_TELEMETRY_ENABLED: "false"
-      PENPOT_SMTP_DEFAULT_FROM: no-reply@example.com
-      PENPOT_SMTP_DEFAULT_REPLY_TO: no-reply@example.com
-      PENPOT_SMTP_HOST: penpot-mailcatch
-      PENPOT_SMTP_PORT: "1025"
-      PENPOT_SMTP_USERNAME: ""
-      PENPOT_SMTP_PASSWORD: ""
-      PENPOT_SMTP_TLS: "false"
-      PENPOT_SMTP_SSL: "false"
-      PENPOT_SECRET_KEY: TDOD
-  exporter:
-    command: node app.js
-    working-dir: /opt/penpot/exporter/
-    override: replace
-    startup: enabled
-    after:
-      - backend
-      - frontend
-    environment:
-      PENPOT_PUBLIC_URI: http://127.0.0.1:8080
-      PENPOT_REDIS_URI: redis://penpot-redis/0
-      PLAYWRIGHT_BROWSERS_PATH: /opt/penpot/exporter/browsers
-
 parts:
   frontend:
     plugin: nil
@@ -70,12 +19,12 @@ parts:
     source-tag: 2.1.1
     stage-packages:
       - nginx-full
+      - gettext-base
     build-packages:
       - openjdk-21-jdk
       - rlwrap
       - npm
       - rsync
-      - gettext-base
     build-environment:
       - VERSION: 2.1.1
     override-build: |
@@ -112,23 +61,22 @@ parts:
 
       # TODO: do this in the charm
       cp ./docker/images/files/config.js $CRAFT_PART_INSTALL/var/www/app/js/config.js
-      sed -i -e "s|^//var penpotFlags = .*;|var penpotFlags = \"enable-registration enable-login-with-password\";|g" $CRAFT_PART_INSTALL/var/www/app/js/config.js
+      cp ./docker/images/files/nginx.conf $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
+      mkdir -p $CRAFT_PART_INSTALL/opt/penpot/frontend
+      cp ./docker/images/files/nginx-entrypoint.sh $CRAFT_PART_INSTALL/opt/penpot/frontend/nginx-entrypoint.sh
+      chmod +x $CRAFT_PART_INSTALL/opt/penpot/frontend/nginx-entrypoint.sh
       
-      export PENPOT_BACKEND_URI=http://127.0.0.1:6060
-      export PENPOT_EXPORTER_URI=http://127.0.0.1:6061
-      export PENPOT_INTERNAL_RESOLVER=127.0.0.11
-      envsubst "\$PENPOT_BACKEND_URI,\$PENPOT_EXPORTER_URI,\$PENPOT_INTERNAL_RESOLVER" < ./docker/images/files/nginx.conf > $CRAFT_PART_INSTALL/etc/nginx/nginx.conf
+      # nginx runs as non-root user
+      sed -i "s/listen 80 default_server;/listen 8080 default_server;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
+      sed -i "s/pid \\/run\\/nginx.pid;/pid \\/opt\\/penpot\\/frontend\\/nginx.pid;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
+      sed -i "s/user www-data;/user _daemon_;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
 
     override-stage: |
-      # nginx runs as non-root user
-      sed -i "s/listen 80 default_server;/listen 8080 default_server;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf
-      sed -i "s/pid \\/run\\/nginx.pid;/pid nginx.pid;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf
-      sed -i "s/user www-data;/user _daemon_;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf
       chown -R 584792:584792 $CRAFT_PART_INSTALL/etc/nginx/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/var/www/app/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/var/lib/nginx/
-      chown -R 584792:584792 $CRAFT_PART_INSTALL/usr/share/nginx/
-      
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/frontend/nginx-entrypoint.sh
+
       craftctl default
 
   backend:
@@ -143,6 +91,15 @@ parts:
       - rsync
     stage-packages:
       - openjdk-21-jdk
+      - imagemagick
+      - webp
+      - rlwrap
+      - fontconfig
+      - woff-tools
+      - woff2
+      - python3
+      - python3-tabulate
+      - fontforge
     build-environment:
       - VERSION: 2.1.1
     override-build: |
@@ -187,7 +144,10 @@ parts:
     override-stage: |
       chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/backend/
       rm -rf $CRAFT_PART_INSTALL/dev
-      
+      cd $CRAFT_PART_INSTALL/usr/bin
+      for bin in $(ls *-im6.q16)
+        do ln -s ./$bin $(basename $bin -im6.q16)
+      done
       craftctl default
 
   exporter:

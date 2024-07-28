@@ -1,17 +1,6 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-type: charm
-bases:
-  - build-on:
-    - name: ubuntu
-      channel: "22.04"
-      architectures: [amd64]
-    run-on:
-    - name: ubuntu
-      channel: "24.04"
-      architectures: [amd64]
-
 name: penpot
 title: Penpot
 description: |
@@ -24,3 +13,66 @@ links:
   source: https://github.com/canonical/penpot-operator
   contact:
     - https://launchpad.net/~canonical-is-devops
+
+type: charm
+base: ubuntu@24.04
+build-base: ubuntu@24.04
+platforms:
+  amd64:
+
+peers:
+  penpot_peer:
+    interface: penpot_peer
+
+requires:
+  postgresql:
+    interface: postgresql_client
+    limit: 1
+  redis:
+    interface: redis
+    limit: 1
+  smtp:
+    interface: smtp
+    limit: 1
+  s3:
+    interface: s3
+    limit: 1
+  ingress:
+    interface: ingress
+    limit: 1
+
+resources:
+  penpot-image:
+    type: oci-image
+    description: OCI image for penpot
+
+containers:
+  penpot:
+    resource: penpot-image
+
+actions:
+  create-profile:
+    description: Create a new penpot user.
+    params:
+      email:
+        type: string
+      fullname:
+        type: string
+
+  delete-profile:
+    description: Delete an existing penpot user.
+    params:
+      email:
+        type: string
+
+parts:
+  charm:
+    build-packages:
+      - cargo
+      - libffi-dev
+      - libssl-dev
+      - pkg-config
+      - rustc
+
+assumes:
+  - juju >= 3.3
