@@ -3,13 +3,14 @@
 
 """Integration test fixtures."""
 
-import kubernetes
-import pytest
 import collections
 import logging
 import time
+
 import boto3
 import botocore.client
+import kubernetes
+import pytest
 from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)

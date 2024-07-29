@@ -9,15 +9,13 @@
 
 import logging
 import secrets
-import socket
 import typing
 
 import dns.resolver
 import ops
-
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.data_platform_libs.v0.s3 import S3Requirer
-from charms.redis_k8s.v0.redis import RedisRequires, RedisRelationCharmEvents
+from charms.redis_k8s.v0.redis import RedisRelationCharmEvents, RedisRequires
 from charms.smtp_integrator.v0.smtp import SmtpRequires, TransportSecurity
 from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 

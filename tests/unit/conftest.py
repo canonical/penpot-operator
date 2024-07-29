@@ -11,11 +11,19 @@ from src.charm import PenpotCharm
 
 
 class Harness:
+    """Unit test helper."""
+
     def __init__(self, harness: ops.testing.Harness) -> None:
+        """Initialize harness.
+
+        Args:
+            harness: ops.testing.Harness object.
+        """
         self.harness = harness
         self.harness.set_model_name("test")
 
     def setup_postgresql_integration(self):
+        """Setup postgresql integration."""
         postgresql_app = "postgresql"
         secret_id = self.harness.add_model_secret(
             postgresql_app, {"username": "postgresql-username", "password": "postgresql-password"}
@@ -41,11 +49,13 @@ class Harness:
         )
 
     def setup_redis_integration(self):
+        """Setup redis integration."""
         self.harness.add_relation(
             "redis", "redis", unit_data={"hostname": "redis-hostname", "port": "6379"}
         )
 
     def setup_s3_integration(self):
+        """Setup s3 integration."""
         self.harness.add_relation(
             "s3",
             "s3-integrator",
@@ -58,6 +68,7 @@ class Harness:
         )
 
     def setup_ingress_integration(self):
+        """Setup ingress integration."""
         self.harness.add_network("10.0.0.10")
         self.harness.add_relation(
             "ingress",
@@ -66,6 +77,11 @@ class Harness:
         )
 
     def setup_smtp_integration(self, use_password: bool = False):
+        """Setup smtp integration.
+
+        Args:
+            use_password: use user/password authentication.
+        """
         smtp_integrator_app = "smtp-integrator"
         if use_password:
             secret_id = self.harness.add_model_secret(
@@ -89,21 +105,23 @@ class Harness:
         self.harness.update_relation_data(relation_id, smtp_integrator_app, app_data)
 
     def setup_integration(self):
+        """Setup all integrations."""
         self.setup_postgresql_integration()
         self.setup_redis_integration()
         self.setup_s3_integration()
         self.setup_ingress_integration()
         self.setup_smtp_integration()
 
-    def set_leader(self, is_leader: bool = True):
-        return self.harness.set_leader(is_leader)
+    def __getattr__(self, attr):
+        """Proxy ops.testing.Harness.
 
-    def begin_with_initial_hooks(self):
-        return self.harness.begin_with_initial_hooks()
+        Args:
+            attr: attribute name.
 
-    @property
-    def charm(self) -> PenpotCharm:
-        return self.harness.charm
+        Returns:
+            Proxied attribute.
+        """
+        return getattr(self.harness, attr)
 
 
 @pytest.fixture

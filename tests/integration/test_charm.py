@@ -13,7 +13,6 @@ import pytest
 import requests
 from pytest_operator.plugin import OpsTest
 
-
 logger = logging.getLogger(__name__)
 
 

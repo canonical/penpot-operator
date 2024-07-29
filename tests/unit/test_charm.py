@@ -69,7 +69,7 @@ def test_smtp_config_with_password(harness):
 
 def test_smtp_config_override_from_address(harness):
     harness.begin_with_initial_hooks()
-    harness.harness.update_config({"email-address": "test@test.com"})
+    harness.update_config({"email-address": "test@test.com"})
     harness.setup_smtp_integration(use_password=True)
     assert harness.charm._get_smtp_credentials() == {
         "PENPOT_SMTP_DEFAULT_FROM": "test@test.com",
@@ -204,7 +204,7 @@ def test_penpot_create_profile_action(harness):
     harness.set_leader()
     harness.begin_with_initial_hooks()
     harness.setup_integration()
-    harness.harness.set_can_connect("penpot", True)
+    harness.set_can_connect("penpot", True)
 
     def handler(args):
         assert args.command == [
@@ -218,15 +218,15 @@ def test_penpot_create_profile_action(harness):
         ]
         assert args.stdin
 
-    harness.harness.handle_exec("penpot", [], handler=handler)
-    harness.harness.run_action("create-profile", {"email": "test@test.com", "fullname": "test"})
+    harness.handle_exec("penpot", [], handler=handler)
+    harness.run_action("create-profile", {"email": "test@test.com", "fullname": "test"})
 
 
 def test_penpot_delete_profile_action(harness):
     harness.set_leader()
     harness.begin_with_initial_hooks()
     harness.setup_integration()
-    harness.harness.set_can_connect("penpot", True)
+    harness.set_can_connect("penpot", True)
 
     def handler(args):
         assert args.command == [
@@ -237,5 +237,5 @@ def test_penpot_delete_profile_action(harness):
             "test@test.com",
         ]
 
-    harness.harness.handle_exec("penpot", [], handler=handler)
-    harness.harness.run_action("delete-profile", {"email": "test@test.com"})
+    harness.handle_exec("penpot", [], handler=handler)
+    harness.run_action("delete-profile", {"email": "test@test.com"})
