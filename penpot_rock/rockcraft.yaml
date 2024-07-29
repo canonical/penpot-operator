@@ -91,6 +91,7 @@ parts:
       - npm
       - rsync
     stage-packages:
+      - curl
       - openjdk-21-jdk
       - imagemagick
       - webp

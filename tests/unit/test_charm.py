@@ -178,6 +178,21 @@ def test_penpot_pebble_layer(harness):
     del plan["services"]["backend"]["environment"]["PENPOT_SECRET_KEY"]
     del plan["services"]["frontend"]["environment"]["PENPOT_INTERNAL_RESOLVER"]
     assert plan == {
+        "checks": {
+            "backend-ready": {
+                "exec": {
+                    "command": (
+                        'bash -c "'
+                        "pebble services backend | grep -q inactive || "
+                        "curl -f http://localhost:6060/readyz"
+                        '"'
+                    )
+                },
+                "level": "ready",
+                "override": "replace",
+                "period": "30s",
+            }
+        },
         "description": "penpot services",
         "services": {
             "backend": {

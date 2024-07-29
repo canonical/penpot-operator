@@ -184,6 +184,21 @@ class PenpotCharm(ops.CharmBase):
                     },
                 },
             },
+            checks={
+                "backend-ready": {
+                    "override": "replace",
+                    "level": "ready",
+                    "period": "30s",
+                    "exec": {
+                        "command": (
+                            'bash -c "'
+                            "pebble services backend | grep -q inactive || "
+                            "curl -f http://localhost:6060/readyz"
+                            '"'
+                        )
+                    },
+                }
+            },
         )
         return plan
 
