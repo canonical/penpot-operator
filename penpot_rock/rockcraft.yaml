@@ -59,7 +59,6 @@ parts:
       cp -r ./frontend/resources/public $CRAFT_PART_INSTALL/var/www/app
       cp ./docker/images/files/nginx-mime.types $CRAFT_PART_INSTALL/etc/nginx/mime.types
 
-      # TODO: do this in the charm
       cp ./docker/images/files/config.js $CRAFT_PART_INSTALL/var/www/app/js/config.js
       cp ./docker/images/files/nginx.conf $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/frontend
@@ -75,7 +74,7 @@ parts:
       chown -R 584792:584792 $CRAFT_PART_INSTALL/etc/nginx/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/var/www/app/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/var/lib/nginx/
-      chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/frontend/nginx-entrypoint.sh
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/frontend/
 
       craftctl default
 
