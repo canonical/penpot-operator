@@ -61,7 +61,6 @@ parts:
       cd ..
       cp -r ./frontend/resources/public $CRAFT_PART_INSTALL/var/www/app
       cp ./docker/images/files/nginx-mime.types $CRAFT_PART_INSTALL/etc/nginx/mime.types
-
       cp ./docker/images/files/config.js $CRAFT_PART_INSTALL/var/www/app/js/config.js
       cp ./docker/images/files/nginx.conf $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/frontend
@@ -185,7 +184,6 @@ parts:
       - libxfixes3
       - libxkbcommon0
       - libxrandr2
-
     build-environment:
       - VERSION: *penpot-version
     override-build: |

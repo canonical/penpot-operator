@@ -162,4 +162,6 @@ def mailcatcher(load_kube_config, ops_test: OpsTest):
 @pytest.fixture(scope="module")
 def ingress_address(pytestconfig: pytest.Config):
     """Get ingress address test option."""
-    return pytestconfig.getoption("--ingress-address", default="127.0.0.1")
+    address = pytestconfig.getoption("--ingress-address")
+    if not address:
+        return "127.0.0.1"
