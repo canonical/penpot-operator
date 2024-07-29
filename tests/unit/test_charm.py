@@ -131,6 +131,7 @@ def test_penpot_pebble_layer(harness):
     assert harness.charm._check_ready()
     plan = harness.charm._gen_pebble_plan()
     del plan["services"]["backend"]["environment"]["PENPOT_SECRET_KEY"]
+    del plan["services"]["frontend"]["environment"]["PENPOT_INTERNAL_RESOLVER"]
     assert plan == {
         "description": "penpot services",
         "services": {
@@ -190,7 +191,6 @@ def test_penpot_pebble_layer(harness):
                     "PENPOT_FLAGS": "disable-onboarding-questions "
                     "disable-registration "
                     "enable-login-with-password",
-                    "PENPOT_INTERNAL_RESOLVER": "192.168.127.1",
                 },
                 "override": "replace",
                 "working-dir": "/opt/penpot/frontend/",

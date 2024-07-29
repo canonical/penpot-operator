@@ -9,6 +9,7 @@
 
 import logging
 import secrets
+import socket
 import typing
 
 import dns.resolver
@@ -382,7 +383,12 @@ class PenpotCharm(ops.CharmBase):
         Returns:
             The address of the nameserver.
         """
-        return dns.resolver.Resolver().nameservers[0]
+        kube_dns = f"kube-dns.kube-system.svc.{self._get_kubernetes_domain_name()}"
+        try:
+            dns.resolver.resolve(kube_dns, search=True)
+            return kube_dns
+        except dns.exception.DNSException:
+            return dns.resolver.Resolver().nameservers[0]
 
     def _get_penpot_exporter_unit(self):
         """Retrieve the name of the unit designated to run the penpot exporter.
@@ -402,8 +408,16 @@ class PenpotCharm(ops.CharmBase):
             Exporter unit address.
         """
         unit_name = self._get_penpot_exporter_unit().replace("/", "-")
-        hostname = f"{unit_name}.{self.app.name}-endpoints.{self.model.name}.svc.cluster.local"
+        k8s_domain_name = self._get_kubernetes_domain_name()
+        hostname = f"{unit_name}.{self.app.name}-endpoints.{self.model.name}.svc.{k8s_domain_name}"
         return f"http://{hostname}:6061"
+
+    def _get_kubernetes_domain_name(self):
+        try:
+            answers = dns.resolver.resolve("kubernetes.default.svc", search=True)
+        except dns.exception.DNSException:
+            return "cluster.local"
+        return answers.qname.to_text().removeprefix("kubernetes.default.svc").strip(".")
 
 
 if __name__ == "__main__":  # pragma: nocover
