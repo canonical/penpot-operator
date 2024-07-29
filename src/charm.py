@@ -383,7 +383,7 @@ class PenpotCharm(ops.CharmBase):
         Returns:
             The address of the nameserver.
         """
-        kube_dns = f"kube-dns.kube-system.svc.{self._get_kubernetes_domain_name()}"
+        kube_dns = f"kube-dns.kube-system.svc.{self._get_kubernetes_cluster_domain()}"
         try:
             dns.resolver.resolve(kube_dns, search=True)
             return kube_dns
@@ -408,11 +408,16 @@ class PenpotCharm(ops.CharmBase):
             Exporter unit address.
         """
         unit_name = self._get_penpot_exporter_unit().replace("/", "-")
-        k8s_domain_name = self._get_kubernetes_domain_name()
-        hostname = f"{unit_name}.{self.app.name}-endpoints.{self.model.name}.svc.{k8s_domain_name}"
+        k8s_domain = self._get_kubernetes_cluster_domain()
+        hostname = f"{unit_name}.{self.app.name}-endpoints.{self.model.name}.svc.{k8s_domain}"
         return f"http://{hostname}:6061"
 
-    def _get_kubernetes_domain_name(self):
+    def _get_kubernetes_cluster_domain(self):
+        """Get Kubernetes cluster domain name.
+
+        Returns:
+            Kubernetes cluster domain name.
+        """
         try:
             answers = dns.resolver.resolve("kubernetes.default.svc", search=True)
         except dns.exception.DNSException:
