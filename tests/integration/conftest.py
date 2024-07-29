@@ -165,3 +165,4 @@ def ingress_address(pytestconfig: pytest.Config):
     address = pytestconfig.getoption("--ingress-address")
     if not address:
         return "127.0.0.1"
+    return address
