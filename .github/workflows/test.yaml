@@ -8,6 +8,7 @@ jobs:
     uses: canonical/operator-workflows/.github/workflows/test.yaml@main
     secrets: inherit
     with:
+      charmcraft-channel: latest/edge
       self-hosted-runner: true
       self-hosted-runner-label: "edge"
   integration-tests:
@@ -15,6 +16,7 @@ jobs:
     secrets: inherit
     with:
       channel: 1.28-strict/stable
+      charmcraft-channel: latest/edge
       juju-channel: 3.4/stable
       self-hosted-runner: true
       self-hosted-runner-label: "edge"
