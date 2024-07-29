@@ -3,8 +3,15 @@
 
 """Unit tests."""
 
+# pylint: disable=protected-access
+
 
 def test_postgresql_config(harness):
+    """
+    arrange: initialize the testing harness and set up the postgresql integration.
+    act: retrieve the postgresql configuration for penpot.
+    assert: ensure the postgresql configuration for penpot matches the expectations.
+    """
     harness.begin_with_initial_hooks()
     assert harness.charm._get_postgresql_credentials() is None
     harness.setup_postgresql_integration()
@@ -16,6 +23,11 @@ def test_postgresql_config(harness):
 
 
 def test_redis_config(harness):
+    """
+    arrange: initialize the testing harness and set up the redis integration.
+    act: retrieve the redis configuration for penpot.
+    assert: ensure the redis configuration for penpot matches the expectations.
+    """
     harness.begin_with_initial_hooks()
     assert harness.charm._get_redis_credentials() is None
     harness.setup_redis_integration()
@@ -25,6 +37,11 @@ def test_redis_config(harness):
 
 
 def test_s3_config(harness):
+    """
+    arrange: initialize the testing harness and set up the s3 integration.
+    act: retrieve the s3 configuration for penpot.
+    assert: ensure the s3 configuration for penpot matches the expectations.
+    """
     harness.begin_with_initial_hooks()
     assert harness.charm._get_s3_credentials() is None
     harness.setup_s3_integration()
@@ -39,6 +56,11 @@ def test_s3_config(harness):
 
 
 def test_smtp_config(harness):
+    """
+    arrange: initialize the testing harness and set up the smtp integration.
+    act: retrieve the smtp configuration for penpot.
+    assert: ensure the smtp configuration for penpot matches the expectations.
+    """
     harness.begin_with_initial_hooks()
     assert harness.charm._get_smtp_credentials() == {}
     harness.setup_smtp_integration()
@@ -53,6 +75,11 @@ def test_smtp_config(harness):
 
 
 def test_smtp_config_with_password(harness):
+    """
+    arrange: set up the smtp integration with password authentication.
+    act: retrieve the smtp configuration for penpot.
+    assert: ensure the smtp configuration for penpot matches the expectations.
+    """
     harness.begin_with_initial_hooks()
     harness.setup_smtp_integration(use_password=True)
     assert harness.charm._get_smtp_credentials() == {
@@ -68,8 +95,13 @@ def test_smtp_config_with_password(harness):
 
 
 def test_smtp_config_override_from_address(harness):
+    """
+    arrange: initialize the testing harness and set up the smtp integration.
+    act: set smtp-from-address configuration and retrieve the smtp configuration for penpot.
+    assert: ensure the smtp configuration for penpot matches the expectations.
+    """
     harness.begin_with_initial_hooks()
-    harness.update_config({"email-address": "test@test.com"})
+    harness.update_config({"smtp-from-address": "test@test.com"})
     harness.setup_smtp_integration(use_password=True)
     assert harness.charm._get_smtp_credentials() == {
         "PENPOT_SMTP_DEFAULT_FROM": "test@test.com",
@@ -84,6 +116,11 @@ def test_smtp_config_override_from_address(harness):
 
 
 def test_smtp_penpot_option(harness):
+    """
+    arrange: initialize the testing harness.
+    act: retrieve the penpot options with different smtp setup.
+    assert: ensure the penpot options matches the expectations.
+    """
     harness.begin_with_initial_hooks()
     assert harness.charm._get_penpot_backend_options() == [
         "disable-log-emails",
@@ -109,6 +146,11 @@ def test_smtp_penpot_option(harness):
 
 
 def test_public_uri(harness):
+    """
+    arrange: initialize the testing harness and set up the ingress integration.
+    act: retrieve the public URI configuration for penpot.
+    assert: ensure the public URI for penpot matches the expectations.
+    """
     harness.begin_with_initial_hooks()
     assert harness.charm._get_public_uri() is None
     harness.setup_ingress_integration()
@@ -116,6 +158,11 @@ def test_public_uri(harness):
 
 
 def test_penpot_pebble_layer(harness):
+    """
+    arrange: initialize the testing harness and set up all required integration.
+    act: retrieve the pebble layer for penpot.
+    assert: ensure the pebble layer for penpot matches the expectations.
+    """
     harness.set_leader()
     harness.begin_with_initial_hooks()
     assert not harness.charm._check_ready()
@@ -148,7 +195,6 @@ def test_penpot_pebble_layer(harness):
                     "PENPOT_FLAGS": "disable-log-emails "
                     "disable-onboarding-questions "
                     "disable-registration "
-                    "disable-secure-session-cookies "
                     "disable-telemetry "
                     "enable-login-with-password "
                     "enable-prepl-server "
@@ -201,12 +247,17 @@ def test_penpot_pebble_layer(harness):
 
 
 def test_penpot_create_profile_action(harness):
+    """
+    arrange: initialize the testing harness and set up all required integration.
+    act: run create-profile charm action.
+    assert: ensure correct commands are executed.
+    """
     harness.set_leader()
     harness.begin_with_initial_hooks()
     harness.setup_integration()
     harness.set_can_connect("penpot", True)
 
-    def handler(args):
+    def test_handler(args):
         assert args.command == [
             "python3",
             "manage.py",
@@ -218,17 +269,22 @@ def test_penpot_create_profile_action(harness):
         ]
         assert args.stdin
 
-    harness.handle_exec("penpot", [], handler=handler)
+    harness.handle_exec("penpot", [], handler=test_handler)
     harness.run_action("create-profile", {"email": "test@test.com", "fullname": "test"})
 
 
 def test_penpot_delete_profile_action(harness):
+    """
+    arrange: initialize the testing harness and set up all required integration.
+    act: run delete-profile charm action.
+    assert: ensure correct commands are executed.
+    """
     harness.set_leader()
     harness.begin_with_initial_hooks()
     harness.setup_integration()
     harness.set_can_connect("penpot", True)
 
-    def handler(args):
+    def test_handler(args):
         assert args.command == [
             "python3",
             "manage.py",
@@ -237,5 +293,5 @@ def test_penpot_delete_profile_action(harness):
             "test@test.com",
         ]
 
-    harness.handle_exec("penpot", [], handler=handler)
+    harness.handle_exec("penpot", [], handler=test_handler)
     harness.run_action("delete-profile", {"email": "test@test.com"})

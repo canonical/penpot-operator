@@ -124,7 +124,8 @@ class Harness:
         return getattr(self.harness, attr)
 
 
-@pytest.fixture
-def harness(monkeypatch):
+@pytest.fixture(name="harness")
+def harness_fixture(monkeypatch):
+    """Harness fixture."""
     monkeypatch.setenv("JUJU_VERSION", "3.5.0")
     return Harness(ops.testing.Harness(PenpotCharm))

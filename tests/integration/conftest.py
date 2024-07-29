@@ -3,6 +3,8 @@
 
 """Integration test fixtures."""
 
+# pylint: disable=unused-argument
+
 import collections
 import logging
 import time
@@ -16,8 +18,8 @@ from pytest_operator.plugin import OpsTest
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture(scope="module")
-def load_kube_config(pytestconfig: pytest.Config):
+@pytest.fixture(scope="module", name="load_kube_config")
+def load_kube_config_fixture(pytestconfig: pytest.Config):
     """Load kubernetes config file."""
     kube_config = pytestconfig.getoption("--kube-config")
     kubernetes.config.load_kube_config(config_file=kube_config)
@@ -26,6 +28,7 @@ def load_kube_config(pytestconfig: pytest.Config):
 @pytest.fixture(scope="module")
 def minio(load_kube_config, ops_test: OpsTest):
     """Deploy test minio service."""
+    assert ops_test.model
     namespace = ops_test.model.name
     key = "minioadmin"
     v1 = kubernetes.client.CoreV1Api()
@@ -69,7 +72,7 @@ def minio(load_kube_config, ops_test: OpsTest):
         try:
             pod = v1.read_namespaced_pod(name="minio", namespace=namespace)
             if pod.status.phase == "Running":
-                logger.info(f"minio running at {pod.status.pod_ip}")
+                logger.info("minio running at %s", pod.status.pod_ip)
                 break
         except kubernetes.client.ApiException:
             pass
@@ -97,6 +100,7 @@ def minio(load_kube_config, ops_test: OpsTest):
 @pytest.fixture(scope="module")
 def mailcatcher(load_kube_config, ops_test: OpsTest):
     """Deploy test mailcatcher service."""
+    assert ops_test.model
     namespace = ops_test.model.name
     v1 = kubernetes.client.CoreV1Api()
     pod = kubernetes.client.V1Pod(
@@ -142,7 +146,7 @@ def mailcatcher(load_kube_config, ops_test: OpsTest):
         try:
             pod = v1.read_namespaced_pod(name="mailcatcher", namespace=namespace)
             if pod.status.phase == "Running":
-                logger.info(f"mailcatcher running at {pod.status.pod_ip}")
+                logger.info("mailcatcher running at %s", pod.status.pod_ip)
                 break
         except kubernetes.client.ApiException:
             pass
@@ -157,4 +161,5 @@ def mailcatcher(load_kube_config, ops_test: OpsTest):
 
 @pytest.fixture(scope="module")
 def ingress_address(pytestconfig: pytest.Config):
+    """Get ingress address test option."""
     return pytestconfig.getoption("--ingress-address", default="127.0.0.1")

@@ -86,11 +86,11 @@ class PenpotCharm(ops.CharmBase):
         try:
             process.wait()
         except ops.pebble.ExecError as exc:
-            event.fail(exc.stdout)
+            event.fail(typing.cast(str, exc.stdout))
             return
         event.set_results({"email": email, "fullname": fullname, "password": password})
 
-    def _on_delete_profile_action(self, event: ops.ActionEvent):
+    def _on_delete_profile_action(self, event: ops.ActionEvent) -> None:
         """Handle delete-profile action.
 
         Args:
@@ -112,7 +112,7 @@ class PenpotCharm(ops.CharmBase):
         try:
             process.wait()
         except ops.pebble.ExecError as exc:
-            event.fail(exc.stdout)
+            event.fail(typing.cast(str, exc.stdout))
             return
         event.set_results({"email": email})
 
@@ -134,16 +134,16 @@ class PenpotCharm(ops.CharmBase):
             self.container.stop("exporter")
         self.unit.status = ops.ActiveStatus()
 
-    def _gen_pebble_plan(self) -> dict:
+    def _gen_pebble_plan(self) -> ops.pebble.LayerDict:
         """Generate penpot pebble plan.
 
         Returns:
             Penpot pebble plan.
         """
-        plan = {
-            "summary": "penpot services",
-            "description": "penpot services",
-            "services": {
+        plan = ops.pebble.LayerDict(
+            summary="penpot services",
+            description="penpot services",
+            services={
                 "frontend": {
                     "command": './nginx-entrypoint.sh nginx -g "daemon off;"',
                     "working-dir": "/opt/penpot/frontend/",
@@ -163,13 +163,13 @@ class PenpotCharm(ops.CharmBase):
                     "environment": {
                         "JAVA_HOME": "/usr/lib/jvm/java-21-openjdk-amd64",
                         "PENPOT_TELEMETRY_ENABLED": "false",
-                        "PENPOT_PUBLIC_URI": self._get_public_uri(),
+                        "PENPOT_PUBLIC_URI": typing.cast(str, self._get_public_uri()),
                         "PENPOT_FLAGS": " ".join(self._get_penpot_backend_options()),
-                        **self._get_penpot_secret_key(),
-                        **self._get_postgresql_credentials(),
-                        **self._get_redis_credentials(),
-                        **self._get_smtp_credentials(),
-                        **self._get_s3_credentials(),
+                        **typing.cast(dict[str, str], self._get_penpot_secret_key()),
+                        **typing.cast(dict[str, str], self._get_postgresql_credentials()),
+                        **typing.cast(dict[str, str], self._get_redis_credentials()),
+                        **typing.cast(dict[str, str], self._get_smtp_credentials()),
+                        **typing.cast(dict[str, str], self._get_s3_credentials()),
                     },
                 },
                 "exporter": {
@@ -180,14 +180,14 @@ class PenpotCharm(ops.CharmBase):
                     "environment": {
                         "PENPOT_PUBLIC_URI": "http://127.0.0.1:8080",
                         "PLAYWRIGHT_BROWSERS_PATH": "/opt/penpot/exporter/browsers",
-                        **self._get_redis_credentials(),
+                        **typing.cast(dict[str, str], self._get_redis_credentials()),
                     },
                 },
             },
-        }
+        )
         return plan
 
-    def _check_ready(self) -> bool:
+    def _check_ready(self) -> bool:  # pylint: disable=too-many-return-statements
         """Check if penpot is ready to start.
 
         Returns:
@@ -232,10 +232,9 @@ class PenpotCharm(ops.CharmBase):
                 new_secret = {"penpot-secret-key": secrets.token_urlsafe(64)}
                 secret = self.app.add_secret(new_secret)
                 secret.set_content(new_secret)
-                peer_relation.data[self.app]["secrets"] = secret.id
+                peer_relation.data[self.app]["secrets"] = typing.cast(str, secret.id)
                 return {k.replace("-", "_").upper(): v for k, v in new_secret.items()}
-            else:
-                return
+            return None
         secret = self.model.get_secret(id=secret_id)
         return {
             k.replace("-", "_").upper(): v for k, v in secret.get_content(refresh=True).items()
@@ -289,8 +288,9 @@ class PenpotCharm(ops.CharmBase):
         if not smtp_data:
             return {}
         from_address = f"{smtp_data.user or 'no-reply'}@{smtp_data.domain}"
-        if self.config.get("email-address"):
-            from_address = self.config["email-address"]
+        config_from_address = self.config.get("smtp-from-address")
+        if config_from_address:
+            from_address = typing.cast(str, config_from_address)
         smtp_credentials = {
             "PENPOT_SMTP_DEFAULT_FROM": from_address,
             "PENPOT_SMTP_DEFAULT_REPLY_TO": from_address,
@@ -369,7 +369,6 @@ class PenpotCharm(ops.CharmBase):
                 "disable-registration",
                 "disable-telemetry",
                 "disable-onboarding-questions",
-                "disable-secure-session-cookies",
                 "disable-log-emails",
                 ("enable" if self._get_smtp_credentials() else "disable") + "-smtp",
             ]
@@ -386,20 +385,21 @@ class PenpotCharm(ops.CharmBase):
             dns.resolver.resolve(kube_dns, search=True)
             return kube_dns
         except dns.exception.DNSException:
-            return dns.resolver.Resolver().nameservers[0]
+            # resolvers like dns-over-https, not likely to happen in Kubernetes
+            return typing.cast(str, dns.resolver.Resolver().nameservers[0])
 
-    def _get_penpot_exporter_unit(self):
+    def _get_penpot_exporter_unit(self) -> str:
         """Retrieve the name of the unit designated to run the penpot exporter.
 
         Returns:
             Exporter unit name.
         """
-        relation = self.model.get_relation("penpot_peer")
+        relation = typing.cast(ops.Relation, self.model.get_relation("penpot_peer"))
         units = list(relation.units)
         units.append(self.unit)
         return sorted(units, key=lambda u: int(u.name.split("/")[-1]))[0].name
 
-    def _get_penpot_exporter_uri(self):
+    def _get_penpot_exporter_uri(self) -> str:
         """Retrieve the address of the unit designated to run the penpot exporter.
 
         Returns:
@@ -410,7 +410,7 @@ class PenpotCharm(ops.CharmBase):
         hostname = f"{unit_name}.{self.app.name}-endpoints.{self.model.name}.svc.{k8s_domain}"
         return f"http://{hostname}:6061"
 
-    def _get_kubernetes_cluster_domain(self):
+    def _get_kubernetes_cluster_domain(self) -> str:
         """Get Kubernetes cluster domain name.
 
         Returns:

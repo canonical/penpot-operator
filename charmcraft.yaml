@@ -16,7 +16,7 @@ links:
 
 config:
   options:
-    email-address:
+    smtp-from-address:
       description: >-
         The default "from" address penpot uses to send emails.
         If unspecified, it is automatically derived from the SMTP integration, typically `<user>@<domain>`, 

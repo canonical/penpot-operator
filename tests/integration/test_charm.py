@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 async def test_build_and_deploy(
     ops_test: OpsTest, pytestconfig: pytest.Config, minio, mailcatcher
 ):
-    """Deploy the charm together with related charms.
-
-    Assert on the unit status before any relations/configurations take place.
+    """
+    arrange: set up the test Juju model.
+    act: build and deploy the Penpot charm with required services.
+    assert: the Penpot charm becomes active.
     """
     charm = pytestconfig.getoption("--charm-file")
     penpot_image = pytestconfig.getoption("--penpot-image")
@@ -72,7 +73,13 @@ async def test_build_and_deploy(
 
 
 async def test_create_profile(ops_test: OpsTest, ingress_address):
+    """
+    arrange: deploy the Penpot charm.
+    act: create a Penpot account using the 'create-profile' charm action.
+    assert: the account created can be used to log in to Penpot.
+    """
     email = "test@test.com"
+    assert ops_test.model
     unit = ops_test.model.applications["penpot"].units[0]
     deadline = time.time() + 300
     while time.time() < deadline:
@@ -83,12 +90,11 @@ async def test_create_profile(ops_test: OpsTest, ingress_address):
         if "password" in action.results:
             password = action.results["password"]
             break
-        else:
-            logger.info(f"waiting for penpot started: {action.results}")
-            time.sleep(5)
+        logger.info("waiting for penpot started: %s", action.results)
+        time.sleep(5)
     else:
         raise TimeoutError("timed out waiting for profile creation success")
-    logger.info(f"create test penpot user {email} with password: {password}")
+    logger.info("create test penpot user %s with password: %s", email, password)
     session = requests.Session()
     deadline = time.time() + 300
     while time.time() < deadline:
@@ -100,9 +106,8 @@ async def test_create_profile(ops_test: OpsTest, ingress_address):
         )
         if response.status_code == 200:
             break
-        else:
-            logger.info(f"penpot login status: {response.status_code}")
-            time.sleep(5)
+        logger.info("penpot login status: %s", response.status_code)
+        time.sleep(5)
     else:
         raise TimeoutError("timed out waiting for login success")
     action = await unit.run_action("delete-profile", email=email)
