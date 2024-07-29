@@ -4,7 +4,7 @@
 name: penpot
 summary: Web-based open-source design tool.
 description: Penpot is the web-based open-source design tool that bridges the gap between designers and developers.
-version: &penpot-version 2.1.1
+version: &penpot-version 2.1.2-RC1
 license: MPL-2.0
 
 base: ubuntu@24.04
