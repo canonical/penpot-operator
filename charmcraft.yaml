@@ -86,4 +86,4 @@ parts:
       - rustc
 
 assumes:
-  - juju >= 3.4
+  - juju >= 3.3
