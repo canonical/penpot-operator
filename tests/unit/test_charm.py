@@ -255,6 +255,19 @@ def test_penpot_pebble_layer(harness):
     }
 
 
+def test_penpot_exporter_unit(harness):
+    """
+    arrange: initialize the testing harness and set up some penpot units.
+    act: retrieve the penpot exporter unit.
+    assert: penpot exporter unit is the unit with the least unit number.
+    """
+    relation_id = harness.add_relation("penpot_peer", "penpot")
+    harness.add_relation_unit(relation_id, "penpot/1")
+    harness.add_relation_unit(relation_id, "penpot/2")
+    harness.begin()
+    assert harness.charm._get_penpot_exporter_unit() == "penpot/0"
+
+
 def test_penpot_create_profile_action(harness):
     """
     arrange: initialize the testing harness and set up all required integration.

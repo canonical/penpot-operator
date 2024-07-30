@@ -198,29 +198,23 @@ class PenpotCharm(ops.CharmBase):
         )
         return plan
 
-    def _check_ready(self) -> bool:  # pylint: disable=too-many-return-statements
+    def _check_ready(self) -> bool:
         """Check if penpot is ready to start.
 
         Returns:
             True if penpot is ready to start.
         """
-        if not self._get_penpot_secret_key():
-            self.unit.status = ops.BlockedStatus("waiting for peer integration")
-            return False
-        if not self._get_postgresql_credentials():
-            self.unit.status = ops.BlockedStatus("waiting for postgresql")
-            return False
-        if not self._get_redis_credentials():
-            self.unit.status = ops.BlockedStatus("waiting for redis")
-            return False
-        if not self._get_s3_credentials():
-            self.unit.status = ops.BlockedStatus("waiting for s3")
-            return False
-        if not self._get_public_uri():
-            self.unit.status = ops.BlockedStatus("waiting for ingress")
-            return False
-        if not self.container.can_connect():
-            self.unit.status = ops.BlockedStatus("waiting for penpot container")
+        requirements = {
+            "peer integration": self._get_penpot_secret_key(),
+            "postgresql": self._get_postgresql_credentials(),
+            "redis": self._get_redis_credentials(),
+            "s3": self._get_s3_credentials(),
+            "ingress": self._get_public_uri(),
+            "penpot container": self.container.can_connect(),
+        }
+        unfulfilled = sorted([k for k, v in requirements.items() if not v])
+        if unfulfilled:
+            self.unit.status = ops.BlockedStatus(f"waiting for {', '.join(unfulfilled)}")
             return False
         return True
 
