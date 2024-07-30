@@ -328,7 +328,7 @@ class PenpotCharm(ops.CharmBase):
         if not relation or not relation.app:
             return None
         s3_data = self.s3.get_s3_connection_info()
-        if not s3_data:
+        if not s3_data or "access-key" not in s3_data:
             return None
         return {
             "AWS_ACCESS_KEY_ID": s3_data["access-key"],
