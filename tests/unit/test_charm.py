@@ -201,13 +201,15 @@ def test_penpot_pebble_layer(harness):
                     "PENPOT_DATABASE_PASSWORD": "postgresql-password",
                     "PENPOT_DATABASE_URI": "postgresql://postgresql-endpoint:5432/penpot",
                     "PENPOT_DATABASE_USERNAME": "postgresql-username",
-                    "PENPOT_FLAGS": "disable-log-emails "
-                    "disable-onboarding-questions "
-                    "disable-registration "
-                    "disable-telemetry "
-                    "enable-login-with-password "
-                    "enable-prepl-server "
-                    "enable-smtp",
+                    "PENPOT_FLAGS": (
+                        "disable-log-emails "
+                        "disable-onboarding-questions "
+                        "disable-registration "
+                        "disable-telemetry "
+                        "enable-login-with-password "
+                        "enable-prepl-server "
+                        "enable-smtp"
+                    ),
                     "PENPOT_PUBLIC_URI": "http://penpot.local/",
                     "PENPOT_REDIS_URI": "redis://redis-hostname:6379",
                     "PENPOT_SMTP_DEFAULT_FROM": "no-reply@example.com",
@@ -243,9 +245,11 @@ def test_penpot_pebble_layer(harness):
                     "PENPOT_EXPORTER_URI": (
                         "http://penpot-0.penpot-endpoints.test.svc.cluster.local:6061"
                     ),
-                    "PENPOT_FLAGS": "disable-onboarding-questions "
-                    "disable-registration "
-                    "enable-login-with-password",
+                    "PENPOT_FLAGS": (
+                        "disable-onboarding-questions "
+                        "disable-registration "
+                        "enable-login-with-password"
+                    ),
                 },
                 "override": "replace",
                 "working-dir": "/opt/penpot/frontend/",
