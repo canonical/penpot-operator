@@ -182,9 +182,9 @@ def test_penpot_pebble_layer(harness):
             "backend-ready": {
                 "exec": {
                     # pylint: disable=line-too-long
-                    "command": 'bash -c "pebble services backend | grep -q inactive || curl -f localhost:6060/readyz"'  # noqa: E501
+                    "command": 'bash -c "pebble services backend | grep -q inactive || curl -f -m 5 localhost:6060/readyz"'  # noqa: E501
                 },
-                "level": "ready",
+                "level": "alive",
                 "override": "replace",
                 "period": "30s",
             }

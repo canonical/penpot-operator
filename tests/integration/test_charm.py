@@ -112,10 +112,18 @@ async def test_create_profile(ops_test: OpsTest, ingress_address):
         raise TimeoutError("timed out waiting for login success")
     action = await unit.run_action("delete-profile", email=email)
     await action.wait()
-    response = session.post(
-        f"http://{ingress_address}/api/rpc/command/login-with-password",
-        headers={"Host": "penpot.local"},
-        json={"~:email": email, "~:password": password},
-        timeout=10,
-    )
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        response = session.post(
+            f"http://{ingress_address}/api/rpc/command/login-with-password",
+            headers={"Host": "penpot.local"},
+            json={"~:email": email, "~:password": password},
+            timeout=10,
+        )
+        if response.status_code == 400:
+            break
+        logger.info("penpot login status: %s", response.status_code)
+        time.sleep(5)
+    else:
+        raise TimeoutError("timed out waiting for login response")
     assert response.status_code == 400

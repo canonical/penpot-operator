@@ -187,11 +187,11 @@ class PenpotCharm(ops.CharmBase):
             checks={
                 "backend-ready": {
                     "override": "replace",
-                    "level": "ready",
+                    "level": "alive",
                     "period": "30s",
                     "exec": {
                         # pylint: disable=line-too-long
-                        "command": 'bash -c "pebble services backend | grep -q inactive || curl -f localhost:6060/readyz"'  # noqa: E501
+                        "command": 'bash -c "pebble services backend | grep -q inactive || curl -f -m 5 localhost:6060/readyz"'  # noqa: E501
                     },
                 }
             },

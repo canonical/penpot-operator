@@ -6,6 +6,7 @@
 # pylint: disable=unused-argument
 
 import collections
+import json
 import logging
 import time
 
@@ -13,9 +14,34 @@ import boto3
 import botocore.client
 import kubernetes
 import pytest
+import pytest_asyncio
 from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
+
+
+@pytest_asyncio.fixture(name="get_unit_ips", scope="module")
+async def get_unit_ips_fixture(ops_test: OpsTest):
+    """A function to get unit ips of a charm application."""
+
+    async def _get_unit_ips(name: str):
+        """A function to get unit ips of a charm application.
+
+        Args:
+            name: The name of the charm application.
+
+        Returns:
+            A list of unit ips.
+        """
+        _, status, _ = await ops_test.juju("status", "--format", "json")
+        status = json.loads(status)
+        units = status["applications"][name]["units"]
+        ip_list = []
+        for key in sorted(units.keys(), key=lambda n: int(n.split("/")[-1])):
+            ip_list.append(units[key]["address"])
+        return ip_list
+
+    return _get_unit_ips
 
 
 @pytest.fixture(scope="module", name="load_kube_config")
@@ -25,63 +51,17 @@ def load_kube_config_fixture(pytestconfig: pytest.Config):
     kubernetes.config.load_kube_config(config_file=kube_config)
 
 
-@pytest.fixture(scope="module")
-def minio(load_kube_config, ops_test: OpsTest):
+@pytest_asyncio.fixture(name="minio", scope="module")
+async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
     """Deploy test minio service."""
-    assert ops_test.model
-    namespace = ops_test.model.name
     key = "minioadmin"
-    v1 = kubernetes.client.CoreV1Api()
-    pod = kubernetes.client.V1Pod(
-        api_version="v1",
-        kind="Pod",
-        metadata=kubernetes.client.V1ObjectMeta(
-            name="minio", namespace=namespace, labels={"app.kubernetes.io/name": "minio"}
-        ),
-        spec=kubernetes.client.V1PodSpec(
-            containers=[
-                kubernetes.client.V1Container(
-                    name="minio",
-                    image="minio/minio",
-                    args=["server", "/data"],
-                    env=[
-                        kubernetes.client.V1EnvVar(name="MINIO_ROOT_USER", value=key),
-                        kubernetes.client.V1EnvVar(name="MINIO_ROOT_PASSWORD", value=key),
-                    ],
-                    ports=[kubernetes.client.V1ContainerPort(container_port=9000)],
-                )
-            ],
-        ),
-    )
-    v1.create_namespaced_pod(namespace=namespace, body=pod)
-    service = kubernetes.client.V1Service(
-        api_version="v1",
-        kind="Service",
-        metadata=kubernetes.client.V1ObjectMeta(name="minio-service", namespace=namespace),
-        spec=kubernetes.client.V1ServiceSpec(
-            type="ClusterIP",
-            ports=[kubernetes.client.V1ServicePort(port=9000, target_port=9000)],
-            selector={"app.kubernetes.io/name": "minio"},
-        ),
-    )
-    v1.create_namespaced_service(namespace=namespace, body=service)
-    deadline = time.time() + 300
-    while True:
-        if time.time() > deadline:
-            raise TimeoutError("timeout while waiting for minio pod")
-        try:
-            pod = v1.read_namespaced_pod(name="minio", namespace=namespace)
-            if pod.status.phase == "Running":
-                logger.info("minio running at %s", pod.status.pod_ip)
-                break
-        except kubernetes.client.ApiException:
-            pass
-        logger.info("waiting for minio pod")
-        time.sleep(1)
-    pod_ip = pod.status.pod_ip
+    assert ops_test.model
+    minio = await ops_test.model.deploy("minio", config={"access-key": key, "secret-key": key})
+    await ops_test.model.wait_for_idle(apps=[minio.name])
+    ip = (await get_unit_ips(minio.name))[0]
     s3 = boto3.client(
         "s3",
-        endpoint_url=f"http://{pod_ip}:9000",
+        endpoint_url=f"http://{ip}:9000",
         aws_access_key_id=key,
         aws_secret_access_key=key,
         config=botocore.client.Config(signature_version="s3v4"),
@@ -90,7 +70,7 @@ def minio(load_kube_config, ops_test: OpsTest):
     s3.create_bucket(Bucket=bucket)
     S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_key secret_key")
     return S3Credential(
-        endpoint=f"http://minio-service.{namespace}.svc.cluster.local:9000",
+        endpoint=f"http://minio-endpoints.{ops_test.model.name}.svc.cluster.local:9000",
         bucket=bucket,
         access_key=key,
         secret_key=key,
