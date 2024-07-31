@@ -45,6 +45,7 @@ class PenpotCharm(ops.CharmBase):
         self.framework.observe(self.on.config_changed, self._reconcile)
         self.framework.observe(self.on.penpot_peer_relation_created, self._reconcile)
         self.framework.observe(self.on.penpot_peer_relation_changed, self._reconcile)
+        self.framework.observe(self.on.penpot_peer_relation_departed, self._reconcile)
         self.framework.observe(self.on.secret_changed, self._reconcile)
         self.framework.observe(self.postgresql.on.database_created, self._reconcile)
         self.framework.observe(self.postgresql.on.endpoints_changed, self._reconcile)
