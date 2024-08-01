@@ -26,7 +26,7 @@ select = ["E", "W", "F", "C", "N", "R", "D", "H"]
 # Ignore D107 Missing docstring in __init__
 ignore = ["W503", "E501", "D107"]
 # D100, D101, D102, D103: Ignore missing docstrings in tests
-per-file-ignores = ["tests/*:D100,D101,D102,D103,D104,D205,D212,D415"]
+per-file-ignores = ["src/charm.py:DCO060", "tests/*:D100,D101,D102,D103,D104,D205,D212,D415"]
 docstring-convention = "google"
 
 [tool.isort]
@@ -76,4 +76,5 @@ per-file-ignores = {"tests/*" = ["D100","D101","D102","D103","D104"]}
 max-complexity = 10
 
 [tool.codespell]
+ignore-words-list = "edn"
 skip = "build,lib,venv,icon.svg,.tox,.git,.mypy_cache,.ruff_cache,.coverage"

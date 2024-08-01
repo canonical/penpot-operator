@@ -12,3 +12,5 @@ jobs:
     secrets: inherit
     with:
       channel: latest/edge
+      charmcraft-channel: latest/edge
+      integration-test-workflow-file: test.yaml

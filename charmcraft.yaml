@@ -1,17 +1,6 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-type: charm
-bases:
-  - build-on:
-    - name: ubuntu
-      channel: "22.04"
-      architectures: [amd64]
-    run-on:
-    - name: ubuntu
-      channel: "24.04"
-      architectures: [amd64]
-
 name: penpot
 title: Penpot
 description: |
@@ -24,3 +13,77 @@ links:
   source: https://github.com/canonical/penpot-operator
   contact:
     - https://launchpad.net/~canonical-is-devops
+
+config:
+  options:
+    smtp-from-address:
+      description: >-
+        The default "from" address penpot uses to send emails.
+        If unspecified, it is automatically derived from the SMTP integration, typically `<user>@<domain>`, 
+        or `no-reply@<domain>` if the SMTP username is not provided in the SMTP integration.
+        For more detailed information on SMTP integration, visit https://charmhub.io/smtp-integrator/configuration.
+      type: string
+
+actions:
+  create-profile:
+    description: Create a new penpot user.
+    params:
+      email:
+        type: string
+      fullname:
+        type: string
+
+  delete-profile:
+    description: Delete an existing penpot user.
+    params:
+      email:
+        type: string
+
+peers:
+  penpot_peer:
+    interface: penpot_peer
+
+requires:
+  postgresql:
+    interface: postgresql_client
+    limit: 1
+  redis:
+    interface: redis
+    limit: 1
+  s3:
+    interface: s3
+    limit: 1
+  ingress:
+    interface: ingress
+    limit: 1
+  smtp:
+    interface: smtp
+    limit: 1
+    optional: true
+
+resources:
+  penpot-image:
+    type: oci-image
+    description: OCI image for penpot
+
+containers:
+  penpot:
+    resource: penpot-image
+
+type: charm
+base: ubuntu@24.04
+build-base: ubuntu@24.04
+platforms:
+  amd64:
+
+parts:
+  charm:
+    build-packages:
+      - cargo
+      - libffi-dev
+      - libssl-dev
+      - pkg-config
+      - rustc
+
+assumes:
+  - juju >= 3.4
