@@ -38,8 +38,7 @@ import subprocess
 import boto3
 import botocore.client
 
-status = json.loads(subprocess.check_output(["juju","status", "--format",
-"json"]))
+status = json.loads(subprocess.check_output(["juju","status", "--format", "json"]))
 ip = status["applications"]["minio"]["units"]["minio/0"]["address"]
 key = "minioadmin"
 s3 = boto3.client(
