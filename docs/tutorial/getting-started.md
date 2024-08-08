@@ -8,7 +8,7 @@ This tutorial will walk you through deploying the penpot charm; you will:
 4. Login to the web interface for your deployed Penpot instance
 
 ## Prerequisites
-* A Kubernetes cluster.
+* MicroK8s deployed with the `ingress`, `dns`, and `storage` plugins enabled.
 * A host machine with Juju version 3.4 or above and a Juju controller bootstrapped.
 * The `boto3` python package installed - `pip install boto3`.
 
