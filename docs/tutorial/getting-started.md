@@ -27,6 +27,7 @@ juju deploy redis-k8s --channel latest/edge
 juju deploy s3-integrator --config "endpoint=http://minio-endpoints.penpot-test.svc.cluster.local:9000" --config bucket=penpot
 juju deploy nginx-ingress-integrator --trust --config service-hostname=penpot.local --config path-routes=/
 juju deploy self-signed-certificates
+juju integrate self-signed-certificates nginx-ingress-integrator
 ```
 
 ## Configure Minio
