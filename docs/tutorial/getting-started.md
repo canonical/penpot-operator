@@ -10,7 +10,7 @@ This tutorial will walk you through deploying the penpot charm; you will:
 ## Prerequisites
 * MicroK8s deployed with the `ingress`, `dns`, and `storage` plugins enabled.
 * A host machine with Juju version 3.4 or above and a Juju controller bootstrapped.
-* The `boto3` python package installed - `pip install boto3`.
+* The AWS command line interface, which can be installed with `sudo snap install aws-cli --classic`.
 
 ## Create a Juju model
 1. Create a Juju model
@@ -33,25 +33,10 @@ juju integrate self-signed-certificates nginx-ingress-integrator
 ## Configure Minio
 1. Run `juju status` to confirm the `minio/0` unit is `active/idle` (may take a few minutes), create the `penpot` bucket:
 ```
-python3 << 'EOF'
-import json
-import subprocess
-
-import boto3
-import botocore.client
-
-status = json.loads(subprocess.check_output(["juju","status", "--format", "json"]))
-ip = status["applications"]["minio"]["units"]["minio/0"]["address"]
-key = "minioadmin"
-s3 = boto3.client(
-    "s3",
-    endpoint_url=f"http://{ip}:9000",
-    aws_access_key_id="minioadmin",
-    aws_secret_access_key="minioadmin",
-    config=botocore.client.Config(signature_version="s3v4"),
-)
-s3.create_bucket(Bucket="penpot")
-EOF
+export AWS_ACCESS_KEY_ID=minioadmin
+export AWS_SECRET_ACCESS_KEY=minioadmin
+export AWS_ENDPOINT_URL=http://$(juju status --format=json | jq -r '.applications.minio.units."minio/0".address'):9000
+aws s3 mb s3://penpot
 ```
 
 ## Configure s3-integrator
