@@ -33,6 +33,30 @@ parts:
     override-build: |
       craftctl default
       
+      git apply <<'EOF'
+      diff --git a/docker/images/files/config.js b/docker/images/files/config.js
+      index 7bc9ce940..5056b0fa5 100644
+      --- a/docker/images/files/config.js
+      +++ b/docker/images/files/config.js
+      @@ -1,2 +1,2 @@
+       // Frontend configuration
+      -//var penpotFlags = "";
+      +var penpotFlags = "";
+      diff --git a/docker/images/files/nginx-entrypoint.sh b/docker/images/files/nginx-entrypoint.sh
+      index c34245230..f286e3c0d 100644
+      --- a/docker/images/files/nginx-entrypoint.sh
+      +++ b/docker/images/files/nginx-entrypoint.sh
+      @@ -7,7 +7,7 @@
+       update_flags() {
+         if [ -n "$PENPOT_FLAGS" ]; then
+           sed -i \
+      -      -e "s|^//var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
+      +      -e "s|^var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
+             "$1"
+         fi
+       }
+      EOF
+      
       # install clojure
       curl -L https://github.com/clojure/brew-install/releases/download/1.11.3.1463/linux-install.sh -o install-clojure
       echo "0c41063a2fefb53a31bc1bc236899955f759c5103dc0495489cdd74bf8f114bb  install-clojure" | shasum -c
