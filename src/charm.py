@@ -9,11 +9,14 @@
 
 import logging
 import secrets
+import time
 import typing
 import urllib.parse
 
 import dns.resolver
 import ops
+import requests
+
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.data_platform_libs.v0.s3 import S3Requirer
 from charms.hydra.v0.oauth import ClientConfig, OAuthRequirer
@@ -143,7 +146,26 @@ class PenpotCharm(ops.CharmBase):
             self.container.start("exporter")
         else:
             self.container.stop("exporter")
-        self.unit.status = ops.ActiveStatus()
+        deadline = time.time() + 300
+        while time.time() < deadline:
+            if self._check_penpot_backend_ready():
+                self.unit.status = ops.ActiveStatus()
+                return
+            else:
+                time.sleep(3)
+                self.unit.status = ops.WaitingStatus("waiting for penpot services")
+        raise TimeoutError("Timeout waiting for penpot services")
+
+    def _check_penpot_backend_ready(self) -> bool:  # pragma: nocover
+        """Check penpot backend is ready.
+
+        Returns:
+            True if the penpot backend is ready, False otherwise.
+        """
+        try:
+            return requests.get("http://localhost:6060/readyz", timeout=1).text == "OK"
+        except (requests.exceptions.RequestException, TimeoutError):
+            return False
 
     def _gen_pebble_plan(self) -> ops.pebble.LayerDict:
         """Generate penpot pebble plan.

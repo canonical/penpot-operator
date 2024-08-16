@@ -3,6 +3,7 @@
 
 """Unit tests fixtures."""
 import json
+import unittest.mock
 
 import ops.testing
 import pytest
@@ -128,4 +129,7 @@ class Harness:
 def harness_fixture(monkeypatch):
     """Harness fixture."""
     monkeypatch.setenv("JUJU_VERSION", "3.5.0")
-    return Harness(ops.testing.Harness(PenpotCharm))
+    with unittest.mock.patch.object(
+        PenpotCharm, "_check_penpot_backend_ready", unittest.mock.MagicMock(return_value=True)
+    ):
+        yield Harness(ops.testing.Harness(PenpotCharm))

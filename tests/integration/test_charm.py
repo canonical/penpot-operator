@@ -208,7 +208,6 @@ async def test_oauth(ops_test, page, ext_idp_service):
     """
     await ops_test.model.add_relation("penpot:oauth", "hydra")
     await ops_test.model.wait_for_idle(timeout=900, status="active")
-    await asyncio.sleep(120)
     await access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
     await click_on_sign_in_button_by_text(page=page, text="OpenID")
     await complete_auth_code_login(page=page, ops_test=ops_test, ext_idp_service=ext_idp_service)
