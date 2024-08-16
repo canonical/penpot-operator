@@ -150,11 +150,11 @@ class PenpotCharm(ops.CharmBase):
         else:
             self.container.stop("exporter")
         deadline = time.time() + 300
+        self.unit.status = ops.WaitingStatus("waiting for penpot services")
         while time.time() < deadline:
             if self._check_penpot_backend_ready():
                 self.unit.status = ops.ActiveStatus()
                 return
-            self.unit.status = ops.WaitingStatus("waiting for penpot services")
             time.sleep(3)
         raise TimeoutError("Timeout waiting for penpot services")
 
