@@ -16,7 +16,6 @@ import urllib.parse
 import dns.resolver
 import ops
 import requests
-
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.data_platform_libs.v0.s3 import S3Requirer
 from charms.hydra.v0.oauth import ClientConfig, OAuthRequirer
@@ -128,7 +127,11 @@ class PenpotCharm(ops.CharmBase):
         event.set_results({"email": email})
 
     def _reconcile(self, _: ops.EventBase) -> None:
-        """Reconcile penpot services."""
+        """Reconcile penpot services.
+
+        Raises:
+            TimeoutError: failed to start penpot service in timeout.
+        """
         oauth = self._get_oauth()
         if oauth:
             oauth.update_client_config(self._get_oauth_client_config())
@@ -151,9 +154,8 @@ class PenpotCharm(ops.CharmBase):
             if self._check_penpot_backend_ready():
                 self.unit.status = ops.ActiveStatus()
                 return
-            else:
-                time.sleep(3)
-                self.unit.status = ops.WaitingStatus("waiting for penpot services")
+            self.unit.status = ops.WaitingStatus("waiting for penpot services")
+            time.sleep(3)
         raise TimeoutError("Timeout waiting for penpot services")
 
     def _check_penpot_backend_ready(self) -> bool:  # pragma: nocover

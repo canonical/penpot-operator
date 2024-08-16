@@ -4,7 +4,6 @@
 # See LICENSE file for licensing details.
 
 """Integration tests."""
-import asyncio
 import logging
 import re
 import time
