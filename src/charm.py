@@ -127,11 +127,7 @@ class PenpotCharm(ops.CharmBase):
         event.set_results({"email": email})
 
     def _reconcile(self, _: ops.EventBase) -> None:
-        """Reconcile penpot services.
-
-        Raises:
-            TimeoutError: failed to start penpot service in timeout.
-        """
+        """Reconcile penpot services."""
         oauth = self._get_oauth()
         if oauth:
             oauth.update_client_config(self._get_oauth_client_config())
@@ -156,7 +152,7 @@ class PenpotCharm(ops.CharmBase):
                 self.unit.status = ops.ActiveStatus()
                 return
             time.sleep(3)
-        raise TimeoutError("Timeout waiting for penpot services")
+        self.unit.status = ops.BlockedStatus("timeout waiting for penpot services")
 
     def _check_penpot_backend_ready(self) -> bool:  # pragma: nocover
         """Check penpot backend is ready.
