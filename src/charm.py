@@ -94,7 +94,7 @@ class PenpotCharm(ops.CharmBase):
             combine_stderr=True,
         )
         try:
-            process.wait()
+            process.wait_output()
         except ops.pebble.ExecError as exc:
             event.fail(typing.cast(str, exc.stdout))
             return
@@ -120,7 +120,7 @@ class PenpotCharm(ops.CharmBase):
             combine_stderr=True,
         )
         try:
-            process.wait()
+            process.wait_output()
         except ops.pebble.ExecError as exc:
             event.fail(typing.cast(str, exc.stdout))
             return
