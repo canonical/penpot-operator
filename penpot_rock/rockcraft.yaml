@@ -33,6 +33,8 @@ parts:
     override-build: |
       craftctl default
       
+      # The upstream version of the Nginx entrypoint can only apply changes to config.js once. 
+      # Change it so that it can apply changes multiple times.
       git apply <<'EOF'
       diff --git a/docker/images/files/config.js b/docker/images/files/config.js
       index 7bc9ce940..5056b0fa5 100644
