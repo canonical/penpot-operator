@@ -245,6 +245,7 @@ class PenpotCharm(ops.CharmBase):
             "penpot container": self.container.can_connect(),
         }
         if self._get_penpot_oauth_config():
+            # SMTP is required for the OpenID Connect-based registration process
             requirements["smtp"] = self._get_smtp_credentials()
         unfulfilled = sorted([k for k, v in requirements.items() if not v])
         if unfulfilled:
