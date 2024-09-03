@@ -243,6 +243,8 @@ class PenpotCharm(ops.CharmBase):
             "s3": self._get_s3_credentials(),
             "ingress": self._get_public_uri(),
             "penpot container": self.container.can_connect(),
+            "https enabled on ingress": not self._get_public_uri()
+            or self._get_public_uri().startswith("https://"),
         }
         if self._get_penpot_oauth_config():
             # SMTP is required for the OpenID Connect-based registration process

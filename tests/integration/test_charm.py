@@ -86,6 +86,7 @@ async def test_build_and_deploy(  # pylint: disable=too-many-locals
         },
     )
     await action.wait()
+    await ops_test.model.add_relation("self-signed-certificates", "nginx-ingress-integrator")
     await ops_test.model.add_relation(penpot.name, "postgresql-k8s")
     await ops_test.model.add_relation(penpot.name, redis_k8s.name)
     await ops_test.model.add_relation(penpot.name, s3_integrator.name)
