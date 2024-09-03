@@ -382,9 +382,7 @@ class PenpotCharm(ops.CharmBase):
         Returns:
             Penpot public URI.
         """
-        return (
-            None if self.ingress.url is None else self.ingress.url.replace("http://", "https://")
-        )
+        return self.ingress.url
 
     def _get_penpot_frontend_options(self) -> list[str]:
         """Retrieve the penpot options for the penpot frontend.
