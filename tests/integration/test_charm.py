@@ -171,10 +171,11 @@ async def test_create_profile(ops_test: OpsTest, ingress_address):
     deadline = time.time() + 300
     while time.time() < deadline:
         response = session.post(
-            f"http://{ingress_address}/api/rpc/command/login-with-password",
+            f"https://{ingress_address}/api/rpc/command/login-with-password",
             headers={"Host": "penpot.local"},
             json={"~:email": email, "~:password": password},
             timeout=10,
+            verify=False,
         )
         if response.status_code == 200:
             break
@@ -187,10 +188,11 @@ async def test_create_profile(ops_test: OpsTest, ingress_address):
     deadline = time.time() + 300
     while time.time() < deadline:
         response = session.post(
-            f"http://{ingress_address}/api/rpc/command/login-with-password",
+            f"https://{ingress_address}/api/rpc/command/login-with-password",
             headers={"Host": "penpot.local"},
             json={"~:email": email, "~:password": password},
             timeout=10,
+            verify=False,
         )
         if response.status_code == 400:
             break
