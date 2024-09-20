@@ -27,7 +27,7 @@ pytest_plugins = ["oauth_tools.fixtures"]
 
 
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(  # pylint: disable=too-many-locals
+async def test_build_and_deploy(
     ops_test: OpsTest, pytestconfig: pytest.Config, minio, mailcatcher, ext_idp_service
 ):
     """
@@ -51,9 +51,8 @@ async def test_build_and_deploy(  # pylint: disable=too-many-locals
         charm = await ops_test.build_charm(".")
     assert ops_test.model
     logger.info("deploying penpot charm")
-    num_units = 2
     penpot = await ops_test.model.deploy(
-        f"./{charm}", resources={"penpot-image": penpot_image}, num_units=num_units
+        f"./{charm}", resources={"penpot-image": penpot_image}, num_units=2
     )
     redis_k8s = await ops_test.model.deploy("redis-k8s", channel="edge")
     smtp_integrator = await ops_test.model.deploy(
@@ -86,7 +85,7 @@ async def test_build_and_deploy(  # pylint: disable=too-many-locals
         },
     )
     await action.wait()
-    await ops_test.model.add_relation("self-signed-certificates", "nginx-ingress-integrator")
+    await ops_test.model.add_relation("self-signed-certificates", nginx_ingress_integrator.name)
     await ops_test.model.add_relation(penpot.name, "postgresql-k8s")
     await ops_test.model.add_relation(penpot.name, redis_k8s.name)
     await ops_test.model.add_relation(penpot.name, s3_integrator.name)
@@ -103,24 +102,24 @@ async def test_build_and_deploy(  # pylint: disable=too-many-locals
     )
     await action.wait()
     ca_cert: str = action.results["ca-certificate"]
-    for unit in range(num_units):
-        logger.info("copying oauth ca cert into penpot/%s", unit)
+    for unit in penpot.units:
+        logger.info("copying oauth ca cert into %s", unit.name)
         await ops_test.juju(
             "ssh",
             "--container",
             "penpot",
-            f"penpot/{unit}",
+            unit.name,
             "cp",
             "/dev/stdin",
             "/oauth.crt",
             stdin=ca_cert.encode("ascii"),
         )
-        logger.info("installing oauth ca cert into penpot/%s java trust", unit)
+        logger.info("installing oauth ca cert into penpot/%s java trust", unit.name)
         await ops_test.juju(
             "ssh",
             "--container",
             "penpot",
-            f"penpot/{unit}",
+            unit.name,
             "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
             "-import",
             "-trustcacerts",
@@ -132,12 +131,12 @@ async def test_build_and_deploy(  # pylint: disable=too-many-locals
             "changeit",
             "-noprompt",
         )
-        logger.info("restart penpot backend in penpot/%s", unit)
+        logger.info("restart penpot backend in penpot/%s", unit.name)
         await ops_test.juju(
             "ssh",
             "--container",
             "penpot",
-            f"penpot/{unit}",
+            unit.name,
             "pebble",
             "restart",
             "backend",
