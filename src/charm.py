@@ -245,7 +245,9 @@ class PenpotCharm(ops.CharmBase):
             "ingress": public_uri,
             "penpot container": self.container.can_connect(),
             "https enabled on ingress": not public_uri or public_uri.startswith("https://"),
-            "OpenID provider data": not self._get_oauth() or self._get_penpot_oauth_config()
+            "OpenID provider data": (
+                not self.model.get_relation("oauth") or self._get_penpot_oauth_config()
+            ),
         }
         if self._get_penpot_oauth_config():
             # SMTP is required for the OpenID Connect-based registration process
