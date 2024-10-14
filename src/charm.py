@@ -18,7 +18,10 @@ import ops
 import requests
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.data_platform_libs.v0.s3 import S3Requirer
+from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.hydra.v0.oauth import ClientConfig, OAuthRequirer
+from charms.loki_k8s.v1.loki_push_api import LogForwarder
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.redis_k8s.v0.redis import RedisRelationCharmEvents, RedisRequires
 from charms.smtp_integrator.v0.smtp import SmtpRequires, TransportSecurity
 from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
@@ -47,6 +50,17 @@ class PenpotCharm(ops.CharmBase):
         self.s3 = S3Requirer(self, relation_name="s3")
         self.ingress = IngressPerAppRequirer(self, port=8080)
         self.oauth: OAuthRequirer | None = None
+        self._grafana_dashboards = GrafanaDashboardProvider(self)
+        self._metrics_endpoint = MetricsEndpointProvider(
+            self,
+            jobs=[
+                {
+                    "job_name": "penpot_metrics",
+                    "static_configs": [{"targets": ["*:6060"]}],
+                }
+            ],
+        )
+        self._logg_forwarder= LogForwarder(self)
         self.framework.observe(self.on.upgrade_charm, self._reconcile)
         self.framework.observe(self.on.config_changed, self._reconcile)
         self.framework.observe(self.on.penpot_peer_relation_created, self._reconcile)
