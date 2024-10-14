@@ -28,7 +28,8 @@ from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 
 logger = logging.getLogger(__name__)
 
-
+# needed for charm libraries
+# pylint: disable=too-many-instance-attributes
 class PenpotCharm(ops.CharmBase):
     """Charm the service."""
 
