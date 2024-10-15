@@ -62,7 +62,7 @@ class PenpotCharm(ops.CharmBase):
                 }
             ],
         )
-        self._logg_forwarder = LogForwarder(self)
+        self._log_forwarder = LogForwarder(self)
         self.framework.observe(self.on.upgrade_charm, self._reconcile)
         self.framework.observe(self.on.config_changed, self._reconcile)
         self.framework.observe(self.on.penpot_peer_relation_created, self._reconcile)
