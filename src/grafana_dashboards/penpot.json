@@ -374,6 +374,15 @@
         }
       ],
       "title": "Penpot Web Socket Active Connections ",
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": ".*juju_unit=\"(.*)\".*",
+            "renamePattern": "$1"
+          }
+        }
+      ],
       "type": "timeseries"
     },
     {
