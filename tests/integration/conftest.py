@@ -56,7 +56,9 @@ async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
     """Deploy test minio service."""
     key = "minioadmin"
     assert ops_test.model
-    minio = await ops_test.model.deploy("minio", config={"access-key": key, "secret-key": key})
+    minio = await ops_test.model.deploy(
+        "minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key}
+    )
     await ops_test.model.wait_for_idle(apps=[minio.name])
     ip = (await get_unit_ips(minio.name))[0]
     s3 = boto3.client(
