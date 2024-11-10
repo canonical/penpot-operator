@@ -99,6 +99,11 @@ parts:
       - libssl-dev
       - pkg-config
       - rustc
+    build-snaps:
+      - rustup
+    override-build: |
+      rustup default stable
+      craftctl default
 
 assumes:
   - juju >= 3.4
