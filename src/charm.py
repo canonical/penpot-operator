@@ -9,12 +9,19 @@
 
 import logging
 import secrets
+import time
 import typing
+import urllib.parse
 
 import dns.resolver
 import ops
+import requests
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.data_platform_libs.v0.s3 import S3Requirer
+from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
+from charms.hydra.v0.oauth import ClientConfig, OAuthRequirer
+from charms.loki_k8s.v1.loki_push_api import LogForwarder
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.redis_k8s.v0.redis import RedisRelationCharmEvents, RedisRequires
 from charms.smtp_integrator.v0.smtp import SmtpRequires, TransportSecurity
 from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
@@ -22,6 +29,8 @@ from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 logger = logging.getLogger(__name__)
 
 
+# needed for charm libraries
+# pylint: disable=too-many-instance-attributes
 class PenpotCharm(ops.CharmBase):
     """Charm the service."""
 
@@ -42,6 +51,19 @@ class PenpotCharm(ops.CharmBase):
         self.smtp = SmtpRequires(self)
         self.s3 = S3Requirer(self, relation_name="s3")
         self.ingress = IngressPerAppRequirer(self, port=8080)
+        self.oauth: OAuthRequirer | None = None
+        self._grafana_dashboards = GrafanaDashboardProvider(self)
+        self._metrics_endpoint = MetricsEndpointProvider(
+            self,
+            jobs=[
+                {
+                    "job_name": "penpot_metrics",
+                    "static_configs": [{"targets": ["*:6060"]}],
+                }
+            ],
+        )
+        self._log_forwarder = LogForwarder(self)
+        self.framework.observe(self.on.upgrade_charm, self._reconcile)
         self.framework.observe(self.on.config_changed, self._reconcile)
         self.framework.observe(self.on.penpot_peer_relation_created, self._reconcile)
         self.framework.observe(self.on.penpot_peer_relation_changed, self._reconcile)
@@ -59,6 +81,9 @@ class PenpotCharm(ops.CharmBase):
         self.framework.observe(self.ingress.on.ready, self._reconcile)
         self.framework.observe(self.ingress.on.revoked, self._reconcile)
         self.framework.observe(self.on.penpot_pebble_ready, self._reconcile)
+        self.framework.observe(self.on.oauth_relation_created, self._reconcile)
+        self.framework.observe(self.on.oauth_relation_changed, self._reconcile)
+        self.framework.observe(self.on.oauth_relation_broken, self._reconcile)
         self.framework.observe(self.on.create_profile_action, self._on_create_profile_action)
         self.framework.observe(self.on.delete_profile_action, self._on_delete_profile_action)
 
@@ -85,7 +110,7 @@ class PenpotCharm(ops.CharmBase):
             combine_stderr=True,
         )
         try:
-            process.wait()
+            process.wait_output()
         except ops.pebble.ExecError as exc:
             event.fail(typing.cast(str, exc.stdout))
             return
@@ -111,7 +136,7 @@ class PenpotCharm(ops.CharmBase):
             combine_stderr=True,
         )
         try:
-            process.wait()
+            process.wait_output()
         except ops.pebble.ExecError as exc:
             event.fail(typing.cast(str, exc.stdout))
             return
@@ -119,6 +144,9 @@ class PenpotCharm(ops.CharmBase):
 
     def _reconcile(self, _: ops.EventBase) -> None:
         """Reconcile penpot services."""
+        oauth = self._get_oauth()
+        if oauth:
+            oauth.update_client_config(self._get_oauth_client_config())
         if not self._check_ready():
             if self.container.can_connect() and self.container.get_services():
                 self.container.stop("backend")
@@ -133,7 +161,25 @@ class PenpotCharm(ops.CharmBase):
             self.container.start("exporter")
         else:
             self.container.stop("exporter")
-        self.unit.status = ops.ActiveStatus()
+        deadline = time.time() + 120
+        self.unit.status = ops.WaitingStatus("waiting for penpot services")
+        while time.time() < deadline:
+            if self._check_penpot_backend_ready():
+                self.unit.status = ops.ActiveStatus()
+                return
+            time.sleep(3)
+        self.unit.status = ops.BlockedStatus("timeout waiting for penpot services")
+
+    def _check_penpot_backend_ready(self) -> bool:  # pragma: nocover
+        """Check penpot backend is ready.
+
+        Returns:
+            True if the penpot backend is ready, False otherwise.
+        """
+        try:
+            return requests.get("http://localhost:6060/readyz", timeout=1).text == "OK"
+        except (requests.exceptions.RequestException, TimeoutError):
+            return False
 
     def _gen_pebble_plan(self) -> ops.pebble.LayerDict:
         """Generate penpot pebble plan.
@@ -171,6 +217,7 @@ class PenpotCharm(ops.CharmBase):
                         **typing.cast(dict[str, str], self._get_redis_credentials()),
                         **typing.cast(dict[str, str], self._get_smtp_credentials()),
                         **typing.cast(dict[str, str], self._get_s3_credentials()),
+                        **self._get_penpot_oauth_config(),
                     },
                 },
                 "exporter": {
@@ -205,14 +252,22 @@ class PenpotCharm(ops.CharmBase):
         Returns:
             True if penpot is ready to start.
         """
+        public_uri = self._get_public_uri()
         requirements = {
             "peer integration": self._get_penpot_secret_key(),
             "postgresql": self._get_postgresql_credentials(),
             "redis": self._get_redis_credentials(),
             "s3": self._get_s3_credentials(),
-            "ingress": self._get_public_uri(),
+            "ingress": public_uri,
             "penpot container": self.container.can_connect(),
+            "https enabled on ingress": not public_uri or public_uri.startswith("https://"),
+            "OpenID provider data": (
+                not self.model.get_relation("oauth") or self._get_penpot_oauth_config()
+            ),
         }
+        if self._get_penpot_oauth_config():
+            # SMTP is required for the OpenID Connect-based registration process
+            requirements["smtp"] = self._get_smtp_credentials()
         unfulfilled = sorted([k for k, v in requirements.items() if not v])
         if unfulfilled:
             self.unit.status = ops.BlockedStatus(f"waiting for {', '.join(unfulfilled)}")
@@ -354,13 +409,14 @@ class PenpotCharm(ops.CharmBase):
         Returns:
             Penpot frontend options.
         """
-        return sorted(
-            [
-                "enable-login-with-password",
-                "disable-registration",
-                "disable-onboarding-questions",
-            ]
-        )
+        options = [
+            "disable-onboarding-questions",
+        ]
+        if self._get_penpot_oauth_config():
+            options.extend(["enable-login-with-oidc", "disable-login-with-password"])
+        else:
+            options.extend(["disable-registration", "enable-login-with-password"])
+        return sorted(options)
 
     def _get_penpot_backend_options(self) -> list[str]:
         """Retrieve the penpot options for the penpot backend.
@@ -368,17 +424,18 @@ class PenpotCharm(ops.CharmBase):
         Returns:
             Penpot backend options.
         """
-        return sorted(
-            [
-                "enable-login-with-password",
-                "enable-prepl-server",
-                "disable-registration",
-                "disable-telemetry",
-                "disable-onboarding-questions",
-                "disable-log-emails",
-                ("enable" if self._get_smtp_credentials() else "disable") + "-smtp",
-            ]
-        )
+        options = [
+            "enable-prepl-server",
+            "disable-telemetry",
+            "disable-onboarding-questions",
+            "disable-log-emails",
+            ("enable" if self._get_smtp_credentials() else "disable") + "-smtp",
+        ]
+        if self._get_penpot_oauth_config():
+            options.extend(["enable-login-with-oidc", "disable-login-with-password"])
+        else:
+            options.extend(["disable-registration", "enable-login-with-password"])
+        return sorted(options)
 
     def _get_local_resolver(self) -> str:
         """Retrieve the current nameserver address being used.
@@ -427,6 +484,59 @@ class PenpotCharm(ops.CharmBase):
         except dns.exception.DNSException:
             return "cluster.local"
         return answers.qname.to_text().removeprefix("kubernetes.default.svc").strip(".")
+
+    def _get_oauth(self) -> OAuthRequirer | None:
+        """Retrieve the OAuthRequirer object if available.
+
+        Returns:
+            OAuthRequirer object.
+        """
+        if self.oauth:
+            return self.oauth
+        client_config = self._get_oauth_client_config()
+        if not client_config:
+            return None
+        self.oauth = OAuthRequirer(self, client_config=client_config)
+        return self.oauth
+
+    def _get_oauth_client_config(self) -> ClientConfig | None:
+        """Retrieve the oauth ClientConfig object for the oauth charm library if available.
+
+        Returns:
+            ClientConfig object.
+        """
+        public_uri = self._get_public_uri()
+        if not public_uri:
+            return None
+        return ClientConfig(
+            urllib.parse.urljoin(public_uri, "/api/auth/oauth/oidc/callback"),
+            scope="openid profile email",
+            grant_types=["authorization_code"],
+            # this is not a secret
+            token_endpoint_auth_method="client_secret_post",  # nosec
+        )
+
+    def _get_penpot_oauth_config(self) -> dict[str, str]:
+        """Retrieve oauth-related configurations for penpot.
+
+        Returns:
+            Oauth-related penpot configurations.
+        """
+        oauth = self._get_oauth()
+        if not oauth:
+            return {}
+        oauth_provider = oauth.get_provider_info()
+        if not oauth_provider:
+            return {}
+        return {
+            "PENPOT_OIDC_CLIENT_ID": oauth_provider.client_id,
+            "PENPOT_OIDC_BASE_URI": oauth_provider.issuer_url,
+            "PENPOT_OIDC_CLIENT_SECRET": oauth_provider.client_secret,
+            "PENPOT_OIDC_AUTH_URI": oauth_provider.authorization_endpoint,
+            "PENPOT_OIDC_TOKEN_URI": oauth_provider.token_endpoint,
+            "PENPOT_OIDC_USER_URI": oauth_provider.userinfo_endpoint,
+            "PENPOT_OIDC_SCOPES": "openid profile email",
+        }
 
 
 if __name__ == "__main__":  # pragma: nocover

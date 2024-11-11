@@ -152,7 +152,7 @@ def test_public_uri(harness):
     harness.begin_with_initial_hooks()
     assert harness.charm._get_public_uri() is None
     harness.setup_ingress_integration()
-    assert harness.charm._get_public_uri() == "http://penpot.local/"
+    assert harness.charm._get_public_uri() == "https://penpot.local/"
 
 
 def test_penpot_pebble_layer(harness):
@@ -210,7 +210,7 @@ def test_penpot_pebble_layer(harness):
                         "enable-prepl-server "
                         "enable-smtp"
                     ),
-                    "PENPOT_PUBLIC_URI": "http://penpot.local/",
+                    "PENPOT_PUBLIC_URI": "https://penpot.local/",
                     "PENPOT_REDIS_URI": "redis://redis-hostname:6379",
                     "PENPOT_SMTP_DEFAULT_FROM": "no-reply@example.com",
                     "PENPOT_SMTP_DEFAULT_REPLY_TO": "no-reply@example.com",
