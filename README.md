@@ -9,7 +9,7 @@ A [Juju](https://juju.is/) [charm](https://juju.is/docs/olm/charmed-operators)
 for deploying and managing the [penpot](https://penpot.app) open-source
 design tool for design and code collaboration in your systems.
 
-This charm simplifies the configuration and maintenance of `penpot` across a 
+This charm simplifies the configuration and maintenance of penpot across a 
 range of environments, allows designers can create stunning designs, interactive prototypes, 
 design systems at scale, while developers enjoy ready-to-use code and make their workflow easy and fast.
 
