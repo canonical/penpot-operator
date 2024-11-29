@@ -10,8 +10,8 @@ for deploying and managing the [penpot](https://penpot.app) open-source
 design tool for design and code collaboration in your systems.
 
 This charm simplifies the configuration and maintenance of penpot across a 
-range of environments, allows designers can create stunning designs, interactive prototypes, 
-design systems at scale, while developers enjoy ready-to-use code and make their workflow easy and fast.
+range of environments, allowing designers to create stunning designs and interactive prototypes, 
+design systems at scale, and make their workflow easy and fast with ready-to-use code.
 
 ## Get started
 In this section, we will deploy the penpot charm.  
@@ -64,6 +64,17 @@ Inside the virtual machine, run the following command to create a penpot account
 ```
 juju run penpot/0 create-profile --string-args email=example@example.com fullname="John Doe"
 ```
+
+## Integrations
+
+### `smtp` integration
+[`smtp-integrator`](https://charmhub.io/smtp-integrator) and other charms implementing the `smtp` integration can 
+provide SMTP credentials to enable the penpot charm to send email notifications and other email-related functionality.
+
+### `oauth`
+[Identity Platform bundle](https://charmhub.io/identity-platform) and other charms implementing the `oauth` 
+integration can provide OpenID Connect settings for the Penpot charm. 
+This will disable the user/password login in the penpot charm and switch to using the OpenID Connect login flow.
 
 ## Learn more
 * [Read more](https://charmhub.io/penpot)
