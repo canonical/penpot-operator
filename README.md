@@ -65,6 +65,8 @@ Inside the virtual machine, run the following command to create a penpot account
 juju run penpot/0 create-profile --string-args email=example@example.com fullname="John Doe"
 ```
 
+For additional configurations and actions available for the penpot charm, refer to the [`charmcraft.yaml`](./charmcraft.yaml) file.
+
 ## Integrations
 
 ### `smtp` integration
