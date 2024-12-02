@@ -69,13 +69,29 @@ For additional configurations and actions available for the penpot charm, refer 
 
 ## Integrations
 
+### `postgresql` integration
+The [`postgresql`](https://charmhub.io/postgresql) or [`postgresql-k8s`](https://charmhub.io/postgresql) charm can 
+provide the PostgreSQL database required for Penpot to run.
+
+### `s3` integration
+The [`s3-integrator`](https://charmhub.io/s3-integrator) charm can configure Penpot with S3-compatible storage, 
+which is necessary for Penpot to run.
+
+### `redis` integration
+The [`redis-k8s`](https://charmhub.io/redis-k8s) charm can provide the Redis database required for Penpot to run.
+
+### `ingress` integration
+The [`nginx-ingress-integrator`](https://charmhub.io/nginx-ingress-integrator) or 
+[`traefik-k8s`](https://charmhub.io/traefik-k8s) charm can provide the ingress service required for Penpot to run. 
+Penpot mandates HTTPS, so please enable HTTPS on the respective ingress charms.
+
 ### `smtp` integration
 [`smtp-integrator`](https://charmhub.io/smtp-integrator) and other charms implementing the `smtp` integration can 
-provide SMTP credentials to enable the penpot charm to send email notifications and other email-related functionality.
+optionally provide SMTP credentials to enable the penpot charm to send email notifications and other email-related functionality.
 
 ### `oauth`
 [Identity Platform bundle](https://charmhub.io/identity-platform) and other charms implementing the `oauth` 
-integration can provide OpenID Connect settings for the Penpot charm. 
+integration can optionally provide OpenID Connect settings for the Penpot charm. 
 This will disable the user/password login in the penpot charm and switch to using the OpenID Connect login flow.
 
 ## Learn more
