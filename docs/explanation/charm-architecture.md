@@ -72,7 +72,7 @@ They are published to [Charmhub](https://charmhub.io/), the official repository 
 
 ## Metrics
 
-Penpot container exposes JVM and Penpot specific metrics, including:
+The Penpot container exposes JVM and Penpot specific metrics, including:
 
 - penpot_rpc_command_timing_bucket
 - penpot_tasks_timing_bucket
