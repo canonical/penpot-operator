@@ -5,22 +5,17 @@ The penpot-operator charm aims to provide the core functionalities of Penpot wit
 Operational capabilities are enhanced through integrations with the Canonical Observability Stack ([COS](https://charmhub.io/topics/canonical-observability-stack/))
 charms.
 
-## Context
+## High-level overview of Penpot deployment
 
-Details on the Penpot architecture can be found in the [Penpot Technical Guide](https://help.penpot.app/technical-guide/developer/architecture/).
-
-The following diagrams details the deployment architecture with Juju charms:
+The following diagrams details the deployment architecture of Penpot with Juju charms:
 
 ```mermaid
 C4Context
-title Component diagram for Penpot Charm
+title Containers diagram for Penpot Charm
 
 Container_Boundary(penpot, "Penpot Charm") {
   
-  Component(penpot-nginx, "Penpot NGINX", "Reverse Proxy", "Reverse proxy")
   Component(penpot, "Penpot", "Main Application", "-")
-  
-  Rel(penpot-nginx, penpot, "")
   
 }
 
@@ -53,6 +48,40 @@ Rel_D(penpot, smtp, "")
 
 ```
 
+## Charm architecture
+
+Details on the Penpot architecture can be found in the [Penpot Technical Guide](https://help.penpot.app/technical-guide/developer/architecture/).
+
+The following diagram presents the charm architecture:
+
+```mermaid
+C4Component
+title Component diagram for Penpot Charm
+
+Container_Boundary(penpot-container, "Penpot container") {
+  
+  Component(penpot, "Penpot", "Main Application", "-")
+  Component(penpot-exporter, "Penpot Exporter", "File exporter", "-")
+  Component(nginx, "Penpot NGINX", "Reverse Proxy", "Reverse proxy")
+  Component(pebble, "Pebble", "Workload manager", "-")
+  
+  Rel(pebble, nginx, "Manages")
+  Rel(pebble, penpot, "Manages")
+  Rel(pebble, penpot-exporter, "Manages")
+  Rel(nginx, penpot, "Reverse proxy")
+  
+}
+
+Container_Boundary(juju-container, "Juju sidecar") {
+  
+  Component(juju, "Juju agent", "", "-")
+
+}
+
+
+```
+
+
 ## Containers
 
 The charm design leverages the [sidecar](https://kubernetes.io/blog/2015/06/the-distributed-system-toolkit-patterns/#example-1-sidecar-containers) pattern to allow multiple containers in each pod with [Pebble](https://juju.is/docs/sdk/pebble) running as the workload container’s entrypoint.
@@ -74,8 +103,8 @@ They are published to [Charmhub](https://charmhub.io/), the official repository 
 
 The Penpot container exposes JVM and Penpot specific metrics, including:
 
-- penpot_rpc_command_timing_bucket
-- penpot_tasks_timing_bucket
+- penpot_rpc_command_timing_*: RPC command method call timing.
+- penpot_tasks_timing_*: Background tasks timing.
 
 These two metrics are used to propose a default monitoring dashboard which is visible in Grafana after [integrating with COS](https://charmhub.io/pollen/docs/how-to-relate-to-cos).
 
@@ -120,8 +149,8 @@ Following the [holistic](https://ops.readthedocs.io/en/latest/explanation/holist
 
 Additionally, two actions event are observed to execute the associated actions:
 
-- `create_profile`
-- `delete_profile`
+- `create_profile`: To create a new Penpot user.
+- `delete_profile`: To delete an existing Penpot user.
 
 ## Charm code overview
 
