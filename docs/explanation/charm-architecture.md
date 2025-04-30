@@ -5,6 +5,39 @@ The penpot-operator charm aims to provide the core functionalities of Penpot wit
 Operational capabilities are enhanced through integrations with the Canonical Observability Stack ([COS](https://charmhub.io/topics/canonical-observability-stack/))
 charms.
 
+## Context
+
+```mermaid
+C4Context
+title Component diagram for Penpot Charm
+
+Container_Boundary(penpot, "Penpot Charm") {
+  
+  Component(penpot-nginx, "Penpot NGINX", "Reverse Proxy", "Reverse proxy")
+  Component(penpot, "Penpot", "Main Application", "-")
+  
+  Rel(penpot-nginx, penpot, "")
+  
+}
+
+Container_Boundary(postgresql, "PostgreSQL Charm") {
+    Component(penpot-database, "Penpot database", "","")
+}
+
+Container_Boundary(redis, "Redis Charm") {
+    Component(penpot-kv, "Penpot cache", "","")
+}
+
+Container_Boundary(s3, "S3-like object store") {
+    Component(s3-integrator, "Penpot object store", "","")
+}
+
+Rel(penpot, penpot-database, "")
+Rel(penpot, penpot-kv, "")
+Rel(penpot, s3-integrator, "")
+
+```
+
 ## Containers
 
 The charm design leverages the [sidecar](https://kubernetes.io/blog/2015/06/the-distributed-system-toolkit-patterns/#example-1-sidecar-containers) pattern to allow multiple containers in each pod with [Pebble](https://juju.is/docs/sdk/pebble) running as the workload container’s entrypoint.
