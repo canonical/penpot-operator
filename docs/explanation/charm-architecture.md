@@ -137,7 +137,10 @@ The charm follows the [holistic](https://ops.readthedocs.io/en/latest/explanatio
 
 Take, for example, when a configuration is changed by using the CLI.
 
-1. User runs the configuration command: `juju config smtp-from-address=myaddress@mydomain.com`
+1. User runs the configuration command: 
+```
+juju config smtp-from-address=myaddress@mydomain.com
+```
 2. A `config-changed` event is emitted.
 3. In the `__init__` method is defined how to handle this event like this: ```python self.framework.observe(self.on.config_changed, self._reconcile)```
 4. The method `_reconcile`, for its turn, will take the necessary actions such as waiting for all the relations to be ready and then configuring the containers.
