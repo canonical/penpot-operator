@@ -39,7 +39,7 @@ Configure minio to provide a S3 compatible storage for the Penpot charm.
 export AWS_ACCESS_KEY_ID=minioadmin
 export AWS_SECRET_ACCESS_KEY=minioadmin
 export AWS_ENDPOINT_URL=http://$(juju status --format=json | jq -r '.applications.minio.units."minio/0".address'):9000
-aws s3 mb s3://penpot
+aws s3 mb s3://penpot --endpoint-url $AWS_ENDPOINT_URL
 juju run s3-integrator/0 sync-s3-credentials --string-args access-key=minioadmin secret-key=minioadmin
 ```
 
