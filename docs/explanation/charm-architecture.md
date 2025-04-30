@@ -1,6 +1,6 @@
 # Charm architecture
 
-The penpot-operator charm aims to provide the core functionalities of Penpot with horizontally scalable architecutre.
+The penpot-operator charm aims to provide the core functionalities of Penpot with horizontally scalable architecture.
 
 Operational capabilities are enhanced through integrations with the Canonical Observability Stack ([COS](https://charmhub.io/topics/canonical-observability-stack/))
 charms.
@@ -72,7 +72,7 @@ They are published to [Charmhub](https://charmhub.io/), the official repository 
 
 ## Metrics
 
-Penpot container exposes JVM and Penpot specific metics, including:
+Penpot container exposes JVM and Penpot specific metrics, including:
 
 - penpot_rpc_command_timing_bucket
 - penpot_tasks_timing_bucket
@@ -118,7 +118,7 @@ The charm observes the lifecycle events ("created", "changed", "broken"...) asso
 
 Following the [holistic](https://ops.readthedocs.io/en/latest/explanation/holistic-vs-delta-charms.html) charm approach, each of these events will trigger a "reconcile" loop.
 
-Additionaly, two actions event are observed to execute the associated actions:
+Additionally, two actions event are observed to execute the associated actions:
 
 - `create_profile`
 - `delete_profile`
