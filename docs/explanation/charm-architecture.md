@@ -7,6 +7,10 @@ charms.
 
 ## Context
 
+Details on the Penpot architecture can be found in the [Penpot Technical Guide](https://help.penpot.app/technical-guide/developer/architecture/).
+
+The following diagrams details the deployment architecture with Juju charms:
+
 ```mermaid
 C4Context
 title Component diagram for Penpot Charm
@@ -21,20 +25,31 @@ Container_Boundary(penpot, "Penpot Charm") {
 }
 
 Container_Boundary(postgresql, "PostgreSQL Charm") {
-    Component(penpot-database, "Penpot database", "","")
+    ComponentDb(penpot-database, "PostgreSQL", "Penpot database", "")
 }
 
 Container_Boundary(redis, "Redis Charm") {
-    Component(penpot-kv, "Penpot cache", "","")
+    ComponentDb(penpot-broker, "Redis", "Penpot broker","")
 }
 
-Container_Boundary(s3, "S3-like object store") {
-    Component(s3-integrator, "Penpot object store", "","")
+Container_Boundary(s3, "S3 integrator charm") {
+    Component(s3-integrator, "S3-like object store", "Asset storage")
+}
+
+Container_Boundary(oidc, "OIDC integrator") {
+    Component(oidc, "OIDC provider", "","")
+}
+
+
+Container_Boundary(smtp, "SMTP integrator") {
+    Component(smtp, "SMTP relay", "","")
 }
 
 Rel(penpot, penpot-database, "")
-Rel(penpot, penpot-kv, "")
+Rel(penpot, penpot-broker, "")
 Rel(penpot, s3-integrator, "")
+Rel_D(penpot, oidc, "")
+Rel_D(penpot, smtp, "")
 
 ```
 
