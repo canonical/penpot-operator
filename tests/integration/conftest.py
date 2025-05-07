@@ -59,7 +59,7 @@ async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
     minio = await ops_test.model.deploy(
         "minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key}
     )
-    await ops_test.model.wait_for_idle(apps=[minio.name])
+    await ops_test.model.wait_for_idle(apps=[minio.name], status="active", timeout=300)
     ip = (await get_unit_ips(minio.name))[0]
     s3 = boto3.client(
         "s3",
