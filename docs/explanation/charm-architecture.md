@@ -76,6 +76,11 @@ Container_Boundary(penpot-container, "Penpot container") {
   UpdateRelStyle(nginx, penpot, $offsetX="10", $offsetY="0")
   
 }
+  UpdateRelStyle(pebble, penpot, $offsetX="10", $offsetY="-20")
+  UpdateRelStyle(pebble, penpot-exporter, $offsetX="10", $offsetY="0")
+  UpdateRelStyle(nginx, penpot, $offsetX="10", $offsetY="0")
+  
+}
 
 Container_Boundary(juju-container, "Juju sidecar") {
   
