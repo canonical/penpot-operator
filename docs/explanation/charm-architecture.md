@@ -70,6 +70,11 @@ Container_Boundary(penpot-container, "Penpot container") {
   Rel(pebble, penpot-exporter, "Manages")
   Rel(nginx, penpot, "Reverse proxy")
   
+  UpdateRelStyle(pebble, nginx, $offsetX="-20", $offsetY="10")
+  UpdateRelStyle(pebble, penpot, $offsetX="10", $offsetY="-20")
+  UpdateRelStyle(pebble, penpot-exporter, $offsetX="10", $offsetY="0")
+  UpdateRelStyle(nginx, penpot, $offsetX="10", $offsetY="0")
+  
 }
 
 Container_Boundary(juju-container, "Juju sidecar") {
