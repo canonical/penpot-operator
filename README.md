@@ -39,7 +39,7 @@ Configure minio to provide a S3 compatible storage for the Penpot charm.
 export AWS_ACCESS_KEY_ID=minioadmin
 export AWS_SECRET_ACCESS_KEY=minioadmin
 export AWS_ENDPOINT_URL=http://$(juju status --format=json | jq -r '.applications.minio.units."minio/0".address'):9000
-aws s3 mb s3://penpot
+aws s3 mb s3://penpot --endpoint-url $AWS_ENDPOINT_URL
 juju run s3-integrator/0 sync-s3-credentials --string-args access-key=minioadmin secret-key=minioadmin
 ```
 
@@ -66,33 +66,6 @@ juju run penpot/0 create-profile --string-args email=example@example.com fullnam
 ```
 
 For additional configurations and actions available for the Penpot charm, refer to the [`charmcraft.yaml`](./charmcraft.yaml) file.
-
-## Integrations
-
-### `postgresql` integration
-The [`postgresql`](https://charmhub.io/postgresql) or [`postgresql-k8s`](https://charmhub.io/postgresql) charm can 
-provide the PostgreSQL database required for Penpot to run.
-
-### `s3` integration
-The [`s3-integrator`](https://charmhub.io/s3-integrator) charm can configure Penpot with S3-compatible storage, 
-which is necessary for Penpot to run.
-
-### `redis` integration
-The [`redis-k8s`](https://charmhub.io/redis-k8s) charm can provide the Redis database required for Penpot to run.
-
-### `ingress` integration
-The [`nginx-ingress-integrator`](https://charmhub.io/nginx-ingress-integrator) or 
-[`traefik-k8s`](https://charmhub.io/traefik-k8s) charm can provide the ingress service required for Penpot to run. 
-Penpot mandates HTTPS, so please enable HTTPS on the respective ingress charms.
-
-### `smtp` integration
-[`smtp-integrator`](https://charmhub.io/smtp-integrator) and other charms implementing the `smtp` integration can 
-optionally provide SMTP credentials to enable the Penpot charm to send email notifications and other email-related functionality.
-
-### `oauth`
-[Identity Platform bundle](https://charmhub.io/identity-platform) and other charms implementing the `oauth` 
-integration can optionally provide OpenID Connect settings for the Penpot charm. 
-This will disable the user/password login in the Penpot charm and switch to using the OpenID Connect login flow.
 
 ## Learn more
 * [Read more](https://charmhub.io/penpot)
