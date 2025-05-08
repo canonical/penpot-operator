@@ -15,7 +15,7 @@ title Containers diagram for Penpot Charm
 
 Container_Boundary(penpot, "Penpot Charm") {
   
-  Component(penpot, "Penpot", "Main Application", "-")
+  Component(penpot, "Penpot", "Main Application", "")
   
 }
 
@@ -60,10 +60,10 @@ title Component diagram for Penpot Charm
 
 Container_Boundary(penpot-container, "Penpot container") {
   
-  Component(penpot, "Penpot", "Main Application", "-")
-  Component(penpot-exporter, "Penpot Exporter", "File exporter", "-")
+  Component(penpot, "Penpot", "Main Application", "")
+  Component(penpot-exporter, "Penpot Exporter", "File exporter", "")
   Component(nginx, "Penpot NGINX", "Reverse Proxy", "Reverse proxy")
-  Component(pebble, "Pebble", "Workload manager", "-")
+  Component(pebble, "Pebble", "Workload manager", "")
   
   Rel(pebble, nginx, "Manages")
   Rel(pebble, penpot, "Manages")
@@ -76,15 +76,10 @@ Container_Boundary(penpot-container, "Penpot container") {
   UpdateRelStyle(nginx, penpot, $offsetX="10", $offsetY="0")
   
 }
-  UpdateRelStyle(pebble, penpot, $offsetX="10", $offsetY="-20")
-  UpdateRelStyle(pebble, penpot-exporter, $offsetX="10", $offsetY="0")
-  UpdateRelStyle(nginx, penpot, $offsetX="10", $offsetY="0")
-  
-}
 
 Container_Boundary(juju-container, "Juju sidecar") {
   
-  Component(juju, "Juju agent", "", "-")
+  Component(juju, "Juju agent", "", "")
 
 }
 
