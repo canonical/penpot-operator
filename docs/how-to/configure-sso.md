@@ -1,4 +1,4 @@
-# Configure Single Sign-On (SSO)
+# How to configure Single Sign-On (SSO)
 
 The Penpot charm supports Single Sign-On (SSO) for user authentication 
 using OpenID Connect.

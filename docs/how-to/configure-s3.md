@@ -1,6 +1,6 @@
-# Configure S3
+# How to configure S3
 
-First, you will need to follow [the tutorial of `s3-integrator`](https://charmhub.io/s3-integrator)
+First, follow [the tutorial of `s3-integrator`](https://charmhub.io/s3-integrator)
 to deploy and configure the `s3-integrator` charm.
 
 Then run the following command to integrate the `s3-integrator` charm

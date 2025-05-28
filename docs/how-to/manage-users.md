@@ -1,6 +1,6 @@
-# How to Manage Penpot Users
+# How to manage Penpot users
 
-## Create a New Penpot User
+## Create a new Penpot user
 
 After Penpot has been deployed, you can run the following command to
 create a Penpot user. An email address and full name are required.
@@ -24,7 +24,7 @@ password: ZhrmqxSF74xVeA  # password should be different in your output
 You can use the email and password from the output to log in to the
 Penpot instance.
 
-## Delete an Existing Penpot User
+## Delete an existing Penpot user
 
 When a Penpot user is no longer in use, you can delete the user using
 the following command:

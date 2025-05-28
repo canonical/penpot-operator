@@ -2,7 +2,7 @@
 
 ## prometheus-k8s
 
-Deploy and relate [prometheus-k8s](https://charmhub.io/prometheus-k8s) charm with penpot
+Deploy and integrate [prometheus-k8s](https://charmhub.io/prometheus-k8s) charm with the `penpot`
 charm through the `metrics-endpoint` relation via `prometheus_scrape` interface. Prometheus should
 start scraping the metrics exposed at `:9117/metrics` endpoint.
 
@@ -13,7 +13,7 @@ juju integrate penpot prometheus-k8s
 
 ## loki-k8s
 
-Deploy and relate [loki-k8s](https://charmhub.io/loki-k8s) charm with penpot charm through
+Deploy and integrate [loki-k8s](https://charmhub.io/loki-k8s) charm with the `penpot` charm through
 the `logging` relation via `loki_push_api` interface. Pebble inside the 
 `penpot` container should be configured to send logs to Loki.
 
@@ -26,10 +26,10 @@ juju integrate penpot loki-k8s
 ## grafana-k8s
 
 In order for the Grafana dashboard to function properly, Grafana should be able to connect to
-Prometheus and Loki as its datasource. Deploy and relate the `prometheus-k8s` and `loki-k8s`
+Prometheus and Loki as its datasource. Deploy and integrate the `prometheus-k8s` and `loki-k8s`
 charms with [grafana-k8s](https://charmhub.io/grafana-k8s) charm through the `grafana-source` integration.
 
-Note that the integration `grafana-source` has to be explicitly stated since `prometheus-k8s` and
+Note that the relation `grafana-source` has to be explicitly stated since `prometheus-k8s` and
 `grafana-k8s` share multiple interfaces.
 
 ```
@@ -38,7 +38,7 @@ juju integrate prometheus-k8s:grafana-source grafana-k8s:grafana-source
 juju integrate loki-k8s:grafana-source grafana-k8s:grafana-source
 ```
 
-Then, the `penpot` charm can be related with Grafana using the `grafana-dashboard` relation with
+Then, the `penpot` charm can be integrated with Grafana using the `grafana-dashboard` relation with
 `grafana_dashboard` interface.
 
 ```
