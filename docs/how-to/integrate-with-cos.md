@@ -54,4 +54,5 @@ juju run grafana-k8s/0 get-admin-password
 
 Log into the Grafana dashboard by visiting `http://<grafana-unit-ip>:3000`. Navigate to
 `http://<grafana-unit-ip>:3000/dashboards` and access the Penpot dashboard named Penpot Operator
-Overview.
+Overview. You can obtain the Grafana unit from the output of the `juju status` command.
+
