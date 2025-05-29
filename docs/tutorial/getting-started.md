@@ -1,4 +1,6 @@
-# Tutorial: Deploy the Penpot charm
+<!-- vale off -->
+# Deploy the Penpot charm
+<!-- vale on -->
 
 ## What you'll do
 This tutorial will walk you through deploying the penpot charm; you will:
@@ -30,7 +32,9 @@ juju deploy self-signed-certificates
 juju integrate self-signed-certificates nginx-ingress-integrator
 ```
 
+<!-- vale off -->
 ## Configure Minio
+<!-- vale on -->
 1. Run `juju status` to confirm the `minio/0` unit is `active/idle` (may take a few minutes), create the `penpot` bucket:
 ```
 export AWS_ACCESS_KEY_ID=minioadmin
@@ -39,7 +43,7 @@ export AWS_ENDPOINT_URL=http://$(juju status --format=json | jq -r '.application
 aws s3 mb s3://penpot
 ```
 
-## Configure s3-integrator
+## Configure S3
 1. Run `juju status` to confirm the `s3-integrator/0` unit is `active/idle` (may take a few minutes):
 ```
 juju run s3-integrator/0 sync-s3-credentials --string-args access-key=minioadmin secret-key=minioadmin
