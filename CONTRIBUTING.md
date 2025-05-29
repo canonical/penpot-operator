@@ -23,13 +23,11 @@ chmod +x .git/hooks/pre-commit
 This project uses `tox` for managing test environments. There are some pre-configured environments
 that can be used for linting and formatting code when you're preparing contributions to the charm:
 
-```shell
-tox run -e format        # update your code according to linting rules
-tox run -e lint          # code style
-tox run -e unit          # unit tests
-tox run -e integration   # integration tests
-tox                      # runs 'format', 'lint', and 'unit' environments
-```
+- `tox run -e format`: Update your code according to linting rules.
+- `tox run -e lint`: Runs a range of static code analysis to check the code.
+- `tox run -e unit`: Runs unit tests.
+- `tox run -e integration`: Runs integration tests.
+- `tox`: Runs `format`, `lint`, and `unit` environments.
 
 ## Build the charm
 
