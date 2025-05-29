@@ -1,6 +1,6 @@
 # How to integrate with COS
 
-## prometheus-k8s
+## Prometheus
 
 Deploy and integrate [`prometheus-k8s`](https://charmhub.io/prometheus-k8s) charm with the `penpot`
 charm through the `metrics-endpoint` relation via `prometheus_scrape` interface. Prometheus should
@@ -11,7 +11,7 @@ juju deploy prometheus-k8s
 juju integrate penpot prometheus-k8s
 ```
 
-## loki-k8s
+## Loki
 
 Deploy and integrate [`loki-k8s`](https://charmhub.io/loki-k8s) charm with the `penpot` charm through
 the `logging` relation via `loki_push_api` interface. Pebble inside the 
@@ -23,7 +23,7 @@ juju deploy loki-k8s
 juju integrate penpot loki-k8s
 ```
 
-## grafana-k8s
+## Grafana
 
 In order for the Grafana dashboard to function properly, Grafana should be able to connect to
 Prometheus and Loki as its datasource. Deploy and integrate the `prometheus-k8s` and `loki-k8s`
