@@ -9,7 +9,7 @@ description: |
   and developers.
 summary: An operator deploying and managing Penpot.
 links:
-  documentation: https://discourse.charmhub.io/t/penpot-documentation-overview/17892
+  documentation: https://discourse.charmhub.io/t/penpot-documentation-overview/17895
   issues: https://github.com/canonical/penpot-operator/issues
   source: https://github.com/canonical/penpot-operator
   contact:
