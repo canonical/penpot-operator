@@ -26,7 +26,7 @@ juju integrate penpot loki-k8s
 ## Grafana
 
 In order for the Grafana dashboard to function properly, Grafana should be able to connect to
-Prometheus and Loki as its datasource. Deploy and integrate the `prometheus-k8s` and `loki-k8s`
+Prometheus and Loki as its data source. Deploy and integrate the `prometheus-k8s` and `loki-k8s`
 charms with [`grafana-k8s`](https://charmhub.io/grafana-k8s) charm through the `grafana-source` integration.
 
 Note that the relation `grafana-source` has to be explicitly stated since `prometheus-k8s` and
