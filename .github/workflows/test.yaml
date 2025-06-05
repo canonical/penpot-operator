@@ -11,6 +11,7 @@ jobs:
       charmcraft-channel: latest/edge
       self-hosted-runner: true
       self-hosted-runner-label: "edge"
+      vale-style-check: true
   integration-tests:
     uses: canonical/operator-workflows/.github/workflows/integration_test.yaml@main
     secrets: inherit
