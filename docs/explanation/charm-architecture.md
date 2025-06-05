@@ -108,8 +108,8 @@ They are published to [Charmhub](https://charmhub.io/), the official repository 
 
 The Penpot container exposes JVM and Penpot specific metrics, including:
 
-- penpot_rpc_command_timing_*: RPC command method call timing.
-- penpot_tasks_timing_*: Background tasks timing.
+- `penpot_rpc_command_timing_*`: RPC command method call timing.
+- `penpot_tasks_timing_*`: Background tasks timing.
 
 These two metrics are used to propose a default monitoring dashboard which is visible in Grafana after [integrating with COS](https://charmhub.io/pollen/docs/how-to-relate-to-cos).
 
@@ -148,7 +148,7 @@ This will disable the user/password login in the Penpot charm and switch to usin
 
 ## Juju events
 
-The charm observes the lifecycle events ("created", "changed", "broken"...) associated to the different relations (including the peer relation). It also observes the "config_changed", "upgrade_charm" and "secret_changed" events.
+The charm observes the lifecycle events ("created", "changed", "broken"...) associated to the different relations (including the peer relation). It also observes the `config_changed`, `upgrade_charm` and `secret_changed` events.
 
 Following the [holistic](https://ops.readthedocs.io/en/latest/explanation/holistic-vs-delta-charms.html) charm approach, each of these events will trigger a "reconcile" loop.
 

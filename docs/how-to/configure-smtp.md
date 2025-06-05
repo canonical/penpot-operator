@@ -1,4 +1,6 @@
+<!-- vale off -->
 # How to configure SMTP
+<!-- vale on -->
 
 First, follow [the tutorial of `smtp-integrator`](https://charmhub.io/smtp-integrator/docs/tutorial-getting-started)
 to deploy and configure the `smtp-integrator` charm.

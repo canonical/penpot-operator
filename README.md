@@ -1,4 +1,4 @@
-# Penpot Charm
+# Penpot charm
 
 [![CharmHub Badge](https://charmhub.io/penpot/badge.svg)](https://charmhub.io/penpot)
 [![Publish to edge](https://github.com/canonical/penpot-operator/actions/workflows/publish_charm.yaml/badge.svg)](https://github.com/canonical/penpot-operator/actions/workflows/publish_charm.yaml)
@@ -15,7 +15,9 @@ design systems at scale, and make their workflow easy and fast with ready-to-use
 
 ## Get started
 In this section, we will deploy the Penpot charm.  
+<!-- vale off -->
 You’ll need a workstation, e.g., a laptop, with sufficient resources to launch a virtual machine with 4 CPUs, 8 GB RAM, and 50 GB disk space.
+<!-- vale on -->
 
 ### Set up
 You can follow the tutorial [here](https://juju.is/docs/juju/set-up--tear-down-your-test-environment#heading--set-up-automatically) to set up a test environment for Juju with LXD.
