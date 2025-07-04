@@ -9,8 +9,7 @@ jobs:
     secrets: inherit
     with:
       charmcraft-channel: latest/edge
-      self-hosted-runner: true
-      self-hosted-runner-label: "edge"
+      self-hosted-runner: false
       vale-style-check: true
   integration-tests:
     uses: canonical/operator-workflows/.github/workflows/integration_test.yaml@main
