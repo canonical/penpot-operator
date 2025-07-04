@@ -1,4 +1,4 @@
-ops==2.22.0
+ops==3.0.0
 dnspython==2.7.0
 jsonschema==4.24.0
 requests==2.32.4
