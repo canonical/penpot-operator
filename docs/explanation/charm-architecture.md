@@ -101,7 +101,7 @@ Pebble `services` are configured through [layers](https://github.com/canonical/p
 ## OCI images
 
 We use [Rockcraft](https://canonical-rockcraft.readthedocs-hosted.com/en/latest/) to build OCI Images for Penpot.
-The image is defined in [rockcraft.yaml](penpot_rock/rockcraft.yaml).
+The image is defined in [rockcraft.yaml](https://github.com/canonical/penpot-operator/blob/main/penpot_rock/rockcraft.yaml).
 They are published to [Charmhub](https://charmhub.io/), the official repository of charms.
 
 ## Metrics
