@@ -5,7 +5,7 @@
 [![Promote charm](https://github.com/canonical/penpot-operator/actions/workflows/promote_charm.yaml/badge.svg)](https://github.com/canonical/penpot-operator/actions/workflows/promote_charm.yaml)
 [![Discourse Status](https://img.shields.io/discourse/status?server=https%3A%2F%2Fdiscourse.charmhub.io&style=flat&label=CharmHub%20Discourse)](https://discourse.charmhub.io)
 
-A [Juju](https://juju.is/) [charm](https://juju.is/docs/olm/charmed-operators)
+A [Juju](https://juju.is/) [charm](https://documentation.ubuntu.com/juju/3.6/reference/charm/)
 for deploying and managing the [Penpot](https://penpot.app) open-source
 design tool for design and code collaboration in your systems.
 
@@ -20,7 +20,7 @@ You’ll need a workstation, e.g., a laptop, with sufficient resources to launch
 <!-- vale on -->
 
 ### Set up
-You can follow the tutorial [here](https://juju.is/docs/juju/set-up--tear-down-your-test-environment#heading--set-up-automatically) to set up a test environment for Juju with LXD.
+You can follow the tutorial [here](https://documentation.ubuntu.com/juju/3.6/howto/manage-your-juju-deployment/set-up-your-juju-deployment-local-testing-and-development/#set-things-up) to set up a test environment for Juju with LXD.
 
 ### Deploy
 From inside the virtual machine, deploy Penpot charm's dependencies using the `juju deploy` command.
@@ -76,5 +76,5 @@ For additional configurations and actions available for the Penpot charm, refer 
 
 ## Project and community
 * [Issues](https://github.com/canonical/penpot-operator/issues)
-* [Contributing](https://charmhub.io/penpot/docs/how-to-contribute)
+* [Contributing](docs/how-to/contribute.md)
 * [Matrix](https://matrix.to/#/#charmhub-charmdev:ubuntu.com)
