@@ -1,0 +1,7 @@
+[32mINFO    [0m integration.test_charm:test_charm.py:164 waiting for penpot started: {'return-code': 0}
+[32mINFO    [0m integration.test_charm:test_charm.py:164 waiting for penpot started: {'return-code': 0}
+[32mINFO    [0m integration.test_charm:test_charm.py:164 waiting for penpot started: {'return-code': 0}
+[32mINFO    [0m integration.test_charm:test_charm.py:164 waiting for penpot started: {'return-code': 0}
+[32mINFO    [0m integration.test_charm:test_charm.py:164 waiting for penpot started: {'return-code': 0}
+[32mINFO    [0m integration.test_charm:test_charm.py:164 waiting for penpot started: {'return-code': 0}
+[32mINFO    [0m integration.test_charm:test_charm.py:168 create test penpot user test@test.com with password: GdMfwPma1DaZ0w
