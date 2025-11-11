@@ -1,0 +1,79 @@
+[33mWARNING [0m juju.model:model.py:1564 relate is deprecated and will be removed. Use integrate instead.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  minio/0 [idle] active: 
+  hydra/0 [executing] active: 
+  identity-platform-login-ui-operator/0 [idle] active: 
+  kratos/0 [idle] active: 
+  kratos-external-idp-integrator/0 [idle] active: Provider is ready
+  postgresql-k8s/0 [idle] active: Primary
+  self-signed-certificates/0 [idle] active: 
+  traefik-admin/0 [idle] active: 
+  traefik-public/0 [idle] active: 
+  penpot/0 [executing] blocked: waiting for OpenID provider data
+  penpot/1 [executing] active: 
+  redis-k8s/0 [idle] active: 
+  smtp-integrator/0 [idle] active: 
+  s3-integrator/0 [idle] active: 
+  nginx-ingress-integrator/0 [idle] active: Ingress IP(s): 127.0.0.1
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [executing] waiting: waiting for penpot services
+  penpot/1 [executing] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  hydra/0 [idle] active: 
+  penpot/0 [executing] waiting: waiting for penpot services
+  penpot/1 [executing] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [executing] waiting: waiting for penpot services
+  penpot/1 [executing] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [idle] active: 
+  penpot/1 [idle] active: 
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:186 Completing the login flow on the external provider
+[32mINFO    [0m oauth_tools.external_idp:external_idp.py:214 Signing in to dex
+[32mINFO    [0m httpx:_client.py:1025 HTTP Request: GET https://10.1.0.148:16443/api/v1/namespaces/dex/services/dex "HTTP/1.1 200 OK"
+[32mINFO    [0m pytest_operator.plugin:plugin.py:951 Model status:
+
+Model    Controller                Cloud/Region        Version  SLA          Timestamp
+testing  github-pr-ccbf7-microk8s  microk8s/localhost  3.4.6    unsupported  05:43:21Z
+
+App                                  Version                Status  Scale  Charm                                Channel         Rev  Address         Exposed  Message
+hydra                                v2.3.0                 active      1  hydra                                latest/edge     339  10.152.183.141  no       
+identity-platform-login-ui-operator  0.21.2                 active      1  identity-platform-login-ui-operator  latest/edge     146  10.152.183.226  no       
+kratos                               v1.3.1                 active      1  kratos                               latest/edge     500  10.152.183.222  no       
+kratos-external-idp-integrator                              active      1  kratos-external-idp-integrator       latest/edge     245  10.152.183.146  no       Provider is ready
+minio                                res:oci-image@220b31a  active      1  minio                                ckf-1.9/stable  383  10.152.183.110  no       
+nginx-ingress-integrator             24.2.0                 active      1  nginx-ingress-integrator             latest/edge     109  10.152.183.166  no       Ingress IP(s): 127.0.0.1
+penpot                                                      active      2  penpot                                                 0  10.152.183.92   no       
+postgresql-k8s                       14.15                  active      1  postgresql-k8s                       14/stable       495  10.152.183.132  no       
+redis-k8s                            7.2.5                  active      1  redis-k8s                            latest/edge      42  10.152.183.156  no       
+s3-integrator                                               active      1  s3-integrator                        latest/stable   145  10.152.183.34   no       
+self-signed-certificates                                    active      1  self-signed-certificates             latest/stable   155  10.152.183.227  no       
+smtp-integrator                                             active      1  smtp-integrator                      latest/stable    93  10.152.183.93   no       
+traefik-admin                        v2.11.0                active      1  traefik-k8s                          latest/stable   176  10.64.140.44    no       
+traefik-public                       v2.11.0                active      1  traefik-k8s                          latest/stable   176  10.64.140.45    no       
+
+Unit                                    Workload  Agent  Address      Ports          Message
+hydra/0*                                active    idle   10.1.50.143                 
+identity-platform-login-ui-operator/0*  active    idle   10.1.50.144                 
+kratos-external-idp-integrator/0*       active    idle   10.1.50.145                 Provider is ready
+kratos/0*                               active    idle   10.1.50.154                 
+minio/0*                                active    idle   10.1.50.140  9000-9001/TCP  
+nginx-ingress-integrator/0*             active    idle   10.1.50.161                 Ingress IP(s): 127.0.0.1
+penpot/0                                active    idle   10.1.50.156                 
+penpot/1*                               active    idle   10.1.50.157                 
+postgresql-k8s/0*                       active    idle   10.1.50.149                 Primary
+redis-k8s/0*                            active    idle   10.1.50.162                 
+s3-integrator/0*                        active    idle   10.1.50.160                 
+self-signed-certificates/0*             active    idle   10.1.50.147                 
+smtp-integrator/0*                      active    idle   10.1.50.158                 
+traefik-admin/0*                        active    idle   10.1.50.152                 
+traefik-public/0*                       active    idle   10.1.50.153                 
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:957 Juju error logs:
+
+unit-kratos-0: 05:29:25 ERROR juju.worker.uniter pebble poll failed for container "kratos": failed to send pebble-ready event: terminated
+unit-self-signed-certificates-0: 05:38:22 ERROR unit.self-signed-certificates/0.juju-log certificates:29: Relation_changed event does not have a unit.
+unit-self-signed-certificates-0: 05:38:32 ERROR unit.self-signed-certificates/0.juju-log certificates:29: Relation_changed event does not have a unit.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:1039 Forgetting model main...
