@@ -9,7 +9,8 @@ jobs:
     secrets: inherit
     with:
       charmcraft-channel: latest/edge
-      self-hosted-runner: false
+      self-hosted-runner: true
+      self-hosted-runner-image: "noble"
       vale-style-check: false
       with-uv: true
   integration-tests:
