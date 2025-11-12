@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 """Unit tests fixtures."""
+
 import json
 import unittest.mock
 

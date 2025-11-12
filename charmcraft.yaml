@@ -9,19 +9,21 @@ description: |
   and developers.
 summary: An operator deploying and managing Penpot.
 links:
-  documentation: https://discourse.charmhub.io/t/penpot-documentation-overview/17895
+  documentation: 
+    https://discourse.charmhub.io/t/penpot-documentation-overview/17895
   issues: https://github.com/canonical/penpot-operator/issues
   source: https://github.com/canonical/penpot-operator
   contact:
-    - https://launchpad.net/~canonical-is-devops
+  - https://launchpad.net/~canonical-is-devops
 
 config:
   options:
     smtp-from-address:
       description: >-
         The default "from" address penpot uses to send emails.
-        If unspecified, it is automatically derived from the SMTP integration, typically `<user>@<domain>`, 
-        or `no-reply@<domain>` if the SMTP username is not provided in the SMTP integration.
+        If unspecified, it is automatically derived from the SMTP integration, typically
+        `<user>@<domain>`,  or `no-reply@<domain>` if the SMTP username is not provided
+        in the SMTP integration.
         For more detailed information on SMTP integration, visit https://charmhub.io/smtp-integrator/configuration.
       type: string
 
@@ -94,17 +96,9 @@ platforms:
 
 parts:
   charm:
-    build-packages:
-      - cargo
-      - libffi-dev
-      - libssl-dev
-      - pkg-config
-      - rustc
+    source: .
+    plugin: uv
     build-snaps:
-      - rustup
-    override-build: |
-      rustup default stable
-      craftctl default
-
+    - astral-uv
 assumes:
-  - juju >= 3.4
+- juju >= 3.4
