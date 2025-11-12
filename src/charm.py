@@ -513,7 +513,7 @@ class PenpotCharm(ops.CharmBase):
             scope="openid profile email",
             grant_types=["authorization_code"],
             # this is not a secret
-            token_endpoint_auth_method="client_secret_post",  # nosec
+            token_endpoint_auth_method="client_secret_post",  # nosec  # noqa: S106
         )
 
     def _get_penpot_oauth_config(self) -> dict[str, str]:
