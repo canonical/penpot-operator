@@ -21,6 +21,8 @@ jobs:
       channel: 1.28-strict/stable
       charmcraft-channel: latest/edge
       juju-channel: 3.4/stable
+      self-hosted-runner: true
+      self-hosted-runner-image: "noble"
       microk8s-addons: "dns ingress rbac storage metallb:10.64.140.43-10.64.140.49"
       pre-run-script: tests/integration/prepare.sh
       with-uv: true
