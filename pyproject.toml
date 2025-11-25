@@ -28,7 +28,7 @@ lint = [
   "boto3",
   "codespell",
   "mypy",
-  "oauth-tools @ git+https://github.com/canonical/iam-bundle@main",
+  "oauth-tools @ git+https://github.com/canonical/iam-bundle@8bd9a8eb7803c78148b6912ea1dc36ad0e53dfd7",
   "ops-scenario",
   "pep8-naming",
   "pytest",
