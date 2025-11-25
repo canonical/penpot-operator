@@ -182,7 +182,7 @@ def test_penpot_pebble_layer(harness):
             "backend-ready": {
                 "exec": {
                     # pylint: disable=line-too-long
-                    "command": 'bash -c "pebble services backend | grep -q inactive || curl -f -m 5 localhost:6060/readyz"'  # noqa: E501
+                    "command": 'bash -c "pebble services backend | grep -q inactive || curl -f -m 5 localhost:6060/readyz"'
                 },
                 "level": "alive",
                 "override": "replace",
@@ -239,7 +239,7 @@ def test_penpot_pebble_layer(harness):
             },
             "frontend": {
                 "after": ["backend"],
-                "command": './nginx-entrypoint.sh nginx -g "daemon ' 'off;"',
+                "command": './nginx-entrypoint.sh nginx -g "daemon off;"',
                 "environment": {
                     "PENPOT_BACKEND_URI": "http://127.0.0.1:6060",
                     "PENPOT_EXPORTER_URI": (
