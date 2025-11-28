@@ -6,6 +6,7 @@
 """Integration tests."""
 
 import logging
+import pathlib
 import re
 import time
 
@@ -35,8 +36,9 @@ async def test_build_and_deploy(
     act: build and deploy the Penpot charm with required services.
     assert: the Penpot charm becomes active.
     """
+    bundle_path = pathlib.Path(__file__).parent.joinpath("bundle.yaml").absolute()
     await deploy_identity_bundle(
-        ops_test=ops_test, bundle_channel="latest/edge", ext_idp_service=ext_idp_service
+        ops_test=ops_test, bundle_url=str(bundle_path), ext_idp_service=ext_idp_service
     )
     await ops_test.juju("refresh", "identity-platform-login-ui-operator", "--revision", "105")
     await ops_test.juju(
