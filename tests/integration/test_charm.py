@@ -117,7 +117,7 @@ async def test_build_and_deploy(
             "/oauth.crt",
             stdin=ca_cert.encode("ascii"),
         )
-        code, stdout, stderr = ops_test.juju(
+        code, stdout, stderr = await ops_test.juju(
             "ssh",
             "--container",
             "penpot",
