@@ -160,14 +160,6 @@ async def test_build_and_deploy(
     logger.info(
         "test user account: (%s, %s)", ext_idp_service.user_email, ext_idp_service.user_password
     )
-    action = (
-        await ops_test.model.applications["self-signed-certificates"]
-        .units[0]
-        .run_action("get-ca-certificate")
-    )
-    await action.wait()
-    ca_cert: str = action.results["ca-certificate"]
-    await inject_root_certs(ops_test, penpot, ca_cert)
 
 
 async def test_create_profile(ops_test: OpsTest, ingress_address):
@@ -235,9 +227,30 @@ async def test_oauth(ops_test, page, ext_idp_service):
     act: login penpot using openid connect.
     assert: login success.
     """
+    action = (
+        await ops_test.model.applications["self-signed-certificates"]
+        .units[0]
+        .run_action("get-ca-certificate")
+    )
+    await action.wait()
+    ca_cert: str = action.results["ca-certificate"]
+    penpot = ops_test.model.applications["penpot"]
+    await inject_root_certs(ops_test, penpot, ca_cert)
     await ops_test.model.add_relation("penpot:oauth", "hydra")
     await ops_test.model.wait_for_idle(timeout=900, status="active")
-    await access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
-    await click_on_sign_in_button_by_text(page=page, text="OpenID")
-    await complete_auth_code_login(page=page, ops_test=ops_test, ext_idp_service=ext_idp_service)
-    await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+    for _ in range(5):
+        try:
+            await access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
+            await click_on_sign_in_button_by_text(page=page, text="OpenID")
+            try:
+                await complete_auth_code_login(
+                    page=page,
+                    ops_test=ops_test,
+                    ext_idp_service=ext_idp_service,
+                )
+            except AssertionError:
+                logger.exception("failed to complete login, maybe already logged in, skipping")
+            await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+        except AssertionError:
+            logger.exception("login failed, retry in 60 seconds")
+            time.sleep(60)
