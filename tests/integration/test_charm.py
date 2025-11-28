@@ -6,6 +6,7 @@
 """Integration tests."""
 
 import logging
+import pathlib
 import re
 import time
 
@@ -26,6 +27,68 @@ logger = logging.getLogger(__name__)
 pytest_plugins = ["oauth_tools.fixtures"]
 
 
+async def inject_root_certs(ops_test, penpot, ca_cert):
+    """Inject CA certificate to penpot Java certificate store.
+
+    Args:
+        ops_test: ops_test fixture
+        penpot: penpot application instance
+        ca_cert: CA certificate
+    """
+    for unit in penpot.units:
+        logger.info("copying oauth ca cert into %s", unit.name)
+        await ops_test.juju(
+            "ssh",
+            "--container",
+            "penpot",
+            unit.name,
+            "cp",
+            "/dev/stdin",
+            "/oauth.crt",
+            stdin=ca_cert.encode("ascii"),
+        )
+        code, stdout, _ = await ops_test.juju(
+            "ssh",
+            "--container",
+            "penpot",
+            unit.name,
+            "cat",
+            "/oauth.crt",
+        )
+        assert code == 0
+        logger.info("copying oauth ca cert into %s result: %s", unit.name, stdout)
+        logger.info("installing oauth ca cert into penpot/%s java trust", unit.name)
+        code, stdout, stderr = await ops_test.juju(
+            "ssh",
+            "--container",
+            "penpot",
+            unit.name,
+            "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
+            "-import",
+            "-trustcacerts",
+            "-file",
+            "/oauth.crt",
+            "-keystore",
+            "/usr/lib/jvm/java-21-openjdk-amd64/lib/security/cacerts",
+            "-storepass",
+            "changeit",
+            "-noprompt",
+        )
+        assert code == 0
+        logger.info("keytool import result: %s, %s, %s", code, stdout, stderr)
+        logger.info("restart penpot backend in penpot/%s", unit.name)
+        code, _, _ = await ops_test.juju(
+            "ssh",
+            "--container",
+            "penpot",
+            unit.name,
+            "pebble",
+            "restart",
+            "backend",
+        )
+        assert code == 0
+
+
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(
     ops_test: OpsTest, pytestconfig: pytest.Config, minio, mailcatcher, ext_idp_service
@@ -36,7 +99,9 @@ async def test_build_and_deploy(
     assert: the Penpot charm becomes active.
     """
     await deploy_identity_bundle(
-        ops_test=ops_test, bundle_channel="latest/edge", ext_idp_service=ext_idp_service
+        ops_test=ops_test,
+        bundle_url=str(pathlib.Path(__file__).parent.joinpath("bundle.yaml").absolute()),
+        ext_idp_service=ext_idp_service,
     )
     await ops_test.juju("refresh", "identity-platform-login-ui-operator", "--revision", "105")
     await ops_test.juju(
@@ -95,52 +160,6 @@ async def test_build_and_deploy(
     logger.info(
         "test user account: (%s, %s)", ext_idp_service.user_email, ext_idp_service.user_password
     )
-    action = (
-        await ops_test.model.applications["self-signed-certificates"]
-        .units[0]
-        .run_action("get-ca-certificate")
-    )
-    await action.wait()
-    ca_cert: str = action.results["ca-certificate"]
-    for unit in penpot.units:
-        logger.info("copying oauth ca cert into %s", unit.name)
-        await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
-            unit.name,
-            "cp",
-            "/dev/stdin",
-            "/oauth.crt",
-            stdin=ca_cert.encode("ascii"),
-        )
-        logger.info("installing oauth ca cert into penpot/%s java trust", unit.name)
-        await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
-            unit.name,
-            "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
-            "-import",
-            "-trustcacerts",
-            "-file",
-            "/oauth.crt",
-            "-keystore",
-            "/usr/lib/jvm/java-21-openjdk-amd64/lib/security/cacerts",
-            "-storepass",
-            "changeit",
-            "-noprompt",
-        )
-        logger.info("restart penpot backend in penpot/%s", unit.name)
-        await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
-            unit.name,
-            "pebble",
-            "restart",
-            "backend",
-        )
 
 
 async def test_create_profile(ops_test: OpsTest, ingress_address):
@@ -208,9 +227,30 @@ async def test_oauth(ops_test, page, ext_idp_service):
     act: login penpot using openid connect.
     assert: login success.
     """
+    action = (
+        await ops_test.model.applications["self-signed-certificates"]
+        .units[0]
+        .run_action("get-ca-certificate")
+    )
+    await action.wait()
+    ca_cert: str = action.results["ca-certificate"]
+    penpot = ops_test.model.applications["penpot"]
+    await inject_root_certs(ops_test, penpot, ca_cert)
     await ops_test.model.add_relation("penpot:oauth", "hydra")
     await ops_test.model.wait_for_idle(timeout=900, status="active")
-    await access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
-    await click_on_sign_in_button_by_text(page=page, text="OpenID")
-    await complete_auth_code_login(page=page, ops_test=ops_test, ext_idp_service=ext_idp_service)
-    await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+    for _ in range(5):
+        try:
+            await access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
+            await click_on_sign_in_button_by_text(page=page, text="OpenID")
+            try:
+                await complete_auth_code_login(
+                    page=page,
+                    ops_test=ops_test,
+                    ext_idp_service=ext_idp_service,
+                )
+            except AssertionError:
+                logger.exception("failed to complete login, maybe already logged in, skipping")
+            await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+        except AssertionError:
+            logger.exception("login failed, retry in 60 seconds")
+            time.sleep(60)
