@@ -117,8 +117,18 @@ async def test_build_and_deploy(
             "/oauth.crt",
             stdin=ca_cert.encode("ascii"),
         )
+        code, stdout, stderr = ops_test.juju(
+            "ssh",
+            "--container",
+            "penpot",
+            unit.name,
+            "ls",
+            "-lah",
+            "/oauth.crt",
+        )
+        logger.info("ls -lah: %s, %s, %s", code, stdout, stderr)
         logger.info("installing oauth ca cert into penpot/%s java trust", unit.name)
-        await ops_test.juju(
+        code, stdout, stderr = await ops_test.juju(
             "ssh",
             "--container",
             "penpot",
@@ -134,6 +144,7 @@ async def test_build_and_deploy(
             "changeit",
             "-noprompt",
         )
+        logger.info("keytool import: %s, %s, %s", code, stdout, stderr)
         logger.info("restart penpot backend in penpot/%s", unit.name)
         await ops_test.juju(
             "ssh",
