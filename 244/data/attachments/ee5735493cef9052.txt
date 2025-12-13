@@ -1,0 +1,270 @@
+[32mINFO    [0m integration.test_charm:test_charm.py:39 copying oauth ca cert into penpot/0
+[32mINFO    [0m integration.test_charm:test_charm.py:59 copying oauth ca cert into penpot/0 result: -----BEGIN CERTIFICATE-----
+MIIDZzCCAk+gAwIBAgIUc3HtMxOZlEMNDibflW9M+FbG2vUwDQYJKoZIhvcNAQEL
+BQAwOTELMAkGA1UEBhMCVVMxKjAoBgNVBAMMIXNlbGYtc2lnbmVkLWNlcnRpZmlj
+YXRlcy1vcGVyYXRvcjAeFw0yNTEyMTMxNTE5MTJaFw0yNjEyMTMxNTE5MTJaMDkx
+CzAJBgNVBAYTAlVTMSowKAYDVQQDDCFzZWxmLXNpZ25lZC1jZXJ0aWZpY2F0ZXMt
+b3BlcmF0b3IwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCs0DAd6Rtr
+oG/L3GaWStns4be72AsoBqX357mvRCV9ShiESFeo4nFmgMmlTGD3Htj9+fLst/nV
+aht6SZ3m99H2U8B7cYkYTintyGOpM9sh+XUCOYedEceIiuCGjoyYKyTM+k1/PpIC
+BK3VxpqOZvGDnOIJWkeXM13aFAhEy/SXoQOaU6z9NhgkJ6rL46UHUWSxZOEmczoW
+rqTZsMUReiipOs+8E3+HW12SxsbT01H8AHByElmt7KX7Jjjv6iyMI2xhuacLLiQg
+wBsVmQmCO0pHprHNh9mqPNe3MmNJqF408T8q2MqK9+7aUg+vCuNDNO+2XA2kDAkP
+uq3OBuGhExA7AgMBAAGjZzBlMB8GA1UdDgQYBBYEFAhwel7MCQP0huvR158ZDdiP
+UOkaMCEGA1UdIwQaMBiAFgQUCHB6XswJA/SG69HXnxkN2I9Q6RowDgYDVR0PAQH/
+BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAKF79eJS
+86ydaCZMuXWWV6CJ8X/kNvRlbLJRm3ax5xCK7xWYyzGV9GjCgsrt6+1TGZQHtGdi
+rcw8wcHL80+nkq4MowROAYALHVhgYT9Feev6EJsxIuJ3ssjJnv6IhjsgdxRJWkpY
+Li914OgKLg8GsrgUncooOmvNSq6zKVrH0tqgdWhUMMD2OdDExvIN/bi6a4gZXp6m
+joW+/gY5SFY1SBwsp0G2kV/PVCDPj02aRYm72tQwBhUCZIzXpj+RdoewBSQrJ2vQ
+p6eTGp978DkRLxn+uEHiPsCRibQUU40zP6h5RK3m2MoGU3baQZO3w9RLSR4KTdJd
+3bGmV1rGggdU4fM=
+-----END CERTIFICATE-----
+
+[32mINFO    [0m integration.test_charm:test_charm.py:60 installing oauth ca cert into penpot/penpot/0 java trust
+[32mINFO    [0m integration.test_charm:test_charm.py:78 keytool import result: 0, , Warning: use -cacerts option to access cacerts keystore
+Certificate was added to keystore
+
+[32mINFO    [0m integration.test_charm:test_charm.py:79 restart penpot backend in penpot/penpot/0
+[32mINFO    [0m integration.test_charm:test_charm.py:39 copying oauth ca cert into penpot/1
+[32mINFO    [0m integration.test_charm:test_charm.py:59 copying oauth ca cert into penpot/1 result: -----BEGIN CERTIFICATE-----
+MIIDZzCCAk+gAwIBAgIUc3HtMxOZlEMNDibflW9M+FbG2vUwDQYJKoZIhvcNAQEL
+BQAwOTELMAkGA1UEBhMCVVMxKjAoBgNVBAMMIXNlbGYtc2lnbmVkLWNlcnRpZmlj
+YXRlcy1vcGVyYXRvcjAeFw0yNTEyMTMxNTE5MTJaFw0yNjEyMTMxNTE5MTJaMDkx
+CzAJBgNVBAYTAlVTMSowKAYDVQQDDCFzZWxmLXNpZ25lZC1jZXJ0aWZpY2F0ZXMt
+b3BlcmF0b3IwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCs0DAd6Rtr
+oG/L3GaWStns4be72AsoBqX357mvRCV9ShiESFeo4nFmgMmlTGD3Htj9+fLst/nV
+aht6SZ3m99H2U8B7cYkYTintyGOpM9sh+XUCOYedEceIiuCGjoyYKyTM+k1/PpIC
+BK3VxpqOZvGDnOIJWkeXM13aFAhEy/SXoQOaU6z9NhgkJ6rL46UHUWSxZOEmczoW
+rqTZsMUReiipOs+8E3+HW12SxsbT01H8AHByElmt7KX7Jjjv6iyMI2xhuacLLiQg
+wBsVmQmCO0pHprHNh9mqPNe3MmNJqF408T8q2MqK9+7aUg+vCuNDNO+2XA2kDAkP
+uq3OBuGhExA7AgMBAAGjZzBlMB8GA1UdDgQYBBYEFAhwel7MCQP0huvR158ZDdiP
+UOkaMCEGA1UdIwQaMBiAFgQUCHB6XswJA/SG69HXnxkN2I9Q6RowDgYDVR0PAQH/
+BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAKF79eJS
+86ydaCZMuXWWV6CJ8X/kNvRlbLJRm3ax5xCK7xWYyzGV9GjCgsrt6+1TGZQHtGdi
+rcw8wcHL80+nkq4MowROAYALHVhgYT9Feev6EJsxIuJ3ssjJnv6IhjsgdxRJWkpY
+Li914OgKLg8GsrgUncooOmvNSq6zKVrH0tqgdWhUMMD2OdDExvIN/bi6a4gZXp6m
+joW+/gY5SFY1SBwsp0G2kV/PVCDPj02aRYm72tQwBhUCZIzXpj+RdoewBSQrJ2vQ
+p6eTGp978DkRLxn+uEHiPsCRibQUU40zP6h5RK3m2MoGU3baQZO3w9RLSR4KTdJd
+3bGmV1rGggdU4fM=
+-----END CERTIFICATE-----
+
+[32mINFO    [0m integration.test_charm:test_charm.py:60 installing oauth ca cert into penpot/penpot/1 java trust
+[32mINFO    [0m integration.test_charm:test_charm.py:78 keytool import result: 0, , Warning: use -cacerts option to access cacerts keystore
+Certificate was added to keystore
+
+[32mINFO    [0m integration.test_charm:test_charm.py:79 restart penpot backend in penpot/penpot/1
+[33mWARNING [0m juju.model:model.py:1564 relate is deprecated and will be removed. Use integrate instead.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  minio/0 [idle] active: 
+  hydra/0 [executing] active: 
+  identity-platform-login-ui-operator/0 [idle] active: 
+  kratos/0 [idle] active: 
+  kratos-external-idp-integrator/0 [idle] active: Provider is ready
+  postgresql-k8s/0 [idle] active: Primary
+  self-signed-certificates/0 [idle] active: 
+  traefik-admin/0 [idle] active: 
+  traefik-public/0 [idle] active: 
+  penpot/0 [executing] active: 
+  penpot/1 [executing] active: 
+  redis-k8s/0 [idle] active: 
+  smtp-integrator/0 [idle] active: 
+  s3-integrator/0 [idle] active: 
+  nginx-ingress-integrator/0 [idle] active: Ingress IP(s): 127.0.0.1
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [executing] waiting: waiting for penpot services
+  penpot/1 [executing] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  hydra/0 [idle] active: 
+  penpot/0 [executing] waiting: waiting for penpot services
+  penpot/1 [executing] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [executing] waiting: waiting for penpot services
+  penpot/1 [executing] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [idle] active: 
+  penpot/1 [idle] active: 
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:186 Completing the login flow on the external provider
+[32mINFO    [0m oauth_tools.external_idp:external_idp.py:214 Signing in to dex
+[32mINFO    [0m httpx:_client.py:1025 HTTP Request: GET https://10.1.0.109:16443/api/v1/namespaces/dex/services/dex "HTTP/1.1 200 OK"
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:252 failed to complete login, maybe already logged in, skipping
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 246, in test_oauth
+    await complete_auth_code_login(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/oauth_tools/oauth_helpers.py", line 182, in complete_auth_code_login
+    await expect(page).to_have_url(re.compile(rf"{expected_url}*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('https://10.64.140.45/testing-identity-platform-login-ui-operator/ui/login*')'
+Actual value: https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.iVHXayEcRNTYEFqQ3NzcsMh9quMnuUbI8BKqaI90ElqtH-SsCd2y5Q.ZimXy4saDU5tBk09.fweWqqrZ18JwvKl9QadbVhln2Eh1K19CcynKoJYh-pAzF5PLyU7TYPesT2ahdZ7TqQrPcA9WaRxwPvdFewPyYMqz9xFQV4cKpoqvArQtWzeHqClfWI3xVQN3ZctazWyJzlPEYXHnDhuhqEv0RK9XB8CkS4mgJlmzz8jsPYYZD964YebqKT4TyiMOYpoLE75fKJ_LgR6CVOg1rfWOfqsuNxEfJLNqk_LnPkhXmCvf3cFHsQxTF9ENpsRGsyP5Jcem5m4nlEo835qOFBmvLdKxZ67I-ujwA0ooxySyH-r0pBx0eC2UWu2_xMUjciPuJ68g4kzQ3MrIz49FLwdlylxe1kfjU1J5ulwSF_MXzCRLls0fST7NH6KJ4N4SaUsq3q0YizRxaj6Bt5UVSycGoIwBhcrNtndogTADvOImvWJ3sc6mLHITHnVTcvC7Z4z2BNiTTg5XjMoA1M9V-vQ0IlHqZvy6X-D-AbNxcqI0In7HLeXU1Z-Ecac1t4kYYFgRIhsx9U4-Wtt5rChCfQAOt08OdvlyJy2imfPVUuaEuYeE6mrlXzC2gPnwQXqNxUlJf6RonbLoHpFTNU9Bf809GQXC0euVUUnstAxibWTjb4sWBfcyn-lQKANjwAkOopU_vCCxGTdtE_HMTpOsFsiS26d0qgHXPGtScZrTVdBM9A.RtYMCNrI6DCHpqUlSfrCNg&provider=oidc&fullname=admin 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    2 × unexpected value "https://10.64.140.45/testing-identity-platform-login-ui-operator/ui/consent?consent_challenge=DMv3h0MJJ7ItF77tDfUkQzmGAYMeV_8EhQujecfCkLDS-x1RurO9iyVcrMwnmCqK4ScJxioQcxUYxuL38nQnhIrti3uhVDJTjnpDlsU1uyPmRLgdObTKy2DZ7b9QgZaC4HzuoGqymS0yQKnNXN5MVNWZgWhrFQg74CSBP7p3dIebgwjPkrpDM8j5eop8hSwz65LyrX5MY-33qNcLxSutcOWeFjPh_jexBoZa09vk5XT5vAo3DDSOjmtxA4N-vR3BSj2CQxYp5RChhv5yMzwPsxdD9swsZcUmjlpacPhXMaiIPbaVkCAhH2j10CqvSe52BNgrmhLth2-SyR4OCfQgXZ9seqAawQhoi67t6oDA8VZ8ps40DLFosYB6UG-yGZCsBaOuMZyl4qAN4NZXaYrBdV_5FxT4DhErbHtLmxIPtZpvZfGkXSqohQda9lRTmaSa4WyppaBoHfbZBQ8WX64ydMfE8gStgi7G6n6udVD7CK2iFMBNhABCfyqOUn8X1nMqqSsMAAPagL5q_jxtgs41SkazyX-kEK87R4qJOftoNeYGFhb0wOYV56Dfy4NXbNAz7p4vF6ijTehR2vn5O9X9n4ajnzFdKWO7jMpJsy_CP659ZJx0hFfOAj5qZYzNCg9JamSJL_GbmBcdHJ-HcS-aM8updRAJ6Cy610o5DQMVn_BOP6iYok5INulqkPpH45OcZJx_8E-d1Z505HdK_doTxER5_5XKzHg-9qPYr_CKxnRHNVXLjVM25-LZ6jH_QNKUZIlwKptYk7zJswDS1-XOd9u8iUo_-5aR8uHN1LCB_7ZL-kFh__etb7UuOXzef6a-bghghfAm2isOw8OXu8y-fV6qcUFjPM4RbEFbZ7qT47WT4B8kfALaAnBuO69I_H0y_HoxCw0NTwNMBbuELHerRqr1WLJLevd7U_xy3GCNG6PA8eJ3Bf3d__Itj3jTVpoJVG_0mjEJuAWMYVvRWJMAolO5XKme_4-kDDifp82653aA9rwsCBWexKXjFZRPG_FBrDszSfpWTJoTcbU-MVaX-SGE8yeCclrFsNMLxbekMnsyITOn5BwkhTpkQ-97cr1wB-P-aHwQeMNifzZoOeILSzwL9GTovAFqwvVsSq9QQjvUj3AW-SD2455PiQf4xJTpoUalMyiLL_siSGjuh0s7Ut4ReUaUiwI60LXJYuJN_kccfOJ6xZiq0l5lhzg1JnEgSu8NgdqLiUEDtySH5BlWe7jmUD-uCbrDk5efAbca4dfvV_q6S87ws4EFs6NU4UGT1F1Vl0yFVvfM4bS8bkvhiMIleO_yMCCEnEPSLaXuFlA6Z64wjySZ9hjJmdJl3H6wFA8hAAwjVFin91brobXZcA_fytOky9y3HrLOEbPNeuhEIQcRYKAllmRuUj6f9j9Cm0DoKmyJXEU0ZOgYipsdjTIrFfzoOZWfYCKbN8fSDDMso-eAKd211PydeX86_1sy9Q-Hmq1frP2WZxpQ8rznQ9Gng7OLkqKuANN-cKvKZya378m4gGMKgcmuOJhqLwCjXzm-m7z5upzS-Bkr_a2xBIEU8Hzw2h_RxfNEoEQ-U6-5-fzJzzx4sZ4eZaR1IVMS8n-lwzkBm_TPMXmSW0t9hPYUSs-7Q5ZaKjcWmYIcjCpU7G_DYkEbcO3CBswFL-5Qx4UMvVBMmfL8MzY6I8LqWoiz61mEK5ZAVxOzoDxMiSw7ngffkfkOMiyVscrzohO_q7wIqXil6fx5FAY44QN-ib0ZUE1UqL2i8FE27TIy0ZkotYkJrJnmqGXXBL9G0pFFp7iJTKVlHLn1Ye1OBQWAS_5cZvoxezDodOfz8IqgW-BIVMKBob2Fq42SXsSQqkWX0uc9rXj1A-28iCOBHBFjZXTMN_5oPqfeTN1Xxc9lqF9AVyy3TcNeV0YTb7ZloVFBJBW5ujMHv0zlOnpYXg72QAMyeN3fy2eg_UJHRAc2sU_GNn7u4L1eRGvoX2-LIJrN95dKqfuIVGafjrw%3D"
+    - waiting for" https://penpot.local/api/auth/oauth/oidc/callback?code=ory_ac_rj0Z9KoECuzrgKpvX_7TvGczEiHoW_FZSIWR8i31FJk.VpjdMgzB7Nhki7EwQbmv-ADuNkxDSlLqcJ58ixExCSM&scope=profile+email+openid&state=eyJhbGciOiJBMjU2…" navigation to finish...
+    - navigated to "https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.iVHXayEcRNTYEFqQ3NzcsMh9quMnuUbI8BKqaI90ElqtH-SsCd2y5Q.ZimXy4saDU5tBk09.fweWqqrZ18JwvKl9QadbVhln2Eh1K19…"
+    5 × unexpected value "https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.iVHXayEcRNTYEFqQ3NzcsMh9quMnuUbI8BKqaI90ElqtH-SsCd2y5Q.ZimXy4saDU5tBk09.fweWqqrZ18JwvKl9QadbVhln2Eh1K19CcynKoJYh-pAzF5PLyU7TYPesT2ahdZ7TqQrPcA9WaRxwPvdFewPyYMqz9xFQV4cKpoqvArQtWzeHqClfWI3xVQN3ZctazWyJzlPEYXHnDhuhqEv0RK9XB8CkS4mgJlmzz8jsPYYZD964YebqKT4TyiMOYpoLE75fKJ_LgR6CVOg1rfWOfqsuNxEfJLNqk_LnPkhXmCvf3cFHsQxTF9ENpsRGsyP5Jcem5m4nlEo835qOFBmvLdKxZ67I-ujwA0ooxySyH-r0pBx0eC2UWu2_xMUjciPuJ68g4kzQ3MrIz49FLwdlylxe1kfjU1J5ulwSF_MXzCRLls0fST7NH6KJ4N4SaUsq3q0YizRxaj6Bt5UVSycGoIwBhcrNtndogTADvOImvWJ3sc6mLHITHnVTcvC7Z4z2BNiTTg5XjMoA1M9V-vQ0IlHqZvy6X-D-AbNxcqI0In7HLeXU1Z-Ecac1t4kYYFgRIhsx9U4-Wtt5rChCfQAOt08OdvlyJy2imfPVUuaEuYeE6mrlXzC2gPnwQXqNxUlJf6RonbLoHpFTNU9Bf809GQXC0euVUUnstAxibWTjb4sWBfcyn-lQKANjwAkOopU_vCCxGTdtE_HMTpOsFsiS26d0qgHXPGtScZrTVdBM9A.RtYMCNrI6DCHpqUlSfrCNg&provider=oidc&fullname=admin"
+
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:252 failed to complete login, maybe already logged in, skipping
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 246, in test_oauth
+    await complete_auth_code_login(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/oauth_tools/oauth_helpers.py", line 182, in complete_auth_code_login
+    await expect(page).to_have_url(re.compile(rf"{expected_url}*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('https://10.64.140.45/testing-identity-platform-login-ui-operator/ui/login*')'
+Actual value: https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.DzOWiOhYVSJWbnrDUHWOwO19_sRbtTzMleulEatxqlnAOkgI6ATkCA.3xWq8xdexGuvRDvo.YLeQqmNfDfQpXJY_4v0lTjS5gOxN8R6QL1DSo_gN-vzkBXPSkdpc9OSuIqKUfJrhjXfbWR9Un4a4n_VAudIamS_2xDbiHBOlQGA0FG73qWFvJqynTqHJHvWNmiuZR28ZXiSKsnDlN7rU7vy4HRBZuo6kPeYNtAB61q4ZKUcLtEv6Gxqsl9juXr6qUzRJ-nuPaRFZA-mOP0KcF6oxRrN47GEiMmahK8vm3WVKwMT0vSRNxAXrsBIJcWVuVCd8xlpzuu6BWyZXPds1Gj6kmDtJyBmPHrRnE6ecP6GmkyflKild5d6gqYq7XmssWiPAwl53sS4cazlvVH7aBtIBBFoLUZUFo5JiWU2kLqaFLkDjN-s_0LPi55XKDML8WMBhAHwMMGVbgEViNdbeXTl1m9K91oPOYJ8vcpzPyQYYCBysC8yxCvPpRA6jiEvkaq3DzPk8SlyReeNus-sxYStYCJBOU5xFLRtwwV9ETX6Kj2jAVxQV6k_cmLAARe7vX7vQORHo7svIMeFJTrURpVFm4iKxUvzSw0o_pMc9evVtX21jmySOljhWZ0LRmJSn_u08G6ycDObdlm4aUvOiNODiCi4j2NivxAVB-E1P7-xt8In_irah2tEeRSYLFvmBWuK9tYbR9EEaEXTPVMlnuSRFFcp0nE8agkDP3LWOCM6o_w.K4f14pK-9KP_kZI82NPyyg&provider=oidc&fullname=admin 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    - waiting for" https://penpot.local/api/auth/oauth/oidc/callback?code=ory_ac_sSG2Ipmdh7VpW09yQ2NgJYObihiVZwpZNBNaBXvn0Xg.6wYlNDCpL0r4od4t4828txzaPp3aA8o6PddAyhzmiU4&scope=profile+email+openid&state=eyJhbGciOiJBMjU2…" navigation to finish...
+    - navigated to "https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.DzOWiOhYVSJWbnrDUHWOwO19_sRbtTzMleulEatxqlnAOkgI6ATkCA.3xWq8xdexGuvRDvo.YLeQqmNfDfQpXJY_4v0lTjS5gOxN8R6…"
+    6 × unexpected value "https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.DzOWiOhYVSJWbnrDUHWOwO19_sRbtTzMleulEatxqlnAOkgI6ATkCA.3xWq8xdexGuvRDvo.YLeQqmNfDfQpXJY_4v0lTjS5gOxN8R6QL1DSo_gN-vzkBXPSkdpc9OSuIqKUfJrhjXfbWR9Un4a4n_VAudIamS_2xDbiHBOlQGA0FG73qWFvJqynTqHJHvWNmiuZR28ZXiSKsnDlN7rU7vy4HRBZuo6kPeYNtAB61q4ZKUcLtEv6Gxqsl9juXr6qUzRJ-nuPaRFZA-mOP0KcF6oxRrN47GEiMmahK8vm3WVKwMT0vSRNxAXrsBIJcWVuVCd8xlpzuu6BWyZXPds1Gj6kmDtJyBmPHrRnE6ecP6GmkyflKild5d6gqYq7XmssWiPAwl53sS4cazlvVH7aBtIBBFoLUZUFo5JiWU2kLqaFLkDjN-s_0LPi55XKDML8WMBhAHwMMGVbgEViNdbeXTl1m9K91oPOYJ8vcpzPyQYYCBysC8yxCvPpRA6jiEvkaq3DzPk8SlyReeNus-sxYStYCJBOU5xFLRtwwV9ETX6Kj2jAVxQV6k_cmLAARe7vX7vQORHo7svIMeFJTrURpVFm4iKxUvzSw0o_pMc9evVtX21jmySOljhWZ0LRmJSn_u08G6ycDObdlm4aUvOiNODiCi4j2NivxAVB-E1P7-xt8In_irah2tEeRSYLFvmBWuK9tYbR9EEaEXTPVMlnuSRFFcp0nE8agkDP3LWOCM6o_w.K4f14pK-9KP_kZI82NPyyg&provider=oidc&fullname=admin"
+
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:252 failed to complete login, maybe already logged in, skipping
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 246, in test_oauth
+    await complete_auth_code_login(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/oauth_tools/oauth_helpers.py", line 182, in complete_auth_code_login
+    await expect(page).to_have_url(re.compile(rf"{expected_url}*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('https://10.64.140.45/testing-identity-platform-login-ui-operator/ui/login*')'
+Actual value: https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.qBcJMHm1Xu-AUrmWGYj_px-wq-vmoVKfU-D38gxxFwgJ1FDNsFYEkg.aqu60ZKMCYKZeWFI.3y6D7FLau--ZJPcjthnX8b2_qFxbazHu1C34iLBHq6UTz0BdzrEuXq438JOGM9bnbEyLXMZs6zDA86mE1YDpOwsMLeh7m3Ii44kEqVlC2nD3Y4h5BgKDys1I2IFA5EDH3jGqvmdcTIpObJfqB5RuVLs98lC7GIWXqsL-r-s2ZvC_ntN3FFQS33i9CodpJsTOSJzsLnZjiHlP_8GwtSLycl6dyhq-wsxyR04wclyUdnBHRyPGzZ7kMOo6zw2VTyegiN1CzlncwKqxlqrTphWIsz5Ajsp6nMP-OkQrjj7jcARKZh3apDQQAj7asoO9vRqCn5S4f2f_QNEZjaVtRMpjgwdB3RrUTRW9KO4DFtKvzXfz8yZWrKgv0AgzW9bXAla98gJno6WiCgIpVjDaZCPuTIRROXwrulVcmxhmfmg1H9OMgKfwYLJ7EOCgfd5eLY-EFdDxGUU4LUqae_3zoHvZRbhIFs-IbeuB17PnJeoJ-6rXijm8XNgi1fXPk-DFoJPjaMuyizuBBJ7_-EFnlvjMubHUNztsm2rZVdaetRnCH1d6B5woFYcxx2GjBo5cZaNVQm8VfbWS43v3BCe7Ggx9uL5jHGnPdchds35I5Nl2e-90l5l1is7rgiRnvfrtxApzmmpXq-a2r2_pe0b3t7-odcsBpFQBqJ2Y8fxPpg.jtJHLY1zV7aKI6yGPCHJzA&provider=oidc&fullname=admin 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    - waiting for" https://penpot.local/api/auth/oauth/oidc/callback?code=ory_ac_ITufWT2Im2tHiXqJqRLEFyJZEoTZOocoh2VxurVh9HY.pQcrIIxzlsJMghVO1WjCsPzZtp5Vfw5ASSh9qBao-F4&scope=profile+email+openid&state=eyJhbGciOiJBMjU2…" navigation to finish...
+    - navigated to "https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.qBcJMHm1Xu-AUrmWGYj_px-wq-vmoVKfU-D38gxxFwgJ1FDNsFYEkg.aqu60ZKMCYKZeWFI.3y6D7FLau--ZJPcjthnX8b2_qFxbazH…"
+    6 × unexpected value "https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.qBcJMHm1Xu-AUrmWGYj_px-wq-vmoVKfU-D38gxxFwgJ1FDNsFYEkg.aqu60ZKMCYKZeWFI.3y6D7FLau--ZJPcjthnX8b2_qFxbazHu1C34iLBHq6UTz0BdzrEuXq438JOGM9bnbEyLXMZs6zDA86mE1YDpOwsMLeh7m3Ii44kEqVlC2nD3Y4h5BgKDys1I2IFA5EDH3jGqvmdcTIpObJfqB5RuVLs98lC7GIWXqsL-r-s2ZvC_ntN3FFQS33i9CodpJsTOSJzsLnZjiHlP_8GwtSLycl6dyhq-wsxyR04wclyUdnBHRyPGzZ7kMOo6zw2VTyegiN1CzlncwKqxlqrTphWIsz5Ajsp6nMP-OkQrjj7jcARKZh3apDQQAj7asoO9vRqCn5S4f2f_QNEZjaVtRMpjgwdB3RrUTRW9KO4DFtKvzXfz8yZWrKgv0AgzW9bXAla98gJno6WiCgIpVjDaZCPuTIRROXwrulVcmxhmfmg1H9OMgKfwYLJ7EOCgfd5eLY-EFdDxGUU4LUqae_3zoHvZRbhIFs-IbeuB17PnJeoJ-6rXijm8XNgi1fXPk-DFoJPjaMuyizuBBJ7_-EFnlvjMubHUNztsm2rZVdaetRnCH1d6B5woFYcxx2GjBo5cZaNVQm8VfbWS43v3BCe7Ggx9uL5jHGnPdchds35I5Nl2e-90l5l1is7rgiRnvfrtxApzmmpXq-a2r2_pe0b3t7-odcsBpFQBqJ2Y8fxPpg.jtJHLY1zV7aKI6yGPCHJzA&provider=oidc&fullname=admin"
+
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:252 failed to complete login, maybe already logged in, skipping
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 246, in test_oauth
+    await complete_auth_code_login(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/oauth_tools/oauth_helpers.py", line 182, in complete_auth_code_login
+    await expect(page).to_have_url(re.compile(rf"{expected_url}*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('https://10.64.140.45/testing-identity-platform-login-ui-operator/ui/login*')'
+Actual value: https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.sh-Rsi-uB-WDnR4NoaUx6AUEjLMQNyIhrlvp7Tza6ovB-aqUfQ-6ZA.eZgTUskvBr5DRUIi.P8VmkOu3sIcQnGyByUu8w1LnetyUaEWsRxZYoOC_qD_Ii3AB-2BvZk2Za04dCI9qpuqRQKmvV6kSK7CD8mtHG7LTy-lDibqPPN4jDP4Qs7Lp6U4HGgCLvukXI8WDDY4OoflDEVsBX6KpIWaZ4mRh1WFUvmzWWND5lRvGV3s2LC77xb7ud1DqbKLDmJUcBFMFFp702xbWP8Fo59Ft0J6T8MWHOiyHOoDet7xwLK8sdEwCoUIZtWh8trrBXKE76pSZd17X1URIbRJkEu-F7yTY15M59yJ6IHeBjJmNKo9-31m9pr1frRnPTiVdJTCf3ZAkNRzZEc93uKSdjmU9OEo8g76UBCaaz9bJNcUYDDZc04XfmH-h0Cr9_EUDVtWx_DTZ7IB9mLcTeBBZsEggpXGN7LZECJJA-_dnbprqzz5YYmJ-hxWnIv42Xd0kG--cVPZkudXfvA_J7X2Td2WAbr9orVa6371NKrQADO9xpBYatCloEudrns-xUQzr-a5_MGxieb5ptoxeqthd4sDM17IdnmbU0kV6CdFm1sDDT4X_Wi6nudH0fHWjCLSNxtzCtcrPMduNl7wR2HBOyU2c3iIkbsLLE1Aqp1vAJDf4EoB-azIBo5Gg7lof4c-PamrqV0FmvhEsy-B0unyx_2l-8INJddeCHzRkI5_sqVQE2A.7P8aXfWqizFOnSFUg04Y8g&provider=oidc&fullname=admin 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    - waiting for" https://penpot.local/api/auth/oauth/oidc/callback?code=ory_ac_d3Yqo7lTXb0cmCXipXRq7qdUjNPZlH0k-IMxsGOtVUA.FZPVQ3DpCV3ONPmV4yfoiM4CZWaSr5Ve-src2ybQFr8&scope=profile+email+openid&state=eyJhbGciOiJBMjU2…" navigation to finish...
+    - navigated to "https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.sh-Rsi-uB-WDnR4NoaUx6AUEjLMQNyIhrlvp7Tza6ovB-aqUfQ-6ZA.eZgTUskvBr5DRUIi.P8VmkOu3sIcQnGyByUu8w1LnetyUaEW…"
+    6 × unexpected value "https://penpot.local/#/auth/register/validate?token=eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.sh-Rsi-uB-WDnR4NoaUx6AUEjLMQNyIhrlvp7Tza6ovB-aqUfQ-6ZA.eZgTUskvBr5DRUIi.P8VmkOu3sIcQnGyByUu8w1LnetyUaEWsRxZYoOC_qD_Ii3AB-2BvZk2Za04dCI9qpuqRQKmvV6kSK7CD8mtHG7LTy-lDibqPPN4jDP4Qs7Lp6U4HGgCLvukXI8WDDY4OoflDEVsBX6KpIWaZ4mRh1WFUvmzWWND5lRvGV3s2LC77xb7ud1DqbKLDmJUcBFMFFp702xbWP8Fo59Ft0J6T8MWHOiyHOoDet7xwLK8sdEwCoUIZtWh8trrBXKE76pSZd17X1URIbRJkEu-F7yTY15M59yJ6IHeBjJmNKo9-31m9pr1frRnPTiVdJTCf3ZAkNRzZEc93uKSdjmU9OEo8g76UBCaaz9bJNcUYDDZc04XfmH-h0Cr9_EUDVtWx_DTZ7IB9mLcTeBBZsEggpXGN7LZECJJA-_dnbprqzz5YYmJ-hxWnIv42Xd0kG--cVPZkudXfvA_J7X2Td2WAbr9orVa6371NKrQADO9xpBYatCloEudrns-xUQzr-a5_MGxieb5ptoxeqthd4sDM17IdnmbU0kV6CdFm1sDDT4X_Wi6nudH0fHWjCLSNxtzCtcrPMduNl7wR2HBOyU2c3iIkbsLLE1Aqp1vAJDf4EoB-azIBo5Gg7lof4c-PamrqV0FmvhEsy-B0unyx_2l-8INJddeCHzRkI5_sqVQE2A.7P8aXfWqizFOnSFUg04Y8g&provider=oidc&fullname=admin"
+[32mINFO    [0m pytest_operator.plugin:plugin.py:951 Model status:
+
+Model    Controller                Cloud/Region        Version  SLA          Timestamp
+testing  github-pr-b631b-microk8s  microk8s/localhost  3.6.12   unsupported  15:32:21Z
+
+App                                  Version                Status  Scale  Charm                                Channel         Rev  Address         Exposed  Message
+hydra                                v2.3.0                 active      1  hydra                                latest/edge     339  10.152.183.130  no       
+identity-platform-login-ui-operator  0.21.2                 active      1  identity-platform-login-ui-operator  latest/edge     146  10.152.183.17   no       
+kratos                               v1.3.1                 active      1  kratos                               latest/edge     500  10.152.183.113  no       
+kratos-external-idp-integrator                              active      1  kratos-external-idp-integrator       latest/edge     245  10.152.183.197  no       Provider is ready
+minio                                res:oci-image@220b31a  active      1  minio                                ckf-1.9/stable  383  10.152.183.171  no       
+nginx-ingress-integrator             24.2.0                 active      1  nginx-ingress-integrator             latest/edge     109  10.152.183.142  no       Ingress IP(s): 127.0.0.1
+penpot                                                      active      2  penpot                                                 0  10.152.183.172  no       
+postgresql-k8s                       14.15                  active      1  postgresql-k8s                       14/stable       495  10.152.183.71   no       
+redis-k8s                            7.2.5                  active      1  redis-k8s                            latest/edge      42  10.152.183.233  no       
+s3-integrator                                               active      1  s3-integrator                        latest/stable   145  10.152.183.64   no       
+self-signed-certificates                                    active      1  self-signed-certificates             latest/stable   155  10.152.183.23   no       
+smtp-integrator                                             active      1  smtp-integrator                      latest/stable    93  10.152.183.18   no       
+traefik-admin                        v2.11.0                active      1  traefik-k8s                          latest/stable   176  10.64.140.44    no       
+traefik-public                       v2.11.0                active      1  traefik-k8s                          latest/stable   176  10.64.140.45    no       
+
+Unit                                    Workload  Agent  Address      Ports          Message
+hydra/0*                                active    idle   10.1.16.145                 
+identity-platform-login-ui-operator/0*  active    idle   10.1.16.146                 
+kratos-external-idp-integrator/0*       active    idle   10.1.16.148                 Provider is ready
+kratos/0*                               active    idle   10.1.16.154                 
+minio/0*                                active    idle   10.1.16.142  9000-9001/TCP  
+nginx-ingress-integrator/0*             active    idle   10.1.16.161                 Ingress IP(s): 127.0.0.1
+penpot/0*                               active    idle   10.1.16.158                 
+penpot/1                                active    idle   10.1.16.159                 
+postgresql-k8s/0*                       active    idle   10.1.16.151                 Primary
+redis-k8s/0*                            active    idle   10.1.16.163                 
+s3-integrator/0*                        active    idle   10.1.16.164                 
+self-signed-certificates/0*             active    idle   10.1.16.150                 
+smtp-integrator/0*                      active    idle   10.1.16.162                 
+traefik-admin/0*                        active    idle   10.1.16.153                 
+traefik-public/0*                       active    idle   10.1.16.156                 
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:957 Juju error logs:
+
+unit-kratos-0: 15:19:02 ERROR juju.worker.uniter pebble poll failed for container "kratos": failed to send pebble-ready event: terminated
+unit-postgresql-k8s-0: 15:19:21 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-b125bac8-e588-4f07-8d9f-685334a9d922: 15:19:22 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-hydra-0: 15:19:25 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.16.145:49142->10.152.183.28:17070: write: connection reset by peer
+unit-self-signed-certificates-0: 15:19:25 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:19:36 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:19:39 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:19:39 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-identity-platform-login-ui-operator-0: 15:19:40 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-postgresql-k8s-0: 15:19:46 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-b125bac8-e588-4f07-8d9f-685334a9d922: 15:19:46 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:19:57 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:19:58 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-identity-platform-login-ui-operator-0: 15:20:01 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.16.146:44796->10.152.183.28:17070: write: connection reset by peer
+unit-traefik-public-0: 15:20:04 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:20:10 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:20:13 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:20:16 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-hydra-0: 15:20:25 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-public-0: 15:20:30 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:20:33 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:20:33 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-self-signed-certificates-0: 15:20:39 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-postgresql-k8s-0: 15:20:42 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-b125bac8-e588-4f07-8d9f-685334a9d922: 15:20:42 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:20:46 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-public-0: 15:20:53 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:20:59 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:21:04 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-b125bac8-e588-4f07-8d9f-685334a9d922: 15:21:45 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:21:46 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.16.148:56954->10.152.183.28:17070: write: connection reset by peer
+unit-postgresql-k8s-0: 15:21:52 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.16.151:33330->10.152.183.28:17070: write: connection reset by peer
+application-minio: 15:21:54 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:22:04 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:22:04 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-b125bac8-e588-4f07-8d9f-685334a9d922: 15:25:16 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:25:26 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-redis-k8s-0: 15:26:11 ERROR unit.redis-k8s/0.juju-log redis-peers:25: Error when connecting to sentinel: Error 111 connecting to 0.0.0.0:26379. Connection refused.
+unit-redis-k8s-0: 15:26:11 ERROR unit.redis-k8s/0.juju-log redis-peers:25: Unit redis-k8s/0 doesn't agree on tracked master
+unit-redis-k8s-0: 15:26:11 ERROR unit.redis-k8s/0.juju-log redis-peers:25: Error when connecting to sentinel: Error 111 connecting to localhost:26379. Connection refused.
+unit-postgresql-k8s-0: 15:26:49 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-b125bac8-e588-4f07-8d9f-685334a9d922: 15:26:55 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-penpot-1: 15:26:55 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-nginx-ingress-integrator-0: 15:26:55 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-penpot-0: 15:26:55 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-redis-k8s-0: 15:27:01 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:27:06 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-smtp-integrator-0: 15:27:07 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-s3-integrator-0: 15:27:07 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.16.164:51116->10.152.183.28:17070: write: connection reset by peer
+unit-nginx-ingress-integrator-0: 15:27:49 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-b125bac8-e588-4f07-8d9f-685334a9d922: 15:27:49 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-penpot-1: 15:27:51 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-penpot-0: 15:27:51 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+application-minio: 15:31:10 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:1039 Forgetting model main...
