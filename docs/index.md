@@ -50,4 +50,3 @@ Thinking about using the Penpot Operator for your next project? [Get in touch](h
   1. [Actions](reference/actions.md)
   1. [Charm architecture](reference/charm-architecture.md)
   1. [Configurations](reference/configurations.md)
-1. [Explanation](explanation)
