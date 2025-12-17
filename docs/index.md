@@ -16,7 +16,7 @@ The Penpot Operator is an open-source project that welcomes community contributi
 |                                                                                                                                                                             |                                                                                                                                                |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
 | [Tutorials](tutorial/getting-started.md)</br>  Get started - a hands-on introduction to using the charm for new users </br> | [How-to guides](how-to/configure-s3.md) </br> Step-by-step guides covering key operations and common tasks |
-| [Reference](reference/actions.md) </br> Technical information - specifications, APIs, architecture                                             | [Explanation](reference/charm-architecture.md) </br> Concepts - discussion and clarification of key topics      |
+| [Reference](reference/actions.md) </br> Technical information - specifications, APIs, architecture                                             | [Explanation]() </br> Concepts - discussion and clarification of key topics      |
 
 ## Contributing to this documentation
 
