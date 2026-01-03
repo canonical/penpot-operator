@@ -1,0 +1,384 @@
+[32mINFO    [0m integration.test_charm:test_charm.py:39 copying oauth ca cert into penpot/0
+[32mINFO    [0m integration.test_charm:test_charm.py:59 copying oauth ca cert into penpot/0 result: -----BEGIN CERTIFICATE-----
+MIIDZzCCAk+gAwIBAgIUKTKcWhOv6djMcWTEbDz+dDLoql4wDQYJKoZIhvcNAQEL
+BQAwOTELMAkGA1UEBhMCVVMxKjAoBgNVBAMMIXNlbGYtc2lnbmVkLWNlcnRpZmlj
+YXRlcy1vcGVyYXRvcjAeFw0yNjAxMDMxNTIwNTZaFw0yNzAxMDMxNTIwNTZaMDkx
+CzAJBgNVBAYTAlVTMSowKAYDVQQDDCFzZWxmLXNpZ25lZC1jZXJ0aWZpY2F0ZXMt
+b3BlcmF0b3IwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC1H+2GTfCV
+rRmm/zzqe2MkoW/ouT1sXUa815GAB5ojavLe+T/wOVSBP215q7k6ET7E8btSHLhT
+j6zbJty9XL4cF3hs55ulpt31boklHfNYZZ07+Kol8OjroRakrTrwJx9fM3AYIqAG
+TNtu+LFDoZ1ztWyx9eQihYEJf9ETIVf+K0wrToBqRBwKTNHK4LIroiYDPlB+9k8/
+K9bh4oRrtRsYJ+0J9ZwehevTKB2K50t0vp4hq/PuP1XH5hu1r9JqPfkIPZiWDZqM
+s18ahsFubvkyjAJZSRb3nu8SvrCfUkpdpQT+F9Z5uN/p4TSEzvMakBY14MG8CQdX
+VkffkDDPJQUBAgMBAAGjZzBlMB8GA1UdDgQYBBYEFOS7EUIhvTd/nkZFN+/11dTe
+qHrdMCEGA1UdIwQaMBiAFgQU5LsRQiG9N3+eRkU37/XV1N6oet0wDgYDVR0PAQH/
+BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAHuY1RMv
+BHJV5EWOmgsF/1K6mtZ8e82uE/vnBi895iSWBAGim3Sn5aviAdN0CWzZVr2n+R5N
+NzEgLEQtsgJIuWRTs8ZH2xNSks/NR+lk9bqqa3inF0SPQzYEkwhkoe4BvNaDj7oY
+M1YCRG6ieGh1PKAF9RJU5dOnqz5dbD/4h1r7CEotjtfayLqf0rAdmxTxjKZ9QimN
+6DUF7DDRLNc9zmTfzwvyQRCSqQv2xKFZqPcBHyvaWl4RJztY4Tch4x1LE3MgIL+A
+pABmzxTtxvhStb77MOZ5CNoDmcwxH8qM8yUFAgDWgkN+hixmcb7o/FFiD0stehha
+ngyaEPa1k8xhsqM=
+-----END CERTIFICATE-----
+
+[32mINFO    [0m integration.test_charm:test_charm.py:60 installing oauth ca cert into penpot/penpot/0 java trust
+[32mINFO    [0m integration.test_charm:test_charm.py:78 keytool import result: 0, , Warning: use -cacerts option to access cacerts keystore
+Certificate was added to keystore
+
+[32mINFO    [0m integration.test_charm:test_charm.py:79 restart penpot backend in penpot/penpot/0
+[32mINFO    [0m integration.test_charm:test_charm.py:39 copying oauth ca cert into penpot/1
+[32mINFO    [0m integration.test_charm:test_charm.py:59 copying oauth ca cert into penpot/1 result: -----BEGIN CERTIFICATE-----
+MIIDZzCCAk+gAwIBAgIUKTKcWhOv6djMcWTEbDz+dDLoql4wDQYJKoZIhvcNAQEL
+BQAwOTELMAkGA1UEBhMCVVMxKjAoBgNVBAMMIXNlbGYtc2lnbmVkLWNlcnRpZmlj
+YXRlcy1vcGVyYXRvcjAeFw0yNjAxMDMxNTIwNTZaFw0yNzAxMDMxNTIwNTZaMDkx
+CzAJBgNVBAYTAlVTMSowKAYDVQQDDCFzZWxmLXNpZ25lZC1jZXJ0aWZpY2F0ZXMt
+b3BlcmF0b3IwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC1H+2GTfCV
+rRmm/zzqe2MkoW/ouT1sXUa815GAB5ojavLe+T/wOVSBP215q7k6ET7E8btSHLhT
+j6zbJty9XL4cF3hs55ulpt31boklHfNYZZ07+Kol8OjroRakrTrwJx9fM3AYIqAG
+TNtu+LFDoZ1ztWyx9eQihYEJf9ETIVf+K0wrToBqRBwKTNHK4LIroiYDPlB+9k8/
+K9bh4oRrtRsYJ+0J9ZwehevTKB2K50t0vp4hq/PuP1XH5hu1r9JqPfkIPZiWDZqM
+s18ahsFubvkyjAJZSRb3nu8SvrCfUkpdpQT+F9Z5uN/p4TSEzvMakBY14MG8CQdX
+VkffkDDPJQUBAgMBAAGjZzBlMB8GA1UdDgQYBBYEFOS7EUIhvTd/nkZFN+/11dTe
+qHrdMCEGA1UdIwQaMBiAFgQU5LsRQiG9N3+eRkU37/XV1N6oet0wDgYDVR0PAQH/
+BAQDAgKkMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAHuY1RMv
+BHJV5EWOmgsF/1K6mtZ8e82uE/vnBi895iSWBAGim3Sn5aviAdN0CWzZVr2n+R5N
+NzEgLEQtsgJIuWRTs8ZH2xNSks/NR+lk9bqqa3inF0SPQzYEkwhkoe4BvNaDj7oY
+M1YCRG6ieGh1PKAF9RJU5dOnqz5dbD/4h1r7CEotjtfayLqf0rAdmxTxjKZ9QimN
+6DUF7DDRLNc9zmTfzwvyQRCSqQv2xKFZqPcBHyvaWl4RJztY4Tch4x1LE3MgIL+A
+pABmzxTtxvhStb77MOZ5CNoDmcwxH8qM8yUFAgDWgkN+hixmcb7o/FFiD0stehha
+ngyaEPa1k8xhsqM=
+-----END CERTIFICATE-----
+
+[32mINFO    [0m integration.test_charm:test_charm.py:60 installing oauth ca cert into penpot/penpot/1 java trust
+[32mINFO    [0m integration.test_charm:test_charm.py:78 keytool import result: 0, , Warning: use -cacerts option to access cacerts keystore
+Certificate was added to keystore
+
+[32mINFO    [0m integration.test_charm:test_charm.py:79 restart penpot backend in penpot/penpot/1
+[33mWARNING [0m juju.model:model.py:1564 relate is deprecated and will be removed. Use integrate instead.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  minio/0 [idle] active: 
+  hydra/0 [executing] active: 
+  identity-platform-login-ui-operator/0 [idle] active: 
+  kratos/0 [idle] active: 
+  kratos-external-idp-integrator/0 [idle] active: Provider is ready
+  postgresql-k8s/0 [idle] active: Primary
+  self-signed-certificates/0 [idle] active: 
+  traefik-admin/0 [idle] active: 
+  traefik-public/0 [idle] active: 
+  penpot/0 [executing] active: 
+  penpot/1 [executing] active: 
+  redis-k8s/0 [idle] active: 
+  smtp-integrator/0 [idle] active: 
+  s3-integrator/0 [idle] active: 
+  nginx-ingress-integrator/0 [idle] active: Ingress IP(s): 127.0.0.1
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [executing] waiting: waiting for penpot services
+  penpot/1 [executing] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  hydra/0 [idle] active: 
+  traefik-public/0 [idle] active: 
+  penpot/0 [executing] waiting: waiting for penpot services
+  penpot/1 [executing] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [idle] waiting: waiting for penpot services
+  penpot/1 [idle] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [idle] waiting: waiting for penpot services
+  penpot/1 [idle] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [idle] waiting: waiting for penpot services
+  penpot/1 [idle] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [executing] waiting: waiting for penpot services
+  penpot/1 [executing] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [executing] waiting: waiting for penpot services
+  penpot/1 [executing] waiting: waiting for penpot services
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  penpot/0 [idle] active: 
+  penpot/1 [idle] active: 
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:186 Completing the login flow on the external provider
+[32mINFO    [0m oauth_tools.external_idp:external_idp.py:214 Signing in to dex
+[32mINFO    [0m httpx:_client.py:1025 HTTP Request: GET https://10.1.0.228:16443/api/v1/namespaces/dex/services/dex "HTTP/1.1 200 OK"
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:255 login failed, retry in 60 seconds
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 253, in test_oauth
+    await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('^https://penpot\\.local/#/auth/register.*')'
+Actual value: https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    - waiting for" https://10.64.140.45/testing-hydra/oauth2/auth?client_id=c1225cee-1990-460a-926b-d7d655ca4ec6&consent_verifier=4Dctp7rvR8aj4NtVwhCGspBj6S2wlM4AmgXK469NBsM9B05i1TmaerjYo56BKtg8WxPXgMAsS84jqeSbCpeUOWgl…" navigation to finish...
+    - navigated to "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+c…"
+    2 × unexpected value "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target"
+
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:252 failed to complete login, maybe already logged in, skipping
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 246, in test_oauth
+    await complete_auth_code_login(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/oauth_tools/oauth_helpers.py", line 182, in complete_auth_code_login
+    await expect(page).to_have_url(re.compile(rf"{expected_url}*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('https://10.64.140.45/testing-identity-platform-login-ui-operator/ui/login*')'
+Actual value: https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    - waiting for" https://penpot.local/api/auth/oauth/oidc/callback?code=ory_ac_ED0Z6lFGxB-zVLNXO22n74qBQt27NcbrbmmQdJg-okk.nD4TVGfJ0NPCmZHNXcv4YbQTmIh117B-NBXpMvDKRIc&scope=profile+email+openid&state=eyJhbGciOiJBMjU2…" navigation to finish...
+    - navigated to "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+c…"
+    6 × unexpected value "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target"
+
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:255 login failed, retry in 60 seconds
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 253, in test_oauth
+    await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('^https://penpot\\.local/#/auth/register.*')'
+Actual value: https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    9 × unexpected value "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target"
+
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:252 failed to complete login, maybe already logged in, skipping
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 246, in test_oauth
+    await complete_auth_code_login(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/oauth_tools/oauth_helpers.py", line 182, in complete_auth_code_login
+    await expect(page).to_have_url(re.compile(rf"{expected_url}*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('https://10.64.140.45/testing-identity-platform-login-ui-operator/ui/login*')'
+Actual value: https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    - waiting for" https://penpot.local/" navigation to finish...
+    - navigated to "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+c…"
+    6 × unexpected value "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target"
+
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:255 login failed, retry in 60 seconds
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 253, in test_oauth
+    await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('^https://penpot\\.local/#/auth/register.*')'
+Actual value: https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    9 × unexpected value "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target"
+
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:252 failed to complete login, maybe already logged in, skipping
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 246, in test_oauth
+    await complete_auth_code_login(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/oauth_tools/oauth_helpers.py", line 182, in complete_auth_code_login
+    await expect(page).to_have_url(re.compile(rf"{expected_url}*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('https://10.64.140.45/testing-identity-platform-login-ui-operator/ui/login*')'
+Actual value: https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    - waiting for" https://penpot.local/api/auth/oauth/oidc/callback?code=ory_ac_0UaKq_Ej6K8CjPDrRfG7x82wEFsAAt1u9X0LtnxrZQw.AbnYpQaIz5wIAcWQuFLtIORsAoojGd4kA1naSpFGgOo&scope=profile+email+openid&state=eyJhbGciOiJBMjU2…" navigation to finish...
+    - navigated to "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+c…"
+    6 × unexpected value "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target"
+
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:255 login failed, retry in 60 seconds
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 253, in test_oauth
+    await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('^https://penpot\\.local/#/auth/register.*')'
+Actual value: https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    9 × unexpected value "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target"
+
+[32mINFO    [0m oauth_tools.oauth_helpers:oauth_helpers.py:181 Choose external provider
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:252 failed to complete login, maybe already logged in, skipping
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 246, in test_oauth
+    await complete_auth_code_login(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/oauth_tools/oauth_helpers.py", line 182, in complete_auth_code_login
+    await expect(page).to_have_url(re.compile(rf"{expected_url}*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('https://10.64.140.45/testing-identity-platform-login-ui-operator/ui/login*')'
+Actual value: https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    - waiting for" https://penpot.local/api/auth/oauth/oidc/callback?code=ory_ac_j6UZxM_gfFSQy7BQiZzeCbMUpTfB2_f-NH5vvOw2aRI.4Ks5La2beQ9jz2aluOUN7Icl6nRLz-4DXq11-ZPZBf4&scope=profile+email+openid&state=eyJhbGciOiJBMjU2…" navigation to finish...
+    - navigated to "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+c…"
+    6 × unexpected value "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target"
+
+[31m[1mERROR   [0m integration.test_charm:test_charm.py:255 login failed, retry in 60 seconds
+Traceback (most recent call last):
+  File "/home/runner/work/penpot-operator/penpot-operator/tests/integration/test_charm.py", line 253, in test_oauth
+    await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 19082, in to_have_url
+    await self._impl_obj.to_have_url(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 147, in to_have_url
+    await self._expect_impl(
+  File "/home/runner/work/penpot-operator/penpot-operator/.tox/integration/lib/python3.12/site-packages/playwright/_impl/_assertions.py", line 85, in _expect_impl
+    raise AssertionError(
+AssertionError: Page URL expected to be 're.compile('^https://penpot\\.local/#/auth/register.*')'
+Actual value: https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target 
+Call log:
+  - Expect "to_have_url" with timeout 5000ms
+    9 × unexpected value "https://penpot.local/#/auth/login?error=unable-to-auth&hint=%28certificate_unknown%29+PKIX+path+building+failed%3A+sun.security.provider.certpath.SunCertPathBuilderException%3A+unable+to+find+valid+certification+path+to+requested+target"
+[32mINFO    [0m pytest_operator.plugin:plugin.py:951 Model status:
+
+Model    Controller                Cloud/Region        Version  SLA          Timestamp
+testing  github-pr-fd329-microk8s  microk8s/localhost  3.6.12   unsupported  15:41:42Z
+
+App                                  Version                Status  Scale  Charm                                Channel         Rev  Address         Exposed  Message
+hydra                                v2.3.0                 active      1  hydra                                latest/edge     339  10.152.183.131  no       
+identity-platform-login-ui-operator  0.21.2                 active      1  identity-platform-login-ui-operator  latest/edge     146  10.152.183.173  no       
+kratos                               v1.3.1                 active      1  kratos                               latest/edge     500  10.152.183.220  no       
+kratos-external-idp-integrator                              active      1  kratos-external-idp-integrator       latest/edge     245  10.152.183.247  no       Provider is ready
+minio                                res:oci-image@220b31a  active      1  minio                                ckf-1.9/stable  383  10.152.183.157  no       
+nginx-ingress-integrator             24.2.0                 active      1  nginx-ingress-integrator             latest/edge     109  10.152.183.134  no       Ingress IP(s): 127.0.0.1
+penpot                                                      active      2  penpot                                                 0  10.152.183.101  no       
+postgresql-k8s                       14.15                  active      1  postgresql-k8s                       14/stable       495  10.152.183.40   no       
+redis-k8s                            7.2.5                  active      1  redis-k8s                            latest/edge      42  10.152.183.75   no       
+s3-integrator                                               active      1  s3-integrator                        latest/stable   145  10.152.183.71   no       
+self-signed-certificates                                    active      1  self-signed-certificates             latest/stable   155  10.152.183.228  no       
+smtp-integrator                                             active      1  smtp-integrator                      latest/stable    93  10.152.183.66   no       
+traefik-admin                        v2.11.0                active      1  traefik-k8s                          latest/stable   176  10.64.140.44    no       
+traefik-public                       v2.11.0                active      1  traefik-k8s                          latest/stable   176  10.64.140.45    no       
+
+Unit                                    Workload  Agent  Address       Ports          Message
+hydra/0*                                active    idle   10.1.206.81                  
+identity-platform-login-ui-operator/0*  active    idle   10.1.206.82                  
+kratos-external-idp-integrator/0*       active    idle   10.1.206.84                  Provider is ready
+kratos/0*                               active    idle   10.1.206.92                  
+minio/0*                                active    idle   10.1.206.78   9000-9001/TCP  
+nginx-ingress-integrator/0*             active    idle   10.1.206.98                  Ingress IP(s): 127.0.0.1
+penpot/0                                active    idle   10.1.206.94                  
+penpot/1*                               active    idle   10.1.206.95                  
+postgresql-k8s/0*                       active    idle   10.1.206.91                  Primary
+redis-k8s/0*                            active    idle   10.1.206.100                 
+s3-integrator/0*                        active    idle   10.1.206.96                  
+self-signed-certificates/0*             active    idle   10.1.206.85                  
+smtp-integrator/0*                      active    idle   10.1.206.97                  
+traefik-admin/0*                        active    idle   10.1.206.87                  
+traefik-public/0*                       active    idle   10.1.206.90                  
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:957 Juju error logs:
+
+unit-kratos-0: 15:21:04 ERROR juju.worker.uniter pebble poll failed for container "kratos": failed to send pebble-ready event: terminated
+unit-identity-platform-login-ui-operator-0: 15:21:32 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-public-0: 15:21:32 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:21:32 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-e46b4b49-2df4-4eff-8b31-b64b5d28f5e4: 15:21:32 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.206.75:40900->10.152.183.64:17070: write: connection reset by peer
+unit-hydra-0: 15:21:32 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.206.81:53606->10.152.183.64:17070: write: connection reset by peer
+unit-postgresql-k8s-0: 15:21:33 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-self-signed-certificates-0: 15:21:34 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.206.85:40614->10.152.183.64:17070: write: connection reset by peer
+unit-kratos-0: 15:21:48 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:21:48 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-postgresql-k8s-0: 15:21:48 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-e46b4b49-2df4-4eff-8b31-b64b5d28f5e4: 15:21:48 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-public-0: 15:21:49 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:21:50 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-identity-platform-login-ui-operator-0: 15:21:52 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-hydra-0: 15:21:54 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-self-signed-certificates-0: 15:21:59 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-public-0: 15:22:03 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:22:03 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-e46b4b49-2df4-4eff-8b31-b64b5d28f5e4: 15:22:04 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-postgresql-k8s-0: 15:22:04 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:22:12 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:22:17 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-public-0: 15:22:17 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-e46b4b49-2df4-4eff-8b31-b64b5d28f5e4: 15:22:18 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-postgresql-k8s-0: 15:22:19 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:22:20 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:22:28 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-public-0: 15:22:38 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-e46b4b49-2df4-4eff-8b31-b64b5d28f5e4: 15:22:39 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:22:40 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-postgresql-k8s-0: 15:22:40 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:22:46 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:22:50 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-e46b4b49-2df4-4eff-8b31-b64b5d28f5e4: 15:24:04 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-public-0: 15:24:10 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:24:17 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:24:20 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-postgresql-k8s-0: 15:24:24 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:24:25 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+application-minio: 15:24:48 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-e46b4b49-2df4-4eff-8b31-b64b5d28f5e4: 15:27:40 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-redis-k8s-0: 15:28:18 ERROR unit.redis-k8s/0.juju-log redis-peers:25: Error when connecting to sentinel: Error 111 connecting to 0.0.0.0:26379. Connection refused.
+unit-redis-k8s-0: 15:28:18 ERROR unit.redis-k8s/0.juju-log redis-peers:25: Unit redis-k8s/0 doesn't agree on tracked master
+unit-redis-k8s-0: 15:28:18 ERROR unit.redis-k8s/0.juju-log redis-peers:25: Error when connecting to sentinel: Error 111 connecting to localhost:26379. Connection refused.
+unit-penpot-0: 15:28:33 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.206.94:59636->10.152.183.64:17070: write: connection reset by peer
+unit-penpot-1: 15:28:34 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-postgresql-k8s-0: 15:28:41 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-identity-platform-login-ui-operator-0: 15:28:41 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-hydra-0: 15:28:42 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-e46b4b49-2df4-4eff-8b31-b64b5d28f5e4: 15:28:44 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-nginx-ingress-integrator-0: 15:28:45 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:29:00 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-redis-k8s-0: 15:29:01 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-s3-integrator-0: 15:29:02 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.206.96:60794->10.152.183.64:17070: write: connection reset by peer
+unit-smtp-integrator-0: 15:29:04 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-nginx-ingress-integrator-0: 15:29:18 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-e46b4b49-2df4-4eff-8b31-b64b5d28f5e4: 15:29:19 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-penpot-0: 15:30:10 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+application-minio: 15:30:14 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-penpot-1: 15:30:20 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+model-e46b4b49-2df4-4eff-8b31-b64b5d28f5e4: 15:32:48 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-nginx-ingress-integrator-0: 15:32:54 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-0: 15:35:35 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-redis-k8s-0: 15:37:44 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-smtp-integrator-0: 15:37:54 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-kratos-external-idp-integrator-0: 15:38:00 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-s3-integrator-0: 15:38:02 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): write tcp 10.1.206.96:59504->10.152.183.64:17070: write: connection reset by peer
+unit-penpot-0: 15:39:00 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-self-signed-certificates-0: 15:39:15 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-public-0: 15:39:30 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-postgresql-k8s-0: 15:39:44 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-identity-platform-login-ui-operator-0: 15:40:01 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+unit-traefik-admin-0: 15:40:12 ERROR juju.worker.dependency "log-sender" manifold worker returned unexpected error: sending log message: websocket: close 1005 (no status): websocket: close sent
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:1039 Forgetting model main...
