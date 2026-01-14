@@ -8,7 +8,7 @@ juju run postgresql-k8s/leader create-backup
 
 Additional information can be found about backing up in the [PostgreSQL charm's documentation](https://canonical-charmed-postgresql.readthedocs-hosted.com/16/how-to/back-up-and-restore/).
 
-Then you can upgrade the Penpot charm:
+Then upgrade the Penpot charm to the latest revision:
 
 ```bash
 juju refresh penpot
