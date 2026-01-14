@@ -1,6 +1,6 @@
 # Upgrade
 
-Before updating the charm you need to back up the database using the PostgreSQL charm’s create-backup action.
+Before updating the charm you need to back up the database using the PostgreSQL charm’s `create-backup` action.
 
 ```bash
 juju run postgresql-k8s/leader create-backup
