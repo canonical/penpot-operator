@@ -1,0 +1,16 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"
+    arrange: integrate the penpot charm with an oauth provider.
+    act: login penpot using openid connect.
+    assert: login success.
+    ","615199","test_oauth[chromium]","tests.integration","2026-01-17","passed","2026-01-17","","test_charm","",""
+"
+    arrange: deploy the Penpot charm.
+    act: create a Penpot account using the 'create-profile' charm action.
+    assert: the account created can be used to log in to Penpot.
+    ","3432","test_create_profile","tests.integration","2026-01-17","passed","2026-01-17","","test_charm","",""
+"
+    arrange: set up the test Juju model.
+    act: build and deploy the Penpot charm with required services.
+    assert: the Penpot charm becomes active.
+    ","626350","test_build_and_deploy","tests.integration","2026-01-17","passed","2026-01-17","","test_charm","",""
