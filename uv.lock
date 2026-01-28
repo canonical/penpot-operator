@@ -1225,6 +1225,7 @@ integration = [
     { name = "boto3" },
     { name = "juju", specifier = "==3.5.2.1" },
     { name = "oauth-tools", git = "https://github.com/canonical/iam-bundle?rev=main" },
+    { name = "oauth-tools", git = "https://github.com/canonical/iam-bundle?rev=6d1fc10e6a489d693e33a6ebc89d3c80c1c35aa9" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-operator" },

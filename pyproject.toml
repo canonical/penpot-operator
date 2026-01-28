@@ -55,6 +55,7 @@ static = [
 ]
 integration = [
   "allure-pytest>=2.8.18",
+  "oauth-tools @ git+https://github.com/canonical/iam-bundle@6d1fc10e6a489d693e33a6ebc89d3c80c1c35aa9#egg=oauth_tools",
   "allure-pytest-collection-report @ git+https://github.com/canonical/data-platform-workflows@v24.0.0#subdirectory=python/pytest_plugins/allure_pytest_collection_report",
   "boto3",
   "juju==3.5.2.1",
