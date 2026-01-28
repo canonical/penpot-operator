@@ -16,7 +16,7 @@ The Penpot Operator is an open-source project that welcomes community contributi
 |                                                                                                                                                                             |                                                                                                                                                |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
 | [Tutorials](tutorial/getting-started.md)</br>  Get started - a hands-on introduction to using the charm for new users </br> | [How-to guides](how-to/configure-s3.md) </br> Step-by-step guides covering key operations and common tasks |
-| [Reference](reference/actions.md) </br> Technical information - specifications, APIs, architecture                                             | [Explanation](explanation/charm-architecture.md) </br> Concepts - discussion and clarification of key topics      |
+| [Reference](reference/actions.md) </br> Technical information - specifications, APIs, architecture                                             | [Explanation]() </br> Concepts - discussion and clarification of key topics      |
 
 ## Contributing to this documentation
 
@@ -46,8 +46,8 @@ Thinking about using the Penpot Operator for your next project? [Get in touch](h
   1. [Integrate with COS](how-to/integrate-with-cos.md)
   1. [Manage Penpot users](how-to/manage-users.md)
   1. [Contribute](how-to/contribute.md)
+  1. [Upgrade](how-to/upgrade.md)
 1. [Reference](reference)
   1. [Actions](reference/actions.md)
+  1. [Charm architecture](reference/charm-architecture.md)
   1. [Configurations](reference/configurations.md)
-1. [Explanation](explanation)
-  1. [Charm architecture](explanation/charm-architecture.md)
