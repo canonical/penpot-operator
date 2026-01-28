@@ -791,7 +791,7 @@ wheels = [
 
 [[package]]
 name = "jsonschema"
-version = "4.25.1"
+version = "4.26.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -799,9 +799,9 @@ dependencies = [
     { name = "referencing" },
     { name = "rpds-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/74/69/f7185de793a29082a9f3c7728268ffb31cb5095131a9c139a74078e27336/jsonschema-4.25.1.tar.gz", hash = "sha256:e4a9655ce0da0c0b67a085847e00a3a51449e1157f4f75e9fb5aa545e122eb85", size = 357342, upload-time = "2025-08-18T17:03:50.038Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b3/fc/e067678238fa451312d4c62bf6e6cf5ec56375422aee02f9cb5f909b3047/jsonschema-4.26.0.tar.gz", hash = "sha256:0c26707e2efad8aa1bfc5b7ce170f3fccc2e4918ff85989ba9ffa9facb2be326", size = 366583, upload-time = "2026-01-07T13:41:07.246Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bf/9c/8c95d856233c1f82500c2450b8c68576b4cf1c871db3afac5c34ff84e6fd/jsonschema-4.25.1-py3-none-any.whl", hash = "sha256:3fba0169e345c7175110351d456342c364814cfcf3b964ba4587f22915230a63", size = 90040, upload-time = "2025-08-18T17:03:48.373Z" },
+    { url = "https://files.pythonhosted.org/packages/69/90/f63fb5873511e014207a475e2bb4e8b2e570d655b00ac19a9a0ca0a385ee/jsonschema-4.26.0-py3-none-any.whl", hash = "sha256:d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce", size = 90630, upload-time = "2026-01-07T13:41:05.306Z" },
 ]
 
 [[package]]
@@ -1079,29 +1079,30 @@ wheels = [
 
 [[package]]
 name = "ops"
-version = "3.3.1"
+version = "3.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "pyyaml" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3f/cd/bbd4263b53bb19e87f995b05ef93f565fa4edcb90bacacec615d47c56568/ops-3.3.1.tar.gz", hash = "sha256:8dec621c32a31365d040eaf05960c0e65a2ffbcdbfa91107e03b1ee9d4d26034", size = 541783, upload-time = "2025-10-16T01:46:25.431Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/d7/86b0b4db046221db85d8c8bc4c1df22aa3915b17081530f6c25ede7243e7/ops-3.5.1.tar.gz", hash = "sha256:376ef51d35d45b376795196851550e209565e922e58af8ac491cf23bc8b46498", size = 577928, upload-time = "2026-01-28T03:10:52.817Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fd/97/c1e5447c3c0d86cab16cad802e1bb58613b2396b7184797af2e4484c2014/ops-3.3.1-py3-none-any.whl", hash = "sha256:38229bb1cc6d9c2aa4dff4495f3e33af928dbd1070e8c5d8b697dfb32dcd89a8", size = 191338, upload-time = "2025-10-16T01:46:20.038Z" },
+    { url = "https://files.pythonhosted.org/packages/59/77/e9ba7bd69917bf481dd8f3162ec37b028021d605f8e17a1fd05a5ec103e8/ops-3.5.1-py3-none-any.whl", hash = "sha256:890dd7bf33d1381afeed0e484d02c7bb13ad3945dcc7b723e8d73e4bba0ff94c", size = 211691, upload-time = "2026-01-28T03:10:48.778Z" },
 ]
 
 [[package]]
 name = "ops-scenario"
-version = "8.3.1"
+version = "8.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ops" },
     { name = "pyyaml" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/92/94/cf17208427d43f9136b0fb61ca75ac937b88ac66cb0a3fe126bbffbde677/ops_scenario-8.3.1.tar.gz", hash = "sha256:553cd1ee30f161edd110e217a01505a9778baf778c039d810e0cfbd6101b855b", size = 110260, upload-time = "2025-10-16T01:46:27.097Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bc/de/b6de767862bcdfce2e68eeedc578dd0b1332eb0a73af0da6ee9244c5b514/ops_scenario-8.5.1.tar.gz", hash = "sha256:9b9a3cd67b5704f58d17952ca9327d11391a3b3ce7daea26d040458165e1117f", size = 112317, upload-time = "2026-01-28T03:10:54.486Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/dd/da2bcb1a164c4c9c8690c689305b15c3f988166db44add5084c4dc04ad04/ops_scenario-8.3.1-py3-none-any.whl", hash = "sha256:bf8404387cd8c22cd0b45c996ca7c12e84b6c603edc8b056e85234fc3d270941", size = 64403, upload-time = "2025-10-16T01:46:22.082Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/c3/5c84236fa8054ebad8b371582cecadfe9a03e77625176db37501a529f8d2/ops_scenario-8.5.1-py3-none-any.whl", hash = "sha256:909be01c223726019659b5454b4792c38b1d6ed5e8835d1d71794d6202b0f0ec", size = 64069, upload-time = "2026-01-28T03:10:50.077Z" },
 ]
 
 [[package]]
@@ -1206,9 +1207,9 @@ unit = [
 requires-dist = [
     { name = "cosl", specifier = "==1.4.0" },
     { name = "dnspython", specifier = "==2.8.0" },
-    { name = "jsonschema", specifier = "==4.25.1" },
-    { name = "ops", specifier = "==3.3.1" },
-    { name = "pydantic", specifier = "==2.12.4" },
+    { name = "jsonschema", specifier = "==4.26.0" },
+    { name = "ops", specifier = "==3.5.1" },
+    { name = "pydantic", specifier = "==2.12.5" },
     { name = "requests", specifier = "==2.32.5" },
 ]
 
@@ -1389,7 +1390,7 @@ wheels = [
 
 [[package]]
 name = "pydantic"
-version = "2.12.4"
+version = "2.12.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-types" },
@@ -1397,9 +1398,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/96/ad/a17bc283d7d81837c061c49e3eaa27a45991759a1b7eae1031921c6bd924/pydantic-2.12.4.tar.gz", hash = "sha256:0f8cb9555000a4b5b617f66bfd2566264c4984b27589d3b845685983e8ea85ac", size = 821038, upload-time = "2025-11-05T10:50:08.59Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/44/36f1a6e523abc58ae5f928898e4aca2e0ea509b5aa6f6f392a5d882be928/pydantic-2.12.5.tar.gz", hash = "sha256:4d351024c75c0f085a9febbb665ce8c0c6ec5d30e903bdb6394b7ede26aebb49", size = 821591, upload-time = "2025-11-26T15:11:46.471Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/82/2f/e68750da9b04856e2a7ec56fc6f034a5a79775e9b9a81882252789873798/pydantic-2.12.4-py3-none-any.whl", hash = "sha256:92d3d202a745d46f9be6df459ac5a064fdaa3c1c4cd8adcfa332ccf3c05f871e", size = 463400, upload-time = "2025-11-05T10:50:06.732Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/87/b70ad306ebb6f9b585f114d0ac2137d792b48be34d732d60e597c2f8465a/pydantic-2.12.5-py3-none-any.whl", hash = "sha256:e561593fccf61e8a20fc46dfc2dfe075b8be7d0188df33f221ad1f0139180f9d", size = 463580, upload-time = "2025-11-26T15:11:44.605Z" },
 ]
 
 [[package]]

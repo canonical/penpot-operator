@@ -11,7 +11,6 @@ jobs:
     secrets: inherit
     with:
       charmcraft-channel: latest/edge
-      self-hosted-runner: false
       vale-style-check: false
       with-uv: true
   integration-tests:
