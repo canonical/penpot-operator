@@ -109,6 +109,11 @@ description = "Run static analysis tests"
 commands = [ [ "bandit", "-c", "{toxinidir}/pyproject.toml", "-r", "{[vars]src_path}", "{[vars]tst_path}" ] ]
 dependency_groups = [ "static" ]
 
+[env.playwright-install]
+description = "Run static analysis tests"
+commands = [ [ "playwright", "install", "--with-deps", "chromium" ] ]
+dependency_groups = [ "integration" ]
+
 [env.integration]
 description = "Run integration tests"
 commands = [
