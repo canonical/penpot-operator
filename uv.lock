@@ -1046,7 +1046,7 @@ wheels = [
 [[package]]
 name = "oauth-tools"
 version = "0.1.2"
-source = { git = "https://github.com/canonical/iam-bundle?rev=main#6d1fc10e6a489d693e33a6ebc89d3c80c1c35aa9" }
+source = { git = "https://github.com/canonical/iam-bundle?rev=6d1fc10e6a489d693e33a6ebc89d3c80c1c35aa9#6d1fc10e6a489d693e33a6ebc89d3c80c1c35aa9" }
 dependencies = [
     { name = "httpx" },
     { name = "lightkube" },
@@ -1235,7 +1235,7 @@ lint = [
     { name = "boto3" },
     { name = "codespell" },
     { name = "mypy" },
-    { name = "oauth-tools", git = "https://github.com/canonical/iam-bundle?rev=main" },
+    { name = "oauth-tools", git = "https://github.com/canonical/iam-bundle?rev=6d1fc10e6a489d693e33a6ebc89d3c80c1c35aa9" },
     { name = "ops-scenario" },
     { name = "pep8-naming" },
     { name = "pytest" },
