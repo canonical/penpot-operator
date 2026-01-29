@@ -11,8 +11,8 @@ jobs:
     secrets: inherit
     with:
       charmcraft-channel: latest/edge
-      self-hosted-runner: false
       vale-style-check: false
+      with-uv: true
   integration-tests:
     uses: 
       canonical/operator-workflows/.github/workflows/integration_test.yaml@main
@@ -23,6 +23,7 @@ jobs:
       juju-channel: 3/stable
       microk8s-addons: "dns ingress rbac storage metallb:10.64.140.43-10.64.140.49"
       pre-run-script: tests/integration/prepare.sh
+      with-uv: true
   allure-report:
     if: ${{ !cancelled() && github.event_name == 'schedule' }}
     needs:
