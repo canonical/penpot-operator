@@ -164,6 +164,7 @@ the MicroK8s registry:
 
 ```bash
 cd <project_dir>
+cd ./penpot_rock
 rockcraft pack
 skopeo --insecure-policy copy --dest-tls-verify=false oci-archive:<rock-name>.rock docker://localhost:32000/<app-name>:latest
 ```
