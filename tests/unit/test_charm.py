@@ -166,6 +166,7 @@ def test_smtp_penpot_option(context: testing.Context[PenpotCharm]):
     act: retrieve the penpot options with different smtp setup.
     assert: ensure the penpot options matches the expectations.
     """
+
     def _backend_options(state: testing.State) -> list[str]:
         with context(context.on.start(), state) as mgr:
             mgr.run()
