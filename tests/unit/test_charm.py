@@ -167,14 +167,12 @@ def test_smtp_penpot_option(context: testing.Context[PenpotCharm]):
     assert: ensure the penpot options matches the expectations.
     """
 
-    def _backend_options(state: testing.State) -> list[str]:
-        with context(context.on.start(), state) as mgr:
-            mgr.run()
-            charm = mgr.charm
-        return charm._get_penpot_backend_options()
-
     base_state = testing.State(containers={penpot_container()})
-    assert _backend_options(base_state) == [
+    with context(context.on.start(), base_state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+        flags = charm._get_penpot_backend_options()
+    assert flags == [
         "disable-log-emails",
         "disable-onboarding-questions",
         "disable-registration",
@@ -188,7 +186,11 @@ def test_smtp_penpot_option(context: testing.Context[PenpotCharm]):
         relations={smtp_relation(use_password=True)},
         containers={penpot_container()},
     )
-    assert _backend_options(smtp_state) == [
+    with context(context.on.start(), smtp_state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+        flags = charm._get_penpot_backend_options()
+    assert flags == [
         "disable-log-emails",
         "disable-onboarding-questions",
         "disable-registration",
