@@ -31,7 +31,7 @@ lint = [
   "codespell",
   "mypy",
   "oauth-tools @ git+https://github.com/canonical/iam-bundle@6d1fc10e6a489d693e33a6ebc89d3c80c1c35aa9#egg=oauth_tools",
-  "ops-scenario",
+  "ops[testing]==3.5.2",
   "pep8-naming",
   "pytest",
   "pytest-asyncio",
@@ -43,7 +43,7 @@ lint = [
 ]
 unit = [
   "coverage[toml]",
-  "ops-scenario",
+  "ops[testing]==3.5.2",
   "pytest",
 ]
 coverage-report = [

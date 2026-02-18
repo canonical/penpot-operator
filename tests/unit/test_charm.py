@@ -1,51 +1,75 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """Unit tests."""
 
-# pylint: disable=protected-access
+import dns.exception
+import pytest
+from ops import testing
+from ops.testing import Exec, Secret
+
+from src.charm import PenpotCharm
+from tests.unit.conftest import (
+    ingress_relation,
+    peer_relation,
+    penpot_container,
+    postgresql_relation,
+    redis_relation,
+    s3_relation,
+    smtp_relation,
+)
 
 
-def test_postgresql_config(harness):
+def test_postgresql_config(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing harness and set up the postgresql integration.
+    arrange: initialize the testing context with the postgresql integration.
     act: retrieve the postgresql configuration for penpot.
     assert: ensure the postgresql configuration for penpot matches the expectations.
     """
-    harness.begin_with_initial_hooks()
-    assert harness.charm._get_postgresql_credentials() is None
-    harness.setup_postgresql_integration()
-    assert harness.charm._get_postgresql_credentials() == {
+    state = testing.State(
+        relations={postgresql_relation()},
+        containers={penpot_container()},
+    )
+    with context(context.on.start(), state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+    assert charm._get_postgresql_credentials() == {
         "PENPOT_DATABASE_PASSWORD": "postgresql-password",
         "PENPOT_DATABASE_URI": "postgresql://postgresql-endpoint:5432/penpot",
         "PENPOT_DATABASE_USERNAME": "postgresql-username",
     }
 
 
-def test_redis_config(harness):
+def test_redis_config(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing harness and set up the redis integration.
+    arrange: initialize the testing context with the redis integration.
     act: retrieve the redis configuration for penpot.
     assert: ensure the redis configuration for penpot matches the expectations.
     """
-    harness.begin_with_initial_hooks()
-    assert harness.charm._get_redis_credentials() is None
-    harness.setup_redis_integration()
-    assert harness.charm._get_redis_credentials() == {
-        "PENPOT_REDIS_URI": "redis://redis-hostname:6379"
-    }
+    state = testing.State(
+        relations={redis_relation()},
+        containers={penpot_container()},
+    )
+    with context(context.on.start(), state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+    assert charm._get_redis_credentials() == {"PENPOT_REDIS_URI": "redis://redis-hostname:6379"}
 
 
-def test_s3_config(harness):
+def test_s3_config(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing harness and set up the s3 integration.
+    arrange: initialize the testing context with the s3 integration.
     act: retrieve the s3 configuration for penpot.
     assert: ensure the s3 configuration for penpot matches the expectations.
     """
-    harness.begin_with_initial_hooks()
-    assert harness.charm._get_s3_credentials() is None
-    harness.setup_s3_integration()
-    assert harness.charm._get_s3_credentials() == {
+    state = testing.State(
+        relations={s3_relation()},
+        containers={penpot_container()},
+    )
+    with context(context.on.start(), state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+    assert charm._get_s3_credentials() == {
         "AWS_ACCESS_KEY_ID": "s3-access-key",
         "AWS_SECRET_ACCESS_KEY": "s3-secret-key",
         "PENPOT_ASSETS_STORAGE_BACKEND": "assets-s3",
@@ -55,16 +79,20 @@ def test_s3_config(harness):
     }
 
 
-def test_smtp_config(harness):
+def test_smtp_config(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing harness and set up the smtp integration.
+    arrange: initialize the testing context with the smtp integration.
     act: retrieve the smtp configuration for penpot.
     assert: ensure the smtp configuration for penpot matches the expectations.
     """
-    harness.begin_with_initial_hooks()
-    assert harness.charm._get_smtp_credentials() == {}
-    harness.setup_smtp_integration()
-    assert harness.charm._get_smtp_credentials() == {
+    state = testing.State(
+        relations={smtp_relation()},
+        containers={penpot_container()},
+    )
+    with context(context.on.start(), state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+    assert charm._get_smtp_credentials() == {
         "PENPOT_SMTP_DEFAULT_FROM": "no-reply@example.com",
         "PENPOT_SMTP_DEFAULT_REPLY_TO": "no-reply@example.com",
         "PENPOT_SMTP_HOST": "smtp-host",
@@ -74,15 +102,22 @@ def test_smtp_config(harness):
     }
 
 
-def test_smtp_config_with_password(harness):
+def test_smtp_config_with_password(context: testing.Context[PenpotCharm]):
     """
     arrange: set up the smtp integration with password authentication.
     act: retrieve the smtp configuration for penpot.
     assert: ensure the smtp configuration for penpot matches the expectations.
     """
-    harness.begin_with_initial_hooks()
-    harness.setup_smtp_integration(use_password=True)
-    assert harness.charm._get_smtp_credentials() == {
+    smtp_secret = Secret(tracked_content={"password": "smtp-password"}, id="smtp-secret")
+    state = testing.State(
+        relations={smtp_relation(use_password=True, password_id=smtp_secret.id)},
+        secrets={smtp_secret},
+        containers={penpot_container()},
+    )
+    with context(context.on.start(), state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+    assert charm._get_smtp_credentials() == {
         "PENPOT_SMTP_DEFAULT_FROM": "smtp-user@example.com",
         "PENPOT_SMTP_DEFAULT_REPLY_TO": "smtp-user@example.com",
         "PENPOT_SMTP_HOST": "smtp-host",
@@ -94,16 +129,23 @@ def test_smtp_config_with_password(harness):
     }
 
 
-def test_smtp_config_override_from_address(harness):
+def test_smtp_config_override_from_address(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing harness and set up the smtp integration.
+    arrange: initialize the testing context and set up the smtp integration.
     act: set smtp-from-address configuration and retrieve the smtp configuration for penpot.
     assert: ensure the smtp configuration for penpot matches the expectations.
     """
-    harness.begin_with_initial_hooks()
-    harness.update_config({"smtp-from-address": "test@test.com"})
-    harness.setup_smtp_integration(use_password=True)
-    assert harness.charm._get_smtp_credentials() == {
+    smtp_secret = Secret(tracked_content={"password": "smtp-password"}, id="smtp-secret")
+    state = testing.State(
+        relations={smtp_relation(use_password=True, password_id=smtp_secret.id)},
+        secrets={smtp_secret},
+        containers={penpot_container()},
+        config={"smtp-from-address": "test@test.com"},
+    )
+    with context(context.on.start(), state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+    assert charm._get_smtp_credentials() == {
         "PENPOT_SMTP_DEFAULT_FROM": "test@test.com",
         "PENPOT_SMTP_DEFAULT_REPLY_TO": "test@test.com",
         "PENPOT_SMTP_HOST": "smtp-host",
@@ -115,14 +157,20 @@ def test_smtp_config_override_from_address(harness):
     }
 
 
-def test_smtp_penpot_option(harness):
+def test_smtp_penpot_option(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing harness.
+    arrange: initialize the testing context.
     act: retrieve the penpot options with different smtp setup.
     assert: ensure the penpot options matches the expectations.
     """
-    harness.begin_with_initial_hooks()
-    assert harness.charm._get_penpot_backend_options() == [
+    def _backend_options(state: testing.State) -> list[str]:
+        with context(context.on.start(), state) as mgr:
+            mgr.run()
+            charm = mgr.charm
+        return charm._get_penpot_backend_options()
+
+    base_state = testing.State(containers={penpot_container()})
+    assert _backend_options(base_state) == [
         "disable-log-emails",
         "disable-onboarding-questions",
         "disable-registration",
@@ -131,8 +179,12 @@ def test_smtp_penpot_option(harness):
         "enable-login-with-password",
         "enable-prepl-server",
     ]
-    harness.setup_smtp_integration(use_password=True)
-    assert harness.charm._get_penpot_backend_options() == [
+
+    smtp_state = testing.State(
+        relations={smtp_relation(use_password=True)},
+        containers={penpot_container()},
+    )
+    assert _backend_options(smtp_state) == [
         "disable-log-emails",
         "disable-onboarding-questions",
         "disable-registration",
@@ -143,38 +195,54 @@ def test_smtp_penpot_option(harness):
     ]
 
 
-def test_public_uri(harness):
+def test_public_uri(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing harness and set up the ingress integration.
+    arrange: initialize the testing context with the ingress integration.
     act: retrieve the public URI configuration for penpot.
     assert: ensure the public URI for penpot matches the expectations.
     """
-    harness.begin_with_initial_hooks()
-    assert harness.charm._get_public_uri() is None
-    harness.setup_ingress_integration()
-    assert harness.charm._get_public_uri() == "https://penpot.local/"
+    state = testing.State(
+        relations={ingress_relation()},
+        containers={penpot_container()},
+    )
+    with context(context.on.start(), state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+    assert charm._get_public_uri() == "https://penpot.local/"
 
 
-def test_penpot_pebble_layer(harness):
+def test_penpot_pebble_layer(
+    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
+):
     """
-    arrange: initialize the testing harness and set up all required integration.
+    arrange: initialize the testing context and set up all required integrations.
     act: retrieve the pebble layer for penpot.
     assert: ensure the pebble layer for penpot matches the expectations.
     """
-    harness.set_leader()
-    harness.begin_with_initial_hooks()
-    assert not harness.charm._check_ready()
-    harness.setup_postgresql_integration()
-    assert not harness.charm._check_ready()
-    harness.setup_redis_integration()
-    assert not harness.charm._check_ready()
-    harness.setup_s3_integration()
-    assert not harness.charm._check_ready()
-    harness.setup_ingress_integration()
-    assert harness.charm._check_ready()
-    harness.setup_smtp_integration()
-    assert harness.charm._check_ready()
-    plan = harness.charm._gen_pebble_plan()
+    peer_secret = Secret(tracked_content={"penpot-secret-key": "secret"}, id="peer-secret")
+    state = testing.State(
+        relations={
+            peer_relation(secret_id=peer_secret.id, peers=(1, 2)),
+            postgresql_relation(),
+            redis_relation(),
+            s3_relation(),
+            smtp_relation(),
+            ingress_relation(),
+        },
+        secrets={peer_secret},
+        containers={penpot_container()},
+        leader=True,
+        model=testing.Model(name="test"),
+    )
+
+    def _fail_dns(*_, **__):  # pragma: no cover - helper for deterministic resolver
+        raise dns.exception.DNSException("dns disabled for tests")
+
+    monkeypatch.setattr("dns.resolver.resolve", _fail_dns)
+    with context(context.on.start(), state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+    plan = charm._gen_pebble_plan()
     del plan["services"]["backend"]["environment"]["PENPOT_SECRET_KEY"]
     del plan["services"]["frontend"]["environment"]["PENPOT_INTERNAL_RESOLVER"]
     assert plan == {
@@ -259,65 +327,79 @@ def test_penpot_pebble_layer(harness):
     }
 
 
-def test_penpot_exporter_unit(harness):
+def test_penpot_exporter_unit(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing harness and set up some penpot units.
+    arrange: initialize the testing context and set up some penpot units.
     act: retrieve the penpot exporter unit.
     assert: penpot exporter unit is the unit with the least unit number.
     """
-    relation_id = harness.add_relation("penpot_peer", "penpot")
-    harness.add_relation_unit(relation_id, "penpot/1")
-    harness.add_relation_unit(relation_id, "penpot/2")
-    harness.begin()
-    assert harness.charm._get_penpot_exporter_unit() == "penpot/0"
+    state = testing.State(
+        relations={peer_relation(secret_id="peer-secret", peers=(1, 2))},
+        containers={penpot_container()},
+    )
+    with context(context.on.start(), state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+    assert charm._get_penpot_exporter_unit() == "penpot/0"
 
 
-def test_penpot_create_profile_action(harness):
+def test_penpot_create_profile_action(
+    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
+):
     """
-    arrange: initialize the testing harness and set up all required integration.
+    arrange: initialize the testing context and set up all required integrations.
     act: run create-profile charm action.
     assert: ensure correct commands are executed.
     """
-    harness.set_leader()
-    harness.begin_with_initial_hooks()
-    harness.setup_integration()
-    harness.set_can_connect("penpot", True)
+    command = [
+        "python3",
+        "manage.py",
+        "create-profile",
+        "--email",
+        "test@test.com",
+        "--fullname",
+        "test",
+    ]
+    state = testing.State(
+        containers={penpot_container(include_backend=True, execs={Exec(command)})}
+    )
 
-    def test_handler(args):
-        assert args.command == [
-            "python3",
-            "manage.py",
-            "create-profile",
-            "--email",
-            "test@test.com",
-            "--fullname",
-            "test",
-        ]
-        assert args.stdin
+    monkeypatch.setattr("secrets.token_urlsafe", lambda _: "test-password")
+    event = context.on.action(
+        "create-profile", params={"email": "test@test.com", "fullname": "test"}
+    )
+    with context(event, state) as mgr:
+        mgr.run()
+    assert context.action_results == {
+        "email": "test@test.com",
+        "fullname": "test",
+        "password": "test-password",
+    }
+    exec_args = context.exec_history["penpot"][0]
+    assert exec_args.command == command
+    assert exec_args.stdin == "test-password\n"
 
-    harness.handle_exec("penpot", [], handler=test_handler)
-    harness.run_action("create-profile", {"email": "test@test.com", "fullname": "test"})
 
-
-def test_penpot_delete_profile_action(harness):
+def test_penpot_delete_profile_action(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing harness and set up all required integration.
+    arrange: initialize the testing context and set up all required integrations.
     act: run delete-profile charm action.
     assert: ensure correct commands are executed.
     """
-    harness.set_leader()
-    harness.begin_with_initial_hooks()
-    harness.setup_integration()
-    harness.set_can_connect("penpot", True)
+    command = [
+        "python3",
+        "manage.py",
+        "delete-profile",
+        "--email",
+        "test@test.com",
+    ]
+    state = testing.State(
+        containers={penpot_container(include_backend=True, execs={Exec(command)})}
+    )
 
-    def test_handler(args):
-        assert args.command == [
-            "python3",
-            "manage.py",
-            "delete-profile",
-            "--email",
-            "test@test.com",
-        ]
-
-    harness.handle_exec("penpot", [], handler=test_handler)
-    harness.run_action("delete-profile", {"email": "test@test.com"})
+    event = context.on.action("delete-profile", params={"email": "test@test.com"})
+    with context(event, state) as mgr:
+        mgr.run()
+    assert context.action_results == {"email": "test@test.com"}
+    exec_args = context.exec_history["penpot"][0]
+    assert exec_args.command == command
