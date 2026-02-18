@@ -10,6 +10,9 @@ from ops.testing import Exec, Secret
 
 from src.charm import PenpotCharm
 from tests.unit.conftest import (
+    PEER_SECRET_ID,
+    SMTP_SECRET_ID,
+    SMTP_TEST_PASSWORD,
     ingress_relation,
     peer_relation,
     penpot_container,
@@ -108,7 +111,7 @@ def test_smtp_config_with_password(context: testing.Context[PenpotCharm]):
     act: retrieve the smtp configuration for penpot.
     assert: ensure the smtp configuration for penpot matches the expectations.
     """
-    smtp_secret = Secret(tracked_content={"password": "smtp-password"}, id="smtp-secret")
+    smtp_secret = Secret(tracked_content={"password": SMTP_TEST_PASSWORD}, id=SMTP_SECRET_ID)
     state = testing.State(
         relations={smtp_relation(use_password=True, password_id=smtp_secret.id)},
         secrets={smtp_secret},
@@ -135,7 +138,7 @@ def test_smtp_config_override_from_address(context: testing.Context[PenpotCharm]
     act: set smtp-from-address configuration and retrieve the smtp configuration for penpot.
     assert: ensure the smtp configuration for penpot matches the expectations.
     """
-    smtp_secret = Secret(tracked_content={"password": "smtp-password"}, id="smtp-secret")
+    smtp_secret = Secret(tracked_content={"password": SMTP_TEST_PASSWORD}, id=SMTP_SECRET_ID)
     state = testing.State(
         relations={smtp_relation(use_password=True, password_id=smtp_secret.id)},
         secrets={smtp_secret},
@@ -219,7 +222,7 @@ def test_penpot_pebble_layer(
     act: retrieve the pebble layer for penpot.
     assert: ensure the pebble layer for penpot matches the expectations.
     """
-    peer_secret = Secret(tracked_content={"penpot-secret-key": "secret"}, id="peer-secret")
+    peer_secret = Secret(tracked_content={"penpot-secret-key": "secret"}, id=PEER_SECRET_ID)
     state = testing.State(
         relations={
             peer_relation(secret_id=peer_secret.id, peers=(1, 2)),
@@ -334,7 +337,7 @@ def test_penpot_exporter_unit(context: testing.Context[PenpotCharm]):
     assert: penpot exporter unit is the unit with the least unit number.
     """
     state = testing.State(
-        relations={peer_relation(secret_id="peer-secret", peers=(1, 2))},
+        relations={peer_relation(secret_id=PEER_SECRET_ID, peers=(1, 2))},
         containers={penpot_container()},
     )
     with context(context.on.start(), state) as mgr:

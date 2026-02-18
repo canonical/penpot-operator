@@ -14,6 +14,11 @@ from scenario.state import Container as ScenarioContainer
 
 from src.charm import PenpotCharm
 
+SMTP_TEST_PASSWORD = "smtp-password"
+SMTP_TEST_USER = "smtp-user"
+SMTP_SECRET_ID = "smtp-secret"
+PEER_SECRET_ID = "peer-secret"
+
 
 @pytest.fixture(name="context")
 def context_fixture() -> testing.Context[PenpotCharm]:
@@ -103,11 +108,11 @@ def smtp_relation(*, use_password: bool = False, password_id: str | None = None)
         "transport_security": "none",
     }
     if use_password:
-        app_data["user"] = "smtp-user"
+        app_data["user"] = SMTP_TEST_USER
         if password_id:
             app_data["password_id"] = password_id
         else:
-            app_data["password"] = "smtp-password"
+            app_data["password"] = SMTP_TEST_PASSWORD
     return Relation(endpoint="smtp", remote_app_name="smtp-integrator", remote_app_data=app_data)
 
 
