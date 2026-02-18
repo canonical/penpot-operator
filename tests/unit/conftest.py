@@ -14,10 +14,10 @@ from scenario.state import Container as ScenarioContainer
 
 from src.charm import PenpotCharm
 
-SMTP_TEST_PASSWORD = "smtp-password"
+SMTP_TEST_PASSWORD = "smtp-password"  # nosec B105 - fixture data
 SMTP_TEST_USER = "smtp-user"
-SMTP_SECRET_ID = "smtp-secret"
-PEER_SECRET_ID = "peer-secret"
+SMTP_SECRET_ID = "smtp-secret"  # nosec B105 - fixture data
+PEER_SECRET_ID = "peer-secret"  # nosec B105 - fixture data
 
 
 @pytest.fixture(name="context")
