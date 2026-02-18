@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Unit test fixtures."""
+"""Unit tests fixtures."""
 
 import json
 from collections.abc import Iterable
