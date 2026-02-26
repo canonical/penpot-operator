@@ -3,6 +3,8 @@
 
 """Fixtures for charm tests."""
 
+import os
+
 
 def pytest_addoption(parser):
     """Parse additional pytest options.
@@ -14,3 +16,14 @@ def pytest_addoption(parser):
     parser.addoption("--kube-config", action="store")
     parser.addoption("--penpot-image", action="store")
     parser.addoption("--ingress-address", action="store")
+
+
+def pytest_configure(config):
+    """Configure environment for shared test fixtures.
+
+    Args:
+        config: Pytest config object.
+    """
+    kube_config = config.getoption("--kube-config")
+    if kube_config and not os.environ.get("TESTING_KUBECONFIG"):
+        os.environ["TESTING_KUBECONFIG"] = kube_config

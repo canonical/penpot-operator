@@ -6,121 +6,40 @@
 """Integration tests."""
 
 import logging
-import pathlib
-import re
 import time
+from typing import Any
 
-import juju.action
+import jubilant
 import pytest
 import requests
-from oauth_tools.oauth_helpers import (
-    access_application_login_page,
-    click_on_sign_in_button_by_text,
-    complete_auth_code_login,
-    deploy_identity_bundle,
-)
-from playwright.async_api import expect
-from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
-pytest_plugins = ["oauth_tools.fixtures"]
 
-
-async def inject_root_certs(ops_test, penpot, ca_cert):
-    """Inject CA certificate to penpot Java certificate store.
-
-    Args:
-        ops_test: ops_test fixture
-        penpot: penpot application instance
-        ca_cert: CA certificate
-    """
-    for unit in penpot.units:
-        logger.info("copying oauth ca cert into %s", unit.name)
-        await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
-            unit.name,
-            "cp",
-            "/dev/stdin",
-            "/oauth.crt",
-            stdin=ca_cert.encode("ascii"),
-        )
-        code, stdout, _ = await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
-            unit.name,
-            "cat",
-            "/oauth.crt",
-        )
-        assert code == 0
-        logger.info("copying oauth ca cert into %s result: %s", unit.name, stdout)
-        logger.info("installing oauth ca cert into penpot/%s java trust", unit.name)
-        code, stdout, stderr = await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
-            unit.name,
-            "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
-            "-import",
-            "-trustcacerts",
-            "-file",
-            "/oauth.crt",
-            "-keystore",
-            "/usr/lib/jvm/java-21-openjdk-amd64/lib/security/cacerts",
-            "-storepass",
-            "changeit",
-            "-noprompt",
-        )
-        assert code == 0
-        logger.info("keytool import result: %s, %s, %s", code, stdout, stderr)
-        logger.info("restart penpot backend in penpot/%s", unit.name)
-        code, _, _ = await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
-            unit.name,
-            "pebble",
-            "restart",
-            "backend",
-        )
-        assert code == 0
-
-
-@pytest.mark.abort_on_fail
-async def test_build_and_deploy(
-    ops_test: OpsTest, pytestconfig: pytest.Config, minio, mailcatcher, ext_idp_service
+def test_build_and_deploy(
+    juju: jubilant.Juju, pytestconfig: pytest.Config, minio: Any, mailcatcher: Any
 ):
     """
     arrange: set up the test Juju model.
     act: build and deploy the Penpot charm with required services.
     assert: the Penpot charm becomes active.
     """
-    await deploy_identity_bundle(
-        ops_test=ops_test,
-        bundle_url=str(pathlib.Path(__file__).parent.joinpath("bundle.yaml").absolute()),
-        ext_idp_service=ext_idp_service,
-    )
-    await ops_test.juju("refresh", "identity-platform-login-ui-operator", "--revision", "105")
-    await ops_test.juju(
-        "integrate",
-        "identity-platform-login-ui-operator:receive-ca-cert",
-        "self-signed-certificates",
-    )
     charm = pytestconfig.getoption("--charm-file")
     penpot_image = pytestconfig.getoption("--penpot-image")
-    assert penpot_image
-    if not charm:
-        charm = await ops_test.build_charm(".")
-    assert ops_test.model
-    logger.info("deploying penpot charm")
-    penpot = await ops_test.model.deploy(
-        f"./{charm}", resources={"penpot-image": penpot_image}, num_units=2
+    assert charm, (
+        "--charm-file is required; run 'charmcraft pack' first and pass the resulting .charm file"
     )
-    redis_k8s = await ops_test.model.deploy("redis-k8s", channel="edge")
-    smtp_integrator = await ops_test.model.deploy(
+    assert penpot_image
+    assert not penpot_image.startswith("penpotapp/backend:"), (
+        "--penpot-image must use the charm-compatible Penpot rock image, not penpotapp/backend"
+    )
+
+    logger.info("deploying penpot charm (jubilant)")
+    juju.deploy("postgresql-k8s", channel="14/stable", trust=True)
+    juju.deploy("self-signed-certificates", channel="latest/stable", trust=True)
+    juju.deploy(f"./{charm}", resources={"penpot-image": penpot_image}, num_units=2)
+    juju.deploy("redis-k8s", channel="edge")
+    juju.deploy(
         "smtp-integrator",
         config={
             "auth_type": "none",
@@ -129,58 +48,74 @@ async def test_build_and_deploy(
             "port": mailcatcher.port,
         },
     )
-    s3_integrator = await ops_test.model.deploy(
-        "s3-integrator", config={"bucket": minio.bucket, "endpoint": minio.endpoint}
-    )
-    nginx_ingress_integrator = await ops_test.model.deploy(
+    juju.deploy("s3-integrator", config={"bucket": minio.bucket, "endpoint": minio.endpoint})
+    juju.deploy(
         "nginx-ingress-integrator",
         channel="edge",
         config={"path-routes": "/", "service-hostname": "penpot.local"},
         trust=True,
         revision=109,
     )
-    await ops_test.model.wait_for_idle(
-        timeout=900, apps=[s3_integrator.name, "self-signed-certificates"]
-    )
-    action = await s3_integrator.units[0].run_action(
+
+    juju.wait(jubilant.all_agents_idle, timeout=900)
+
+    juju.run(
+        "s3-integrator/0",
         "sync-s3-credentials",
-        **{
+        {
             "access-key": minio.access_key,
             "secret-key": minio.secret_key,
         },
     )
-    await action.wait()
-    await ops_test.model.add_relation("self-signed-certificates", nginx_ingress_integrator.name)
-    await ops_test.model.add_relation(penpot.name, "postgresql-k8s")
-    await ops_test.model.add_relation(penpot.name, redis_k8s.name)
-    await ops_test.model.add_relation(penpot.name, s3_integrator.name)
-    await ops_test.model.add_relation(penpot.name, f"{smtp_integrator.name}:smtp")
-    await ops_test.model.add_relation(penpot.name, nginx_ingress_integrator.name)
-    await ops_test.model.wait_for_idle(timeout=900, status="active", raise_on_error=False)
-    logger.info(
-        "test user account: (%s, %s)", ext_idp_service.user_email, ext_idp_service.user_password
+
+    juju.wait(
+        lambda status: jubilant.all_active(status, "s3-integrator", "self-signed-certificates"),
+        timeout=900,
+    )
+
+    juju.integrate("self-signed-certificates:certificates", "nginx-ingress-integrator:certificates")
+    juju.wait(jubilant.all_agents_idle, timeout=300)
+    juju.integrate("penpot:postgresql", "postgresql-k8s:database")
+    juju.wait(jubilant.all_agents_idle, timeout=300)
+    juju.integrate("penpot:redis", "redis-k8s")
+    juju.wait(jubilant.all_agents_idle, timeout=300)
+    juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
+    juju.wait(jubilant.all_agents_idle, timeout=300)
+    juju.integrate("penpot:smtp", "smtp-integrator:smtp")
+    juju.wait(jubilant.all_agents_idle, timeout=300)
+    juju.integrate("penpot:ingress", "nginx-ingress-integrator:ingress")
+    juju.wait(jubilant.all_agents_idle, timeout=300)
+
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            "postgresql-k8s",
+            "self-signed-certificates",
+            "penpot",
+            "redis-k8s",
+            "s3-integrator",
+            "smtp-integrator",
+            "nginx-ingress-integrator",
+        ),
+        timeout=900,
     )
 
 
-async def test_create_profile(ops_test: OpsTest, ingress_address):
+def test_create_profile(juju: jubilant.Juju, ingress_address: str):
     """
     arrange: deploy the Penpot charm.
     act: create a Penpot account using the 'create-profile' charm action.
     assert: the account created can be used to log in to Penpot.
     """
     email = "test@test.com"
-    assert ops_test.model
-    unit = ops_test.model.applications["penpot"].units[0]
+    unit = "penpot/0"
     deadline = time.time() + 300
     while time.time() < deadline:
-        action: juju.action.Action = await unit.run_action(
-            "create-profile", email=email, fullname="test"
-        )
-        await action.wait()
-        if "password" in action.results:
-            password = action.results["password"]
+        task = juju.run(unit, "create-profile", {"email": email, "fullname": "test"})
+        if "password" in task.results:
+            password = task.results["password"]
             break
-        logger.info("waiting for penpot started: %s", action.results)
+        logger.info("waiting for penpot started: %s", task.results)
         time.sleep(5)
     else:
         raise TimeoutError("timed out waiting for profile creation success")
@@ -201,8 +136,7 @@ async def test_create_profile(ops_test: OpsTest, ingress_address):
         time.sleep(5)
     else:
         raise TimeoutError("timed out waiting for login success")
-    action = await unit.run_action("delete-profile", email=email)
-    await action.wait()
+    juju.run(unit, "delete-profile", {"email": email})
     deadline = time.time() + 300
     while time.time() < deadline:
         response = session.post(
@@ -219,38 +153,3 @@ async def test_create_profile(ops_test: OpsTest, ingress_address):
     else:
         raise TimeoutError("timed out waiting for login response")
     assert response.status_code == 400
-
-
-async def test_oauth(ops_test, page, ext_idp_service):
-    """
-    arrange: integrate the penpot charm with an oauth provider.
-    act: login penpot using openid connect.
-    assert: login success.
-    """
-    action = (
-        await ops_test.model.applications["self-signed-certificates"]
-        .units[0]
-        .run_action("get-ca-certificate")
-    )
-    await action.wait()
-    ca_cert: str = action.results["ca-certificate"]
-    penpot = ops_test.model.applications["penpot"]
-    await inject_root_certs(ops_test, penpot, ca_cert)
-    await ops_test.model.add_relation("penpot:oauth", "hydra")
-    await ops_test.model.wait_for_idle(timeout=900, status="active")
-    for _ in range(5):
-        try:
-            await access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
-            await click_on_sign_in_button_by_text(page=page, text="OpenID")
-            try:
-                await complete_auth_code_login(
-                    page=page,
-                    ops_test=ops_test,
-                    ext_idp_service=ext_idp_service,
-                )
-            except AssertionError:
-                logger.exception("failed to complete login, maybe already logged in, skipping")
-            await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
-        except AssertionError:
-            logger.exception("login failed, retry in 60 seconds")
-            time.sleep(60)

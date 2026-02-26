@@ -6,25 +6,39 @@
 # pylint: disable=unused-argument
 
 import collections
-import json
 import logging
 import time
 
 import boto3
 import botocore.client
+import jubilant
 import kubernetes
 import pytest
-import pytest_asyncio
-from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
 
-@pytest_asyncio.fixture(name="get_unit_ips", scope="module")
-async def get_unit_ips_fixture(ops_test: OpsTest):
+def pytest_addoption(parser):
+    """Add integration-only pytest options."""
+    try:
+        parser.addoption("--keep-models", action="store_true")
+    except ValueError:
+        pass
+
+
+@pytest.fixture(scope="module")
+def juju(pytestconfig: pytest.Config):
+    """Provide a Jubilant Juju client with a temporary model."""
+    keep_models = pytestconfig.getoption("--keep-models")
+    with jubilant.temp_model(keep=keep_models) as juju_model:
+        yield juju_model
+
+
+@pytest.fixture(name="get_unit_ips", scope="module")
+def get_unit_ips_fixture(juju: jubilant.Juju):
     """A function to get unit ips of a charm application."""
 
-    async def _get_unit_ips(name: str):
+    def _get_unit_ips(name: str):
         """A function to get unit ips of a charm application.
 
         Args:
@@ -33,12 +47,11 @@ async def get_unit_ips_fixture(ops_test: OpsTest):
         Returns:
             A list of unit ips.
         """
-        _, status, _ = await ops_test.juju("status", "--format", "json")
-        status = json.loads(status)
-        units = status["applications"][name]["units"]
+        status = juju.status()
+        units = status.apps[name].units
         ip_list = []
         for key in sorted(units.keys(), key=lambda n: int(n.split("/")[-1])):
-            ip_list.append(units[key]["address"])
+            ip_list.append(units[key].address)
         return ip_list
 
     return _get_unit_ips
@@ -51,16 +64,15 @@ def load_kube_config_fixture(pytestconfig: pytest.Config):
     kubernetes.config.load_kube_config(config_file=kube_config)
 
 
-@pytest_asyncio.fixture(name="minio", scope="module")
-async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
+@pytest.fixture(name="minio", scope="module")
+def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju):
     """Deploy test minio service."""
     key = "minioadmin"
-    assert ops_test.model
-    minio = await ops_test.model.deploy(
+    juju.deploy(
         "minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key}
     )
-    await ops_test.model.wait_for_idle(apps=[minio.name], status="active", timeout=300)
-    ip = (await get_unit_ips(minio.name))[0]
+    juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=300)
+    ip = get_unit_ips("minio")[0]
     s3 = boto3.client(
         "s3",
         endpoint_url=f"http://{ip}:9000",
@@ -72,7 +84,7 @@ async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
     s3.create_bucket(Bucket=bucket)
     S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_key secret_key")
     return S3Credential(
-        endpoint=f"http://minio-endpoints.{ops_test.model.name}.svc.cluster.local:9000",
+        endpoint=f"http://minio-endpoints.{juju.model}.svc.cluster.local:9000",
         bucket=bucket,
         access_key=key,
         secret_key=key,
@@ -80,10 +92,9 @@ async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
 
 
 @pytest.fixture(scope="module")
-def mailcatcher(load_kube_config, ops_test: OpsTest):
+def mailcatcher(load_kube_config, juju: jubilant.Juju):
     """Deploy test mailcatcher service."""
-    assert ops_test.model
-    namespace = ops_test.model.name
+    namespace = juju.model
     v1 = kubernetes.client.CoreV1Api()
     pod = kubernetes.client.V1Pod(
         api_version="v1",
