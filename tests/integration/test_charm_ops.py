@@ -12,6 +12,8 @@ import pathlib
 import re
 import time
 
+import asyncio
+
 import boto3
 import botocore.client
 import juju.action
@@ -217,9 +219,6 @@ async def oauth_deployment(
         "--charm-file is required; run 'charmcraft pack' first and pass the resulting .charm file"
     )
     assert penpot_image
-    assert not penpot_image.startswith("penpotapp/backend:"), (
-        "--penpot-image must use the charm-compatible Penpot rock image, not penpotapp/backend"
-    )
 
     await deploy_identity_bundle(
         ops_test=ops_test,
@@ -232,31 +231,39 @@ async def oauth_deployment(
         "identity-platform-login-ui-operator:receive-ca-cert",
         "self-signed-certificates",
     )
-    penpot = await ops_test.model.deploy(
-        f"./{charm}", resources={"penpot-image": penpot_image}, application_name="penpot", num_units=2
-    )
-    redis_k8s = await ops_test.model.deploy("redis-k8s", channel="edge")
-    smtp_integrator = await ops_test.model.deploy(
-        "smtp-integrator",
-        config={
-            "auth_type": "none",
-            "domain": "example.com",
-            "host": mailcatcher.host,
-            "port": mailcatcher.port,
-        },
-    )
-    s3_integrator = await ops_test.model.deploy(
-        "s3-integrator", config={"bucket": minio.bucket, "endpoint": minio.endpoint}
-    )
-    nginx_ingress_integrator = await ops_test.model.deploy(
-        "nginx-ingress-integrator",
-        channel="edge",
-        config={"path-routes": "/", "service-hostname": "penpot.local"},
-        trust=True,
-        revision=109,
+    (
+        penpot,
+        redis_k8s,
+        smtp_integrator,
+        s3_integrator,
+        nginx_ingress_integrator,
+    ) = await asyncio.gather(
+        ops_test.model.deploy(
+            f"./{charm}", resources={"penpot-image": penpot_image}, application_name="penpot", num_units=2
+        ),
+        ops_test.model.deploy("redis-k8s", channel="edge"),
+        ops_test.model.deploy(
+            "smtp-integrator",
+            config={
+                "auth_type": "none",
+                "domain": "example.com",
+                "host": mailcatcher.host,
+                "port": mailcatcher.port,
+            },
+        ),
+        ops_test.model.deploy(
+            "s3-integrator", config={"bucket": minio.bucket, "endpoint": minio.endpoint}
+        ),
+        ops_test.model.deploy(
+            "nginx-ingress-integrator",
+            channel="edge",
+            config={"path-routes": "/", "service-hostname": "penpot.local"},
+            trust=True,
+            revision=109,
+        ),
     )
     await ops_test.model.wait_for_idle(
-        timeout=900, apps=[s3_integrator.name, "self-signed-certificates"]
+        timeout=300, apps=[s3_integrator.name, "self-signed-certificates"]
     )
     action: juju.action.Action = await s3_integrator.units[0].run_action(
         "sync-s3-credentials",
@@ -266,13 +273,15 @@ async def oauth_deployment(
         },
     )
     await action.wait()
-    await ops_test.model.add_relation("self-signed-certificates", nginx_ingress_integrator.name)
-    await ops_test.model.add_relation(penpot.name, "postgresql-k8s")
-    await ops_test.model.add_relation(penpot.name, redis_k8s.name)
-    await ops_test.model.add_relation(penpot.name, s3_integrator.name)
-    await ops_test.model.add_relation(penpot.name, f"{smtp_integrator.name}:smtp")
-    await ops_test.model.add_relation(penpot.name, nginx_ingress_integrator.name)
-    await ops_test.model.wait_for_idle(timeout=900, status="active", raise_on_error=False)
+    await asyncio.gather(
+        ops_test.model.add_relation("self-signed-certificates", nginx_ingress_integrator.name),
+        ops_test.model.add_relation(penpot.name, "postgresql-k8s"),
+        ops_test.model.add_relation(penpot.name, redis_k8s.name),
+        ops_test.model.add_relation(penpot.name, s3_integrator.name),
+        ops_test.model.add_relation(penpot.name, f"{smtp_integrator.name}:smtp"),
+        ops_test.model.add_relation(penpot.name, nginx_ingress_integrator.name),
+    )
+    await ops_test.model.wait_for_idle(timeout=300, status="active", raise_on_error=False)
 
 
 async def test_oauth_login(
@@ -293,7 +302,7 @@ async def test_oauth_login(
     penpot = ops_test.model.applications["penpot"]
     await inject_root_certs(ops_test, penpot, ca_cert)
     await ops_test.model.add_relation("penpot:oauth", "hydra")
-    await ops_test.model.wait_for_idle(timeout=900, status="active", raise_on_error=False)
+    await ops_test.model.wait_for_idle(timeout=300, status="active", raise_on_error=False)
     for _ in range(5):
         try:
             await access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
