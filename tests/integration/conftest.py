@@ -18,13 +18,6 @@ import pytest
 logger = logging.getLogger(__name__)
 
 
-def pytest_addoption(parser):
-    """Add integration-only pytest options."""
-    try:
-        parser.addoption("--keep-models", action="store_true")
-    except ValueError:
-        pass
-
 
 @pytest.fixture(scope="module")
 def juju(pytestconfig: pytest.Config):
@@ -68,9 +61,7 @@ def load_kube_config_fixture(pytestconfig: pytest.Config):
 def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju):
     """Deploy test minio service."""
     key = "minioadmin"
-    juju.deploy(
-        "minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key}
-    )
+    juju.deploy("minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key})
     juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=300)
     ip = get_unit_ips("minio")[0]
     s3 = boto3.client(

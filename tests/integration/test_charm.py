@@ -68,23 +68,16 @@ def test_build_and_deploy(
         },
     )
 
-    juju.wait(
-        lambda status: jubilant.all_active(status, "s3-integrator", "self-signed-certificates"),
-        timeout=900,
-    )
 
-    juju.integrate("self-signed-certificates:certificates", "nginx-ingress-integrator:certificates")
-    juju.wait(jubilant.all_agents_idle, timeout=300)
+
+    juju.integrate(
+        "self-signed-certificates:certificates", "nginx-ingress-integrator:certificates"
+    )
     juju.integrate("penpot:postgresql", "postgresql-k8s:database")
-    juju.wait(jubilant.all_agents_idle, timeout=300)
     juju.integrate("penpot:redis", "redis-k8s")
-    juju.wait(jubilant.all_agents_idle, timeout=300)
     juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
-    juju.wait(jubilant.all_agents_idle, timeout=300)
     juju.integrate("penpot:smtp", "smtp-integrator:smtp")
-    juju.wait(jubilant.all_agents_idle, timeout=300)
     juju.integrate("penpot:ingress", "nginx-ingress-integrator:ingress")
-    juju.wait(jubilant.all_agents_idle, timeout=300)
 
     juju.wait(
         lambda status: jubilant.all_active(
@@ -97,7 +90,7 @@ def test_build_and_deploy(
             "smtp-integrator",
             "nginx-ingress-integrator",
         ),
-        timeout=900,
+        timeout=300,
     )
 
 
