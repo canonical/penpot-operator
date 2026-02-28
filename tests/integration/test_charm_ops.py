@@ -5,6 +5,7 @@
 
 """OAuth integration test kept on OpsTest until oauth_tools supports Jubilant."""
 
+import asyncio
 import collections
 import json
 import logging
@@ -12,20 +13,20 @@ import pathlib
 import re
 import time
 
-import asyncio
-
 import boto3
 import botocore.client
 import juju.action
 import kubernetes
 import pytest
 import pytest_asyncio
+import requests
 from oauth_tools.oauth_helpers import (
     access_application_login_page,
     click_on_sign_in_button_by_text,
     complete_auth_code_login,
     deploy_identity_bundle,
 )
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import expect
 from pytest_operator.plugin import OpsTest
 
@@ -147,24 +148,38 @@ def mailcatcher(load_kube_config, ops_test: OpsTest):
     )
 
 
+async def run_unit_ssh(
+    ops_test: OpsTest,
+    unit_name: str,
+    *command: str,
+    container: str = "penpot",
+    stdin: str | None = None,
+):
+    """Run an ssh command in a unit container through OpsTest Juju CLI."""
+    return await ops_test.juju(
+        "ssh",
+        "--container",
+        container,
+        unit_name,
+        *command,
+        stdin=stdin,
+    )
+
+
 async def inject_root_certs(ops_test, penpot, ca_cert):
     """Inject CA certificate to penpot Java certificate store."""
     for unit in penpot.units:
         logger.info("copying oauth ca cert into %s", unit.name)
-        await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
+        await run_unit_ssh(
+            ops_test,
             unit.name,
             "cp",
             "/dev/stdin",
             "/oauth.crt",
             stdin=ca_cert.encode("ascii"),
         )
-        code, stdout, _ = await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
+        code, stdout, _ = await run_unit_ssh(
+            ops_test,
             unit.name,
             "cat",
             "/oauth.crt",
@@ -172,10 +187,8 @@ async def inject_root_certs(ops_test, penpot, ca_cert):
         assert code == 0
         logger.info("copying oauth ca cert into %s result: %s", unit.name, stdout)
         logger.info("installing oauth ca cert into penpot/%s java trust", unit.name)
-        code, stdout, stderr = await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
+        code, stdout, stderr = await run_unit_ssh(
+            ops_test,
             unit.name,
             "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
             "-import",
@@ -191,16 +204,28 @@ async def inject_root_certs(ops_test, penpot, ca_cert):
         assert code == 0
         logger.info("keytool import result: %s, %s, %s", code, stdout, stderr)
         logger.info("restart penpot backend in penpot/%s", unit.name)
-        code, _, _ = await ops_test.juju(
-            "ssh",
-            "--container",
-            "penpot",
+        code, _, _ = await run_unit_ssh(
+            ops_test,
             unit.name,
             "pebble",
             "restart",
             "backend",
         )
         assert code == 0
+
+
+def wait_for_login_endpoint(url: str, timeout: int = 120):
+    """Wait until Penpot login endpoint is reachable over HTTPS."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            response = requests.get(url, timeout=10, verify=False)
+            if response.status_code < 500:
+                return
+        except requests.RequestException:
+            logger.info("login endpoint not reachable yet")
+        time.sleep(5)
+    raise TimeoutError(f"timed out waiting for login endpoint: {url}")
 
 
 @pytest_asyncio.fixture(scope="module")
@@ -273,13 +298,14 @@ async def oauth_deployment(
         },
     )
     await action.wait()
-    await asyncio.gather(
-        ops_test.model.add_relation("self-signed-certificates", nginx_ingress_integrator.name),
-        ops_test.model.add_relation(penpot.name, "postgresql-k8s"),
-        ops_test.model.add_relation(penpot.name, redis_k8s.name),
-        ops_test.model.add_relation(penpot.name, s3_integrator.name),
-        ops_test.model.add_relation(penpot.name, f"{smtp_integrator.name}:smtp"),
-        ops_test.model.add_relation(penpot.name, nginx_ingress_integrator.name),
+    await ops_test.model.add_relation("penpot:postgresql", "postgresql-k8s:database")
+    await ops_test.model.add_relation("penpot:redis", redis_k8s.name)
+    await ops_test.model.add_relation("penpot:s3", f"{s3_integrator.name}:s3-credentials")
+    await ops_test.model.add_relation("penpot:smtp", f"{smtp_integrator.name}:smtp")
+    await ops_test.model.add_relation("penpot:ingress", f"{nginx_ingress_integrator.name}:ingress")
+    await ops_test.model.add_relation(
+        "self-signed-certificates:certificates",
+        f"{nginx_ingress_integrator.name}:certificates",
     )
     await ops_test.model.wait_for_idle(timeout=300, status="active", raise_on_error=False)
 
@@ -303,6 +329,7 @@ async def test_oauth_login(
     await inject_root_certs(ops_test, penpot, ca_cert)
     await ops_test.model.add_relation("penpot:oauth", "hydra")
     await ops_test.model.wait_for_idle(timeout=300, status="active", raise_on_error=False)
+    wait_for_login_endpoint("https://penpot.local/#/auth/login")
     for _ in range(5):
         try:
             await access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
@@ -314,7 +341,7 @@ async def test_oauth_login(
             )
             await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
             return
-        except AssertionError:
+        except (AssertionError, PlaywrightError):
             logger.exception("login failed, retry in 60 seconds")
             time.sleep(60)
     raise AssertionError("oauth login failed after retries")
