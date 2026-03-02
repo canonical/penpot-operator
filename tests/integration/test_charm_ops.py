@@ -3,11 +3,10 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""OAuth integration test kept on OpsTest until oauth_tools supports Jubilant."""
+"""OAuth integration test using the current oauth_tools compatibility path."""
 
 import asyncio
 import collections
-import json
 import logging
 import pathlib
 import re
@@ -15,38 +14,92 @@ import time
 
 import boto3
 import botocore.client
-import juju.action
+import jubilant
 import kubernetes
 import pytest
 import pytest_asyncio
-import requests
+from lightkube.resources.core_v1 import Node, Service
 from oauth_tools.oauth_helpers import (
     access_application_login_page,
     click_on_sign_in_button_by_text,
     complete_auth_code_login,
-    deploy_identity_bundle,
 )
+from oauth_tools.external_idp import DexIdpService
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import expect
-from pytest_operator.plugin import OpsTest
+
+from tests.integration.helpers import OpsJubilantFacade, get_required_charm_inputs, wait_for_endpoint
 
 logger = logging.getLogger(__name__)
 
 pytest_plugins = ["oauth_tools.fixtures"]
 
 
+class StableDexIdpService(DexIdpService):
+    """Dex manager that tolerates delayed load balancer IP assignment."""
+
+    @property
+    def issuer_url(self) -> str:
+        for _ in range(40):
+            service = self._client.get(Service, "dex", namespace=self.namespace)
+            load_balancer = getattr(getattr(service, "status", None), "loadBalancer", None)
+            ingress = getattr(load_balancer, "ingress", None)
+            if ingress and ingress[0] and getattr(ingress[0], "ip", None):
+                return f"http://{ingress[0].ip}:5556/"
+
+            ports = getattr(getattr(service, "spec", None), "ports", None) or []
+            node_port = None
+            for port in ports:
+                if getattr(port, "port", None) == 5556 and getattr(port, "nodePort", None):
+                    node_port = port.nodePort
+                    break
+            if node_port:
+                for node in self._client.list(Node):
+                    addresses = getattr(getattr(node, "status", None), "addresses", None) or []
+                    internal_ip = next(
+                        (addr.address for addr in addresses if getattr(addr, "type", None) == "InternalIP"),
+                        None,
+                    )
+                    if internal_ip:
+                        return f"http://{internal_ip}:{node_port}/"
+
+            time.sleep(3)
+        raise RuntimeError("Dex load balancer ingress IP is not available")
+
+
+@pytest.fixture(scope="module")
+def ext_idp_service(ops_test, client):
+    """Deploy and manage Dex with resilient issuer URL resolution."""
+    logger.info("Deploying dex resources")
+    ext_idp_manager = StableDexIdpService(client=client)
+    try:
+        yield ext_idp_manager
+    finally:
+        if ops_test.keep_model:
+            return
+        logger.info("Deleting dex resources")
+        ext_idp_manager.remove_idp_service()
+
+
+@pytest.fixture(scope="module")
+def juju_on_current_model(ops_test):
+    """Provide a Jubilant client bound to the active integration model."""
+    assert ops_test.model
+    return jubilant.Juju(model=ops_test.model.name)
+
+
+@pytest.fixture(scope="module")
+def ops_model(ops_test, juju_on_current_model: jubilant.Juju) -> OpsJubilantFacade:
+    """Provide a facade to model operations during migration."""
+    return OpsJubilantFacade(ops_test=ops_test, juju_on_ops_model=juju_on_current_model)
+
+
 @pytest_asyncio.fixture(name="get_unit_ips", scope="module")
-async def get_unit_ips_fixture(ops_test: OpsTest):
+async def get_unit_ips_fixture(ops_model: OpsJubilantFacade):
     """A function to get unit ips of a charm application."""
 
     async def _get_unit_ips(name: str):
-        _, status, _ = await ops_test.juju("status", "--format", "json")
-        status = json.loads(status)
-        units = status["applications"][name]["units"]
-        ip_list = []
-        for key in sorted(units.keys(), key=lambda n: int(n.split("/")[-1])):
-            ip_list.append(units[key]["address"])
-        return ip_list
+        return ops_model.get_unit_ips(name)
 
     return _get_unit_ips
 
@@ -59,14 +112,13 @@ def load_kube_config_fixture(pytestconfig: pytest.Config):
 
 
 @pytest_asyncio.fixture(name="minio", scope="module")
-async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
+async def minio_fixture(get_unit_ips, load_kube_config, ops_model: OpsJubilantFacade):
     """Deploy test minio service."""
     key = "minioadmin"
-    assert ops_test.model
-    minio = await ops_test.model.deploy(
+    minio = await ops_model.deploy_application(
         "minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key}
     )
-    await ops_test.model.wait_for_idle(apps=[minio.name], status="active", timeout=300)
+    await ops_model.wait_for_idle(apps=[minio.name], status="active", timeout=300)
     ip = (await get_unit_ips(minio.name))[0]
     s3 = boto3.client(
         "s3",
@@ -79,7 +131,7 @@ async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
     s3.create_bucket(Bucket=bucket)
     S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_key secret_key")
     return S3Credential(
-        endpoint=f"http://minio-endpoints.{ops_test.model.name}.svc.cluster.local:9000",
+        endpoint=f"http://minio-endpoints.{ops_model.model_name}.svc.cluster.local:9000",
         bucket=bucket,
         access_key=key,
         secret_key=key,
@@ -87,10 +139,9 @@ async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
 
 
 @pytest.fixture(scope="module")
-def mailcatcher(load_kube_config, ops_test: OpsTest):
+def mailcatcher(load_kube_config, ops_model: OpsJubilantFacade):
     """Deploy test mailcatcher service."""
-    assert ops_test.model
-    namespace = ops_test.model.name
+    namespace = ops_model.model_name
     v1 = kubernetes.client.CoreV1Api()
     pod = kubernetes.client.V1Pod(
         api_version="v1",
@@ -148,38 +199,18 @@ def mailcatcher(load_kube_config, ops_test: OpsTest):
     )
 
 
-async def run_unit_ssh(
-    ops_test: OpsTest,
-    unit_name: str,
-    *command: str,
-    container: str = "penpot",
-    stdin: str | None = None,
-):
-    """Run an ssh command in a unit container through OpsTest Juju CLI."""
-    return await ops_test.juju(
-        "ssh",
-        "--container",
-        container,
-        unit_name,
-        *command,
-        stdin=stdin,
-    )
-
-
-async def inject_root_certs(ops_test, penpot, ca_cert):
+async def inject_root_certs(ops_model: OpsJubilantFacade, penpot, ca_cert):
     """Inject CA certificate to penpot Java certificate store."""
     for unit in penpot.units:
         logger.info("copying oauth ca cert into %s", unit.name)
-        await run_unit_ssh(
-            ops_test,
+        await ops_model.run_unit_ssh(
             unit.name,
             "cp",
             "/dev/stdin",
             "/oauth.crt",
             stdin=ca_cert.encode("ascii"),
         )
-        code, stdout, _ = await run_unit_ssh(
-            ops_test,
+        code, stdout, _ = await ops_model.run_unit_ssh(
             unit.name,
             "cat",
             "/oauth.crt",
@@ -187,8 +218,7 @@ async def inject_root_certs(ops_test, penpot, ca_cert):
         assert code == 0
         logger.info("copying oauth ca cert into %s result: %s", unit.name, stdout)
         logger.info("installing oauth ca cert into penpot/%s java trust", unit.name)
-        code, stdout, stderr = await run_unit_ssh(
-            ops_test,
+        code, stdout, stderr = await ops_model.run_unit_ssh(
             unit.name,
             "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
             "-import",
@@ -204,8 +234,7 @@ async def inject_root_certs(ops_test, penpot, ca_cert):
         assert code == 0
         logger.info("keytool import result: %s, %s, %s", code, stdout, stderr)
         logger.info("restart penpot backend in penpot/%s", unit.name)
-        code, _, _ = await run_unit_ssh(
-            ops_test,
+        code, _, _ = await ops_model.run_unit_ssh(
             unit.name,
             "pebble",
             "restart",
@@ -214,60 +243,34 @@ async def inject_root_certs(ops_test, penpot, ca_cert):
         assert code == 0
 
 
-def wait_for_login_endpoint(url: str, timeout: int = 120):
-    """Wait until Penpot login endpoint is reachable over HTTPS."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        try:
-            response = requests.get(url, timeout=10, verify=False)
-            if response.status_code < 500:
-                return
-        except requests.RequestException:
-            logger.info("login endpoint not reachable yet")
-        time.sleep(5)
-    raise TimeoutError(f"timed out waiting for login endpoint: {url}")
-
-
 @pytest_asyncio.fixture(scope="module")
 async def oauth_deployment(
-    ops_test: OpsTest,
+    ops_model: OpsJubilantFacade,
     pytestconfig: pytest.Config,
     minio,
     mailcatcher,
     ext_idp_service,
 ):
-    """Deploy identity bundle and penpot through oauth_tools OpsTest path."""
-    assert ops_test.model
-    charm = pytestconfig.getoption("--charm-file")
-    penpot_image = pytestconfig.getoption("--penpot-image")
-    assert charm, (
-        "--charm-file is required; run 'charmcraft pack' first and pass the resulting .charm file"
-    )
-    assert penpot_image
+    """Deploy identity bundle and penpot through oauth_tools compatibility path."""
+    charm, penpot_image = get_required_charm_inputs(pytestconfig)
 
-    await deploy_identity_bundle(
-        ops_test=ops_test,
+    await ops_model.deploy_identity_bundle(
         bundle_url=str(pathlib.Path(__file__).parent.joinpath("bundle.yaml").absolute()),
         ext_idp_service=ext_idp_service,
     )
-    await ops_test.juju("refresh", "identity-platform-login-ui-operator", "--revision", "105")
-    await ops_test.juju(
-        "integrate",
-        "identity-platform-login-ui-operator:receive-ca-cert",
-        "self-signed-certificates",
-    )
+    await ops_model.bootstrap_identity_login_ui()
     (
-        penpot,
+        _penpot,
         redis_k8s,
         smtp_integrator,
         s3_integrator,
         nginx_ingress_integrator,
     ) = await asyncio.gather(
-        ops_test.model.deploy(
+        ops_model.deploy_application(
             f"./{charm}", resources={"penpot-image": penpot_image}, application_name="penpot", num_units=2
         ),
-        ops_test.model.deploy("redis-k8s", channel="edge"),
-        ops_test.model.deploy(
+        ops_model.deploy_application("redis-k8s", channel="edge"),
+        ops_model.deploy_application(
             "smtp-integrator",
             config={
                 "auth_type": "none",
@@ -276,10 +279,10 @@ async def oauth_deployment(
                 "port": mailcatcher.port,
             },
         ),
-        ops_test.model.deploy(
+        ops_model.deploy_application(
             "s3-integrator", config={"bucket": minio.bucket, "endpoint": minio.endpoint}
         ),
-        ops_test.model.deploy(
+        ops_model.deploy_application(
             "nginx-ingress-integrator",
             channel="edge",
             config={"path-routes": "/", "service-hostname": "penpot.local"},
@@ -287,56 +290,50 @@ async def oauth_deployment(
             revision=109,
         ),
     )
-    await ops_test.model.wait_for_idle(
-        timeout=300, apps=[s3_integrator.name, "self-signed-certificates"]
-    )
-    action: juju.action.Action = await s3_integrator.units[0].run_action(
+    await ops_model.wait_for_idle(timeout=300, apps=[s3_integrator.name, "self-signed-certificates"])
+    await ops_model.run_unit_action(
+        s3_integrator.units[0],
         "sync-s3-credentials",
         **{
             "access-key": minio.access_key,
             "secret-key": minio.secret_key,
         },
     )
-    await action.wait()
-    await ops_test.model.add_relation("penpot:postgresql", "postgresql-k8s:database")
-    await ops_test.model.add_relation("penpot:redis", redis_k8s.name)
-    await ops_test.model.add_relation("penpot:s3", f"{s3_integrator.name}:s3-credentials")
-    await ops_test.model.add_relation("penpot:smtp", f"{smtp_integrator.name}:smtp")
-    await ops_test.model.add_relation("penpot:ingress", f"{nginx_ingress_integrator.name}:ingress")
-    await ops_test.model.add_relation(
+    ops_model.integrate_endpoints("penpot:postgresql", "postgresql-k8s:database")
+    ops_model.integrate_endpoints("penpot:redis", redis_k8s.name)
+    ops_model.integrate_endpoints("penpot:s3", f"{s3_integrator.name}:s3-credentials")
+    ops_model.integrate_endpoints("penpot:smtp", f"{smtp_integrator.name}:smtp")
+    ops_model.integrate_endpoints(
         "self-signed-certificates:certificates",
         f"{nginx_ingress_integrator.name}:certificates",
     )
-    await ops_test.model.wait_for_idle(timeout=300, status="active", raise_on_error=False)
+    ops_model.integrate_endpoints("penpot:ingress", f"{nginx_ingress_integrator.name}:ingress")
+    await ops_model.wait_for_idle(timeout=300, status="active", raise_on_error=False)
 
 
 async def test_oauth_login(
-    ops_test: OpsTest,
+    ops_model: OpsJubilantFacade,
     oauth_deployment,
     page,
     ext_idp_service,
 ):
-    """Run OAuth login flow through oauth_tools using the OpsTest path."""
-    assert ops_test.model
-    action = (
-        await ops_test.model.applications["self-signed-certificates"]
-        .units[0]
-        .run_action("get-ca-certificate")
+    """Run OAuth login flow through oauth_tools compatibility path."""
+    action = await ops_model.run_unit_action(
+        ops_model.get_unit("self-signed-certificates"), "get-ca-certificate"
     )
-    await action.wait()
     ca_cert: str = action.results["ca-certificate"]
-    penpot = ops_test.model.applications["penpot"]
-    await inject_root_certs(ops_test, penpot, ca_cert)
-    await ops_test.model.add_relation("penpot:oauth", "hydra")
-    await ops_test.model.wait_for_idle(timeout=300, status="active", raise_on_error=False)
-    wait_for_login_endpoint("https://penpot.local/#/auth/login")
+    penpot = ops_model.get_application("penpot")
+    await inject_root_certs(ops_model, penpot, ca_cert)
+    await ops_model.add_relation("penpot:oauth", "hydra")
+    ops_model.wait_all_active("penpot", timeout=300)
+    wait_for_endpoint("https://penpot.local/#/auth/login", timeout=300)
     for _ in range(5):
         try:
             await access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
             await click_on_sign_in_button_by_text(page=page, text="OpenID")
             await complete_auth_code_login(
                 page=page,
-                ops_test=ops_test,
+                ops_test=ops_model.ops_test,
                 ext_idp_service=ext_idp_service,
             )
             await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))

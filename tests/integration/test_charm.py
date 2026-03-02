@@ -13,6 +13,8 @@ import jubilant
 import pytest
 import requests
 
+from tests.integration.helpers import get_required_charm_inputs, wait_for_endpoint
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,15 +26,7 @@ def test_build_and_deploy(
     act: build and deploy the Penpot charm with required services.
     assert: the Penpot charm becomes active.
     """
-    charm = pytestconfig.getoption("--charm-file")
-    penpot_image = pytestconfig.getoption("--penpot-image")
-    assert charm, (
-        "--charm-file is required; run 'charmcraft pack' first and pass the resulting .charm file"
-    )
-    assert penpot_image
-    assert not penpot_image.startswith("penpotapp/backend:"), (
-        "--penpot-image must use the charm-compatible Penpot rock image, not penpotapp/backend"
-    )
+    charm, penpot_image = get_required_charm_inputs(pytestconfig)
 
     logger.info("deploying penpot charm (jubilant)")
     juju.deploy("postgresql-k8s", channel="14/stable", trust=True)
@@ -113,6 +107,7 @@ def test_create_profile(juju: jubilant.Juju, ingress_address: str):
     else:
         raise TimeoutError("timed out waiting for profile creation success")
     logger.info("create test penpot user %s with password: %s", email, password)
+    wait_for_endpoint(f"https://{ingress_address}/#/auth/login")
     session = requests.Session()
     deadline = time.time() + 300
     while time.time() < deadline:
