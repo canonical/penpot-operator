@@ -13,7 +13,12 @@ from typing import Any
 import jubilant
 import pytest
 import requests
-from oauth_tools.oauth_helpers import deploy_identity_bundle
+from oauth_tools.oauth_helpers import (
+    access_application_login_page,
+    click_on_sign_in_button_by_text,
+    complete_auth_code_login,
+    deploy_identity_bundle,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +62,13 @@ class OpsJubilantFacade:
 
     @property
     def model_name(self) -> str:
-        assert self._ops_test.model
-        return self._ops_test.model.name
+        assert self._juju.model is not None
+        return self._juju.model
 
     @property
-    def ops_test(self) -> Any:
-        """Expose the underlying test harness object for oauth_tools-only paths."""
-        return self._ops_test
+    def keep_model(self) -> bool:
+        """Return whether integration model retention is enabled."""
+        return bool(getattr(self._ops_test, "keep_model", False))
 
     async def deploy_application(self, *args, **kwargs):
         """Deploy an application through the active model."""
@@ -72,11 +77,25 @@ class OpsJubilantFacade:
 
     async def add_relation(self, endpoint1: str, endpoint2: str):
         """Add a relation through the active model."""
-        assert self._ops_test.model
-        return await self._ops_test.model.add_relation(endpoint1, endpoint2)
+        self._juju.integrate(endpoint1, endpoint2)
 
     async def wait_for_idle(self, **kwargs):
         """Wait for model idle through the active model."""
+        apps = kwargs.get("apps")
+        status = kwargs.get("status")
+        timeout = kwargs.get("timeout", 300)
+        raise_on_error = kwargs.get("raise_on_error", True)
+        supported_keys = {"apps", "status", "timeout", "raise_on_error"}
+
+        if (
+            set(kwargs.keys()).issubset(supported_keys)
+            and apps
+            and status == "active"
+            and raise_on_error is True
+        ):
+            self._juju.wait(lambda current: jubilant.all_active(current, *apps), timeout=timeout)
+            return
+
         assert self._ops_test.model
         return await self._ops_test.model.wait_for_idle(**kwargs)
 
@@ -100,9 +119,25 @@ class OpsJubilantFacade:
         """Refresh an application to a specific revision via Juju CLI."""
         return await self._ops_test.juju("refresh", application, "--revision", str(revision))
 
+    async def complete_auth_code_login(self, page, ext_idp_service: Any):
+        """Complete oauth_tools auth-code login using the underlying harness."""
+        return await complete_auth_code_login(
+            page=page,
+            ops_test=self._ops_test,
+            ext_idp_service=ext_idp_service,
+        )
+
+    async def access_application_login_page(self, page, url: str):
+        """Open an application's login page through oauth_tools."""
+        return await access_application_login_page(page=page, url=url)
+
+    async def click_on_sign_in_button_by_text(self, page, text: str):
+        """Click sign-in button text through oauth_tools."""
+        return await click_on_sign_in_button_by_text(page=page, text=text)
+
     async def juju_integrate(self, endpoint1: str, endpoint2: str):
         """Integrate two relation endpoints via Juju CLI."""
-        return await self._ops_test.juju("integrate", endpoint1, endpoint2)
+        self._juju.integrate(endpoint1, endpoint2)
 
     async def bootstrap_identity_login_ui(self):
         """Apply identity login-ui bootstrap steps required by oauth integration tests."""
@@ -113,7 +148,7 @@ class OpsJubilantFacade:
         )
 
     def integrate_endpoints(self, endpoint1: str, endpoint2: str):
-        """Integrate relation endpoints through Jubilant on the active OpsTest model."""
+        """Integrate relation endpoints through Jubilant on the active integration model."""
         self._juju.integrate(endpoint1, endpoint2)
 
     def wait_all_active(self, *apps: str, timeout: int = 300):
@@ -125,9 +160,9 @@ class OpsJubilantFacade:
         unit_name: str,
         *command: str,
         container: str = "penpot",
-        stdin: str | None = None,
+        stdin: str | bytes | None = None,
     ):
-        """Run an ssh command in a unit container through OpsTest Juju CLI."""
+        """Run an ssh command in a unit container through the harness Juju CLI."""
         return await self._ops_test.juju(
             "ssh",
             "--container",
@@ -138,12 +173,12 @@ class OpsJubilantFacade:
         )
 
     def get_application(self, name: str):
-        """Fetch an application from OpsTest model by name."""
+        """Fetch an application from the active model by name."""
         assert self._ops_test.model
         return self._ops_test.model.applications[name]
 
     def get_unit(self, app_name: str, unit_index: int = 0):
-        """Fetch an application unit by index from OpsTest model."""
+        """Fetch an application unit by index from the active model."""
         return self.get_application(app_name).units[unit_index]
 
     async def run_unit_action(self, unit, action_name: str, **params):
@@ -152,8 +187,38 @@ class OpsJubilantFacade:
         await action.wait()
         return action
 
+    def sync_s3_credentials(self, app_name: str, access_key: str, secret_key: str):
+        """Run s3-integrator sync action via Jubilant on the app primary unit."""
+        unit_name = self.get_unit_names(app_name)[0]
+        self._juju.run(
+            unit_name,
+            "sync-s3-credentials",
+            {
+                "access-key": access_key,
+                "secret-key": secret_key,
+            },
+        )
+
     def get_unit_ips(self, name: str) -> list[str]:
         """Get unit IP addresses sorted by unit index."""
         status = self._juju.status()
         units = status.apps[name].units
         return [units[key].address for key in sorted(units.keys(), key=lambda n: int(n.split("/")[-1]))]
+
+    def get_unit_names(self, name: str) -> list[str]:
+        """Get unit names sorted by unit index for an application."""
+        status = self._juju.status()
+        units = status.apps[name].units
+        return sorted(units.keys(), key=lambda unit_name: int(unit_name.split("/")[-1]))
+
+    def get_ca_certificate(self, unit_name: str = "self-signed-certificates/0") -> str:
+        """Run the CA retrieval action and return the certificate payload."""
+        task = self._juju.run(unit_name, "get-ca-certificate")
+        return task.results["ca-certificate"]
+
+
+def build_ops_model_facade(ops_test: Any) -> OpsJubilantFacade:
+    """Build a migration facade bound to the active integration model."""
+    assert ops_test.model
+    juju_on_current_model = jubilant.Juju(model=ops_test.model.name)
+    return OpsJubilantFacade(ops_test=ops_test, juju_on_ops_model=juju_on_current_model)

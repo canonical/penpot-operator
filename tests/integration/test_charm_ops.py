@@ -14,21 +14,20 @@ import time
 
 import boto3
 import botocore.client
-import jubilant
 import kubernetes
 import pytest
 import pytest_asyncio
 from lightkube.resources.core_v1 import Node, Service
-from oauth_tools.oauth_helpers import (
-    access_application_login_page,
-    click_on_sign_in_button_by_text,
-    complete_auth_code_login,
-)
 from oauth_tools.external_idp import DexIdpService
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import expect
 
-from tests.integration.helpers import OpsJubilantFacade, get_required_charm_inputs, wait_for_endpoint
+from tests.integration.helpers import (
+    OpsJubilantFacade,
+    build_ops_model_facade,
+    get_required_charm_inputs,
+    wait_for_endpoint,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,30 +67,23 @@ class StableDexIdpService(DexIdpService):
 
 
 @pytest.fixture(scope="module")
-def ext_idp_service(ops_test, client):
+def ext_idp_service(ops_model: OpsJubilantFacade, client):
     """Deploy and manage Dex with resilient issuer URL resolution."""
     logger.info("Deploying dex resources")
     ext_idp_manager = StableDexIdpService(client=client)
     try:
         yield ext_idp_manager
     finally:
-        if ops_test.keep_model:
+        if ops_model.keep_model:
             return
         logger.info("Deleting dex resources")
         ext_idp_manager.remove_idp_service()
 
 
 @pytest.fixture(scope="module")
-def juju_on_current_model(ops_test):
-    """Provide a Jubilant client bound to the active integration model."""
-    assert ops_test.model
-    return jubilant.Juju(model=ops_test.model.name)
-
-
-@pytest.fixture(scope="module")
-def ops_model(ops_test, juju_on_current_model: jubilant.Juju) -> OpsJubilantFacade:
+def ops_model(ops_test) -> OpsJubilantFacade:
     """Provide a facade to model operations during migration."""
-    return OpsJubilantFacade(ops_test=ops_test, juju_on_ops_model=juju_on_current_model)
+    return build_ops_model_facade(ops_test=ops_test)
 
 
 @pytest_asyncio.fixture(name="get_unit_ips", scope="module")
@@ -199,27 +191,27 @@ def mailcatcher(load_kube_config, ops_model: OpsJubilantFacade):
     )
 
 
-async def inject_root_certs(ops_model: OpsJubilantFacade, penpot, ca_cert):
+async def inject_root_certs(ops_model: OpsJubilantFacade, penpot_units: list[str], ca_cert: str):
     """Inject CA certificate to penpot Java certificate store."""
-    for unit in penpot.units:
-        logger.info("copying oauth ca cert into %s", unit.name)
+    for unit_name in penpot_units:
+        logger.info("copying oauth ca cert into %s", unit_name)
         await ops_model.run_unit_ssh(
-            unit.name,
+            unit_name,
             "cp",
             "/dev/stdin",
             "/oauth.crt",
             stdin=ca_cert.encode("ascii"),
         )
         code, stdout, _ = await ops_model.run_unit_ssh(
-            unit.name,
+            unit_name,
             "cat",
             "/oauth.crt",
         )
         assert code == 0
-        logger.info("copying oauth ca cert into %s result: %s", unit.name, stdout)
-        logger.info("installing oauth ca cert into penpot/%s java trust", unit.name)
+        logger.info("copying oauth ca cert into %s result: %s", unit_name, stdout)
+        logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
         code, stdout, stderr = await ops_model.run_unit_ssh(
-            unit.name,
+            unit_name,
             "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
             "-import",
             "-trustcacerts",
@@ -233,9 +225,9 @@ async def inject_root_certs(ops_model: OpsJubilantFacade, penpot, ca_cert):
         )
         assert code == 0
         logger.info("keytool import result: %s, %s, %s", code, stdout, stderr)
-        logger.info("restart penpot backend in penpot/%s", unit.name)
+        logger.info("restart penpot backend in penpot/%s", unit_name)
         code, _, _ = await ops_model.run_unit_ssh(
-            unit.name,
+            unit_name,
             "pebble",
             "restart",
             "backend",
@@ -291,13 +283,10 @@ async def oauth_deployment(
         ),
     )
     await ops_model.wait_for_idle(timeout=300, apps=[s3_integrator.name, "self-signed-certificates"])
-    await ops_model.run_unit_action(
-        s3_integrator.units[0],
-        "sync-s3-credentials",
-        **{
-            "access-key": minio.access_key,
-            "secret-key": minio.secret_key,
-        },
+    ops_model.sync_s3_credentials(
+        s3_integrator.name,
+        access_key=minio.access_key,
+        secret_key=minio.secret_key,
     )
     ops_model.integrate_endpoints("penpot:postgresql", "postgresql-k8s:database")
     ops_model.integrate_endpoints("penpot:redis", redis_k8s.name)
@@ -318,22 +307,18 @@ async def test_oauth_login(
     ext_idp_service,
 ):
     """Run OAuth login flow through oauth_tools compatibility path."""
-    action = await ops_model.run_unit_action(
-        ops_model.get_unit("self-signed-certificates"), "get-ca-certificate"
-    )
-    ca_cert: str = action.results["ca-certificate"]
-    penpot = ops_model.get_application("penpot")
-    await inject_root_certs(ops_model, penpot, ca_cert)
+    ca_cert = ops_model.get_ca_certificate()
+    penpot_units = ops_model.get_unit_names("penpot")
+    await inject_root_certs(ops_model, penpot_units, ca_cert)
     await ops_model.add_relation("penpot:oauth", "hydra")
     ops_model.wait_all_active("penpot", timeout=300)
     wait_for_endpoint("https://penpot.local/#/auth/login", timeout=300)
     for _ in range(5):
         try:
-            await access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
-            await click_on_sign_in_button_by_text(page=page, text="OpenID")
-            await complete_auth_code_login(
+            await ops_model.access_application_login_page(page=page, url="https://penpot.local/#/auth/login")
+            await ops_model.click_on_sign_in_button_by_text(page=page, text="OpenID")
+            await ops_model.complete_auth_code_login(
                 page=page,
-                ops_test=ops_model.ops_test,
                 ext_idp_service=ext_idp_service,
             )
             await expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
