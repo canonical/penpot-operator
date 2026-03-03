@@ -14,6 +14,7 @@ import time
 
 import boto3
 import botocore.client
+import jubilant
 import kubernetes
 import pytest
 import pytest_asyncio
@@ -81,9 +82,10 @@ def ext_idp_service(ops_model: OpsJubilantFacade, client):
 
 
 @pytest.fixture(scope="module")
-def ops_model(ops_test) -> OpsJubilantFacade:
-    """Provide a facade to model operations during migration."""
-    return build_ops_model_facade(ops_test=ops_test)
+def ops_model(juju: jubilant.Juju, pytestconfig: pytest.Config) -> OpsJubilantFacade:
+    """Provide a Jubilant facade to model operations."""
+    keep_models = bool(pytestconfig.getoption("--keep-models"))
+    return build_ops_model_facade(juju_on_ops_model=juju, keep_model=keep_models)
 
 
 @pytest_asyncio.fixture(name="get_unit_ips", scope="module")
@@ -195,22 +197,15 @@ async def inject_root_certs(ops_model: OpsJubilantFacade, penpot_units: list[str
     """Inject CA certificate to penpot Java certificate store."""
     for unit_name in penpot_units:
         logger.info("copying oauth ca cert into %s", unit_name)
-        await ops_model.run_unit_ssh(
-            unit_name,
-            "cp",
-            "/dev/stdin",
-            "/oauth.crt",
-            stdin=ca_cert.encode("ascii"),
-        )
-        code, stdout, _ = await ops_model.run_unit_ssh(
+        ops_model.copy_text_to_unit(unit_name, "/oauth.crt", ca_cert)
+        stdout = ops_model.run_unit_command(
             unit_name,
             "cat",
             "/oauth.crt",
         )
-        assert code == 0
         logger.info("copying oauth ca cert into %s result: %s", unit_name, stdout)
         logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
-        code, stdout, stderr = await ops_model.run_unit_ssh(
+        stdout = ops_model.run_unit_command(
             unit_name,
             "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
             "-import",
@@ -223,16 +218,14 @@ async def inject_root_certs(ops_model: OpsJubilantFacade, penpot_units: list[str
             "changeit",
             "-noprompt",
         )
-        assert code == 0
-        logger.info("keytool import result: %s, %s, %s", code, stdout, stderr)
+        logger.info("keytool import output: %s", stdout)
         logger.info("restart penpot backend in penpot/%s", unit_name)
-        code, _, _ = await ops_model.run_unit_ssh(
+        ops_model.run_unit_command(
             unit_name,
             "pebble",
             "restart",
             "backend",
         )
-        assert code == 0
 
 
 @pytest_asyncio.fixture(scope="module")
@@ -251,19 +244,19 @@ async def oauth_deployment(
         ext_idp_service=ext_idp_service,
     )
     await ops_model.bootstrap_identity_login_ui()
-    (
-        _penpot,
-        redis_k8s,
-        smtp_integrator,
-        s3_integrator,
-        nginx_ingress_integrator,
-    ) = await asyncio.gather(
+    penpot_app = "penpot"
+    redis_app = "redis-k8s"
+    smtp_app = "smtp-integrator"
+    s3_app = "s3-integrator"
+    ingress_app = "nginx-ingress-integrator"
+
+    await asyncio.gather(
         ops_model.deploy_application(
-            f"./{charm}", resources={"penpot-image": penpot_image}, application_name="penpot", num_units=2
+            f"./{charm}", resources={"penpot-image": penpot_image}, application_name=penpot_app, num_units=2
         ),
-        ops_model.deploy_application("redis-k8s", channel="edge"),
+        ops_model.deploy_application(redis_app, channel="edge"),
         ops_model.deploy_application(
-            "smtp-integrator",
+            smtp_app,
             config={
                 "auth_type": "none",
                 "domain": "example.com",
@@ -272,31 +265,31 @@ async def oauth_deployment(
             },
         ),
         ops_model.deploy_application(
-            "s3-integrator", config={"bucket": minio.bucket, "endpoint": minio.endpoint}
+            s3_app, config={"bucket": minio.bucket, "endpoint": minio.endpoint}
         ),
         ops_model.deploy_application(
-            "nginx-ingress-integrator",
+            ingress_app,
             channel="edge",
             config={"path-routes": "/", "service-hostname": "penpot.local"},
             trust=True,
             revision=109,
         ),
     )
-    await ops_model.wait_for_idle(timeout=300, apps=[s3_integrator.name, "self-signed-certificates"])
+    await ops_model.wait_for_idle(timeout=300, apps=[s3_app, "self-signed-certificates"])
     ops_model.sync_s3_credentials(
-        s3_integrator.name,
+        s3_app,
         access_key=minio.access_key,
         secret_key=minio.secret_key,
     )
     ops_model.integrate_endpoints("penpot:postgresql", "postgresql-k8s:database")
-    ops_model.integrate_endpoints("penpot:redis", redis_k8s.name)
-    ops_model.integrate_endpoints("penpot:s3", f"{s3_integrator.name}:s3-credentials")
-    ops_model.integrate_endpoints("penpot:smtp", f"{smtp_integrator.name}:smtp")
+    ops_model.integrate_endpoints("penpot:redis", redis_app)
+    ops_model.integrate_endpoints("penpot:s3", f"{s3_app}:s3-credentials")
+    ops_model.integrate_endpoints("penpot:smtp", f"{smtp_app}:smtp")
     ops_model.integrate_endpoints(
         "self-signed-certificates:certificates",
-        f"{nginx_ingress_integrator.name}:certificates",
+        f"{ingress_app}:certificates",
     )
-    ops_model.integrate_endpoints("penpot:ingress", f"{nginx_ingress_integrator.name}:ingress")
+    ops_model.integrate_endpoints("penpot:ingress", f"{ingress_app}:ingress")
     await ops_model.wait_for_idle(timeout=300, status="active", raise_on_error=False)
 
 
