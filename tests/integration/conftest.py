@@ -8,6 +8,7 @@
 import collections
 import logging
 import os
+import re
 import time
 
 import boto3
@@ -15,9 +16,10 @@ import botocore.client
 import jubilant
 import kubernetes
 import pytest
-import pytest_asyncio
+from lightkube import Client, KubeConfig
 from lightkube.resources.core_v1 import Node, Service
 from oauth_tools.external_idp import DexIdpService
+from playwright.sync_api import Page, expect
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,12 @@ def pytest_configure(config):
     kube_config = config.getoption("--kube-config")
     if kube_config and not os.environ.get("TESTING_KUBECONFIG"):
         os.environ["TESTING_KUBECONFIG"] = kube_config
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args: dict) -> dict:
+    """Configure Playwright sync browser context for self-signed TLS."""
+    return {**browser_context_args, "ignore_https_errors": True}
 
 
 @pytest.fixture(name="charm_file", scope="module")
@@ -101,6 +109,16 @@ class StableDexIdpService(DexIdpService):
             time.sleep(3)
         raise RuntimeError("Dex load balancer ingress IP is not available")
 
+    def complete_user_login(self, page: Page) -> None:
+        """Get a page on the IDP login page and login the user."""
+        logger.info("Signing in to dex")
+        expect(page).to_have_url(re.compile(rf"{self.issuer_url}*"))
+        page.get_by_placeholder("email address").click()
+        page.get_by_placeholder("email address").fill(self.user_email)
+        page.get_by_placeholder("password").click()
+        page.get_by_placeholder("password").fill(self.user_password)
+        page.get_by_role("button", name="Login").click()
+
 
 @pytest.fixture(name="juju", scope="module")
 def juju_fixture(pytestconfig: pytest.Config):
@@ -133,8 +151,11 @@ def get_unit_ips_fixture(juju: jubilant.Juju):
     return _get_unit_ips
 
 
+S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_key secret_key")
+
+
 @pytest.fixture(name="minio", scope="module")
-def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju):
+def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju) -> S3Credential:
     """Deploy test minio service."""
     key = "minioadmin"
     juju.deploy("minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key})
@@ -149,7 +170,6 @@ def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju):
     )
     bucket = "penpot"
     s3.create_bucket(Bucket=bucket)
-    S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_key secret_key")
     return S3Credential(
         endpoint=f"http://minio-endpoints.{juju.model}.svc.cluster.local:9000",
         bucket=bucket,
@@ -158,8 +178,11 @@ def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju):
     )
 
 
+SmtpCredential = collections.namedtuple("SmtpCredential", "host port")
+
+
 @pytest.fixture(name="mailcatcher", scope="module")
-def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju):
+def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential:
     """Deploy test mailcatcher service."""
     namespace = juju.model
     v1 = kubernetes.client.CoreV1Api()
@@ -212,7 +235,6 @@ def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju):
             pass
         logger.info("waiting for mailcatcher pod")
         time.sleep(1)
-    SmtpCredential = collections.namedtuple("SmtpCredential", "host port")
     return SmtpCredential(
         host=f"mailcatcher-service.{namespace}.svc.cluster.local",
         port=1025,
@@ -229,9 +251,11 @@ def ingress_address_fixture(pytestconfig: pytest.Config):
 
 
 @pytest.fixture(name="ext_idp_service", scope="module")
-def ext_idp_service_fixture(keep_models: bool, client):
+def ext_idp_service_fixture(keep_models: bool):
     """Deploy and manage Dex with resilient issuer URL resolution."""
     logger.info("Deploying dex resources")
+    kubeconfig = os.environ.get("TESTING_KUBECONFIG", "~/.kube/config")
+    client = Client(config=KubeConfig.from_file(kubeconfig), field_manager="dex-test")
     ext_idp_manager = StableDexIdpService(client=client)
     try:
         yield ext_idp_manager
@@ -241,115 +265,148 @@ def ext_idp_service_fixture(keep_models: bool, client):
             ext_idp_manager.remove_idp_service()
 
 
-@pytest_asyncio.fixture(name="oauth_deployment", scope="module")
-async def oauth_deployment_fixture(
+@pytest.fixture(name="deployment", scope="module")
+def deployment_fixture(
     juju: jubilant.Juju,
     charm_file: str,
     penpot_image: str,
-    minio,
-    mailcatcher,
-    ext_idp_service,
+    minio: S3Credential,
+    mailcatcher: SmtpCredential,
+) -> list[str]:
+    """Deploy base Penpot stack used by integration tests.
+
+    Returns:
+        A list of deployed application names.
+    """
+    juju.deploy("postgresql-k8s", channel="14/stable", trust=True)
+    juju.deploy("self-signed-certificates", channel="latest/stable", trust=True)
+    juju.deploy(
+        f"./{charm_file}",
+        app="penpot",
+        resources={"penpot-image": penpot_image},
+        num_units=2,
+    )
+    juju.deploy("redis-k8s", channel="edge")
+    juju.deploy(
+        "smtp-integrator",
+        config={
+            "auth_type": "none",
+            "domain": "example.com",
+            "host": mailcatcher.host,
+            "port": mailcatcher.port,
+        },
+    )
+    juju.deploy(
+        "s3-integrator",
+        config={"bucket": minio.bucket, "endpoint": minio.endpoint},
+    )
+    juju.deploy(
+        "nginx-ingress-integrator",
+        channel="edge",
+        config={"path-routes": "/", "service-hostname": "penpot.local"},
+        trust=True,
+        revision=109,
+    )
+
+    juju.wait(jubilant.all_agents_idle, timeout=300)
+    juju.run(
+        "s3-integrator/0",
+        "sync-s3-credentials",
+        {
+            "access-key": minio.access_key,
+            "secret-key": minio.secret_key,
+        },
+    )
+
+    juju.integrate(
+        "self-signed-certificates:certificates", "nginx-ingress-integrator:certificates"
+    )
+    juju.integrate("penpot:postgresql", "postgresql-k8s:database")
+    juju.integrate("penpot:redis", "redis-k8s")
+    juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
+    juju.integrate("penpot:smtp", "smtp-integrator:smtp")
+    juju.integrate("penpot:ingress", "nginx-ingress-integrator:ingress")
+
+    deployed_apps = [
+        "postgresql-k8s",
+        "self-signed-certificates",
+        "penpot",
+        "redis-k8s",
+        "s3-integrator",
+        "smtp-integrator",
+        "nginx-ingress-integrator",
+    ]
+
+    return deployed_apps
+
+
+@pytest.fixture(name="oauth_deployment", scope="module")
+def oauth_deployment_fixture(
+    juju: jubilant.Juju,
+    deployment: list[str],
+    ext_idp_service: StableDexIdpService,
 ):
-    """Deploy identity stack and penpot through explicit Juju operations."""
-    def deploy_if_missing(app_name: str, charm_name: str | None = None, **kwargs):
-        if app_name in juju.status().apps:
-            logger.info("app %s already deployed, reusing", app_name)
-            return
-        if charm_name is None:
-            juju.deploy(app_name, **kwargs)
-            return
-        juju.deploy(charm_name, app=app_name, **kwargs)
-
-    def relation_exists(endpoint_a: str, endpoint_b: str) -> bool:
-        relations = juju.cli("status", "--relations")
-        return any(
-            endpoint_a in relation_line and endpoint_b in relation_line
-            for relation_line in relations.splitlines()
-        )
-
-    def integrate_if_missing(endpoint_a: str, endpoint_b: str):
-        if relation_exists(endpoint_a, endpoint_b):
-            logger.info("relation already exists: %s <-> %s", endpoint_a, endpoint_b)
-            return
-        juju.integrate(endpoint_a, endpoint_b)
-
-    deploy_if_missing(
+    """Deploy OAuth identity stack and relations on top of base deployment."""
+    juju.deploy(
         "hydra",
         channel="edge",
         revision=339,
         trust=True,
         resources={"oci-image": "ghcr.io/canonical/hydra:2.3.0-canonical"},
     )
-    deploy_if_missing(
+    juju.deploy(
         "kratos",
         channel="edge",
         revision=500,
         trust=True,
         resources={"oci-image": "ghcr.io/canonical/kratos:1.3.1"},
     )
-    deploy_if_missing("kratos-external-idp-integrator", channel="edge", revision=245)
-    deploy_if_missing(
+    juju.deploy("kratos-external-idp-integrator", channel="edge", revision=245)
+    juju.deploy(
         "identity-platform-login-ui-operator",
         channel="edge",
         revision=146,
         trust=True,
         resources={"oci-image": "ghcr.io/canonical/identity-platform-login-ui:v0.21.2"},
     )
-    deploy_if_missing(
-        "postgresql-k8s",
-        channel="14/stable",
-        trust=True,
-        config={
-            "plugin_pg_trgm_enable": True,
-            "plugin_btree_gin_enable": True,
-        },
-    )
-    juju.config(
-        "postgresql-k8s",
-        {
-            "plugin_pg_trgm_enable": True,
-            "plugin_btree_gin_enable": True,
-        },
-    )
-    deploy_if_missing("self-signed-certificates", channel="latest/stable", revision=155)
-    deploy_if_missing(
-        "traefik-admin",
-        charm_name="traefik-k8s",
+    juju.deploy(
+        "traefik-k8s",
+        app="traefik-admin",
         channel="latest/stable",
         revision=176,
         trust=True,
     )
-    deploy_if_missing(
-        "traefik-public",
-        charm_name="traefik-k8s",
+    juju.deploy(
+        "traefik-k8s",
+        app="traefik-public",
         channel="latest/stable",
         revision=176,
         trust=True,
     )
 
-    integrate_if_missing("hydra:pg-database", "postgresql-k8s:database")
-    integrate_if_missing("kratos:pg-database", "postgresql-k8s:database")
-    integrate_if_missing("kratos:hydra-endpoint-info", "hydra:hydra-endpoint-info")
-    integrate_if_missing(
+    juju.integrate("hydra:pg-database", "postgresql-k8s:database")
+    juju.integrate("kratos:pg-database", "postgresql-k8s:database")
+    juju.integrate("kratos:hydra-endpoint-info", "hydra:hydra-endpoint-info")
+    juju.integrate(
         "kratos-external-idp-integrator:kratos-external-idp", "kratos:kratos-external-idp"
     )
-    integrate_if_missing("hydra:admin-ingress", "traefik-admin:ingress")
-    integrate_if_missing("hydra:public-ingress", "traefik-public:ingress")
-    integrate_if_missing("kratos:admin-ingress", "traefik-admin:ingress")
-    integrate_if_missing("kratos:public-ingress", "traefik-public:ingress")
-    integrate_if_missing("identity-platform-login-ui-operator:ingress", "traefik-public:ingress")
-    integrate_if_missing(
+    juju.integrate("hydra:admin-ingress", "traefik-admin:ingress")
+    juju.integrate("hydra:public-ingress", "traefik-public:ingress")
+    juju.integrate("kratos:admin-ingress", "traefik-admin:ingress")
+    juju.integrate("kratos:public-ingress", "traefik-public:ingress")
+    juju.integrate("identity-platform-login-ui-operator:ingress", "traefik-public:ingress")
+    juju.integrate(
         "identity-platform-login-ui-operator:hydra-endpoint-info", "hydra:hydra-endpoint-info"
     )
-    integrate_if_missing(
+    juju.integrate(
         "identity-platform-login-ui-operator:ui-endpoint-info", "hydra:ui-endpoint-info"
     )
-    integrate_if_missing(
+    juju.integrate(
         "identity-platform-login-ui-operator:ui-endpoint-info", "kratos:ui-endpoint-info"
     )
-    integrate_if_missing("identity-platform-login-ui-operator:kratos-info", "kratos:kratos-info")
-    integrate_if_missing("traefik-admin:certificates", "self-signed-certificates:certificates")
-    integrate_if_missing("traefik-public:certificates", "self-signed-certificates:certificates")
+    juju.integrate("identity-platform-login-ui-operator:kratos-info", "kratos:kratos-info")
+    juju.integrate("traefik-admin:certificates", "self-signed-certificates:certificates")
+    juju.integrate("traefik-public:certificates", "self-signed-certificates:certificates")
 
     juju.config(
         "kratos-external-idp-integrator",
@@ -368,13 +425,8 @@ async def oauth_deployment_fixture(
             "hydra",
             "kratos",
             "kratos-external-idp-integrator",
-            "identity-platform-login-ui-operator",
-            "postgresql-k8s",
-            "self-signed-certificates",
-            "traefik-admin",
-            "traefik-public",
         ),
-        timeout=2000,
+        timeout=300,
     )
     redirect_uri = juju.run("kratos-external-idp-integrator/0", "get-redirect-uri").results.get(
         "redirect-uri"
@@ -383,65 +435,15 @@ async def oauth_deployment_fixture(
         "kratos-external-idp-integrator get-redirect-uri did not return redirect-uri"
     )
     ext_idp_service.update_redirect_uri(redirect_uri=redirect_uri)
-    penpot_app = "penpot"
-    redis_app = "redis-k8s"
-    smtp_app = "smtp-integrator"
-    s3_app = "s3-integrator"
-    ingress_app = "nginx-ingress-integrator"
 
-    deploy_if_missing(
-        penpot_app,
-        charm_name=f"./{charm_file}",
-        resources={"penpot-image": penpot_image},
-        num_units=2,
-    )
-    deploy_if_missing(redis_app, channel="edge")
-    deploy_if_missing(
-        smtp_app,
-        config={
-            "auth_type": "none",
-            "domain": "example.com",
-            "host": mailcatcher.host,
-            "port": mailcatcher.port,
-        },
-    )
-    deploy_if_missing(s3_app, config={"bucket": minio.bucket, "endpoint": minio.endpoint})
-    deploy_if_missing(
-        ingress_app,
-        channel="edge",
-        config={"path-routes": "/", "service-hostname": "penpot.local"},
-        trust=True,
-        revision=109,
-    )
-    selected_apps = [s3_app, "self-signed-certificates"]
-    juju.wait(
-        lambda status: all(
-            unit.juju_status.current == "idle"
-            for app_name in selected_apps
-            for unit in status.apps[app_name].units.values()
-        ),
-        error=lambda status: any(
-            status.apps[app_name].app_status.current == "error"
-            or any(
-                unit.workload_status.current == "error" or unit.juju_status.current == "error"
-                for unit in status.apps[app_name].units.values()
-            )
-            for app_name in selected_apps
-        ),
-        timeout=300,
-    )
-    juju.run(
-        "s3-integrator/0",
-        "sync-s3-credentials",
-        {
-            "access-key": minio.access_key,
-            "secret-key": minio.secret_key,
-        },
-    )
-    integrate_if_missing("penpot:postgresql", "postgresql-k8s:database")
-    integrate_if_missing("penpot:redis", redis_app)
-    integrate_if_missing("penpot:s3", f"{s3_app}:s3-credentials")
-    integrate_if_missing("penpot:smtp", f"{smtp_app}:smtp")
-    integrate_if_missing("self-signed-certificates:certificates", f"{ingress_app}:certificates")
-    integrate_if_missing("penpot:ingress", f"{ingress_app}:ingress")
-    juju.wait(lambda status: jubilant.all_active(status, *status.apps.keys()), timeout=300)
+    deployed_apps = [
+        *deployment,
+        "hydra",
+        "kratos",
+        "kratos-external-idp-integrator",
+        "identity-platform-login-ui-operator",
+        "traefik-admin",
+        "traefik-public",
+    ]
+
+    return deployed_apps
