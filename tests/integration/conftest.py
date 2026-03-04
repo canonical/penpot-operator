@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """Integration test fixtures."""
@@ -24,17 +24,9 @@ from playwright.sync_api import Page, expect
 logger = logging.getLogger(__name__)
 
 
-def pytest_addoption(parser):
-    """Parse integration-specific pytest options."""
-    parser.addoption("--charm-file", action="store")
-    parser.addoption("--kube-config", action="store")
-    parser.addoption("--penpot-image", action="store")
-    parser.addoption("--ingress-address", action="store")
-
-
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config):
     """Configure integration test environment."""
-    kube_config = config.getoption("--kube-config")
+    kube_config = config.getoption("kube_config")
     if kube_config and not os.environ.get("TESTING_KUBECONFIG"):
         os.environ["TESTING_KUBECONFIG"] = kube_config
 
@@ -48,7 +40,7 @@ def browser_context_args(browser_context_args: dict) -> dict:
 @pytest.fixture(name="charm_file", scope="module")
 def charm_file_fixture(pytestconfig: pytest.Config) -> str:
     """Return the required charm file path for integration tests."""
-    charm = pytestconfig.getoption("--charm-file")
+    charm = pytestconfig.getoption("charm_file")
     assert charm, "--charm-file is required"
     return charm
 
@@ -56,7 +48,7 @@ def charm_file_fixture(pytestconfig: pytest.Config) -> str:
 @pytest.fixture(name="penpot_image", scope="module")
 def penpot_image_fixture(pytestconfig: pytest.Config) -> str:
     """Return the required penpot image for integration tests."""
-    image = pytestconfig.getoption("--penpot-image")
+    image = pytestconfig.getoption("penpot_image")
     assert image, "--penpot-image is required"
     return image
 
@@ -64,13 +56,13 @@ def penpot_image_fixture(pytestconfig: pytest.Config) -> str:
 @pytest.fixture(name="keep_models", scope="module")
 def keep_models_fixture(pytestconfig: pytest.Config) -> bool:
     """Return whether integration model retention is enabled."""
-    return bool(pytestconfig.getoption("--keep-models"))
+    return bool(pytestconfig.getoption("keep_models"))
 
 
 @pytest.fixture(scope="module", name="load_kube_config")
 def load_kube_config_fixture(pytestconfig: pytest.Config):
     """Load kubernetes config file."""
-    kube_config = pytestconfig.getoption("--kube-config")
+    kube_config = pytestconfig.getoption("kube_config")
     kubernetes.config.load_kube_config(config_file=kube_config)
 
 
