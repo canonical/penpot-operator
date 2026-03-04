@@ -16,7 +16,7 @@ def wait_for_endpoint(url: str, timeout: int = 120):
             retry=retry_if_exception_type((requests.RequestException, RuntimeError)),
         ):
             with attempt:
-                response = requests.get(url, timeout=10, verify=False)
+                response = requests.get(url, timeout=10, verify=False)  # nosec: B501
                 if response.status_code >= 500:
                     raise RuntimeError(f"endpoint not ready: {response.status_code}")
     except RetryError as error:

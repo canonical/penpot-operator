@@ -71,7 +71,7 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], ingress_addr
     email = "test@test.com"
     unit = "penpot/0"
 
-    password = ""
+    password = ""  # nosec: B105
     for attempt in Retrying(stop=stop_after_attempt(60), wait=wait_fixed(5), reraise=True):
         with attempt:
             task = juju.run(unit, "create-profile", {"email": email, "fullname": "test"})
