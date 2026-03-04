@@ -3,7 +3,7 @@
 ## Prometheus
 
 Deploy and integrate [`prometheus-k8s`](https://charmhub.io/prometheus-k8s) charm with the `penpot`
-charm through the `metrics-endpoint` relation via `prometheus_scrape` interface. Prometheus should
+charm through the `metrics-endpoint` relation using the `prometheus_scrape` interface. Prometheus should
 start scraping the metrics exposed at `:9117/metrics` endpoint.
 
 ```bash
@@ -14,7 +14,7 @@ juju integrate penpot prometheus-k8s
 ## Loki
 
 Deploy and integrate [`loki-k8s`](https://charmhub.io/loki-k8s) charm with the `penpot` charm through
-the `logging` relation via `loki_push_api` interface. Pebble inside the
+the `logging` relation using the `loki_push_api` interface. Pebble inside the
 `penpot` container should be configured to send logs to Loki.
 
 ```bash

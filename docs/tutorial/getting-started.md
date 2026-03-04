@@ -6,7 +6,7 @@
 
 This tutorial will walk you through deploying the penpot charm; you will:
 
-1. Deploy and configure the Penpot charm's dependencies (PostgreSQL, Redis, s3, etc.)
+1. Deploy and configure the Penpot charm's dependencies (PostgreSQL, Redis, s3, and so on)
 2. Deploy Penpot and integrate it with its dependencies
 3. Create a user
 4. Login to the web interface for your deployed Penpot instance

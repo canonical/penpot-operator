@@ -18,8 +18,10 @@ Running operation 7 with 1 task
 Waiting for task 8...
 email: john.doe@example.com
 fullname: John Doe
-password: ZhrmqxSF74xVeA  # password should be different in your output
+password: ZhrmqxSF74xVeA
 ```
+
+The password shown here is an example. Your output will show a different value.
 
 You can use the email and password from the output to log in to the
 Penpot instance.
