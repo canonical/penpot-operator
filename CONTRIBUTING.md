@@ -23,7 +23,7 @@ This document explains the processes and practices recommended for contributing 
 ## Code of conduct
 
 When contributing, you must abide by the
-[Ubuntu Code of Conduct](https://ubuntu.com/community/ethos/code-of-conduct).
+[Ubuntu Code of Conduct](https://ubuntu.com/community/docs/ethos/code-of-conduct).
 
 ## Changelog
 
@@ -89,7 +89,7 @@ we use the [Canonical contributor license agreement](https://assets.ubuntu.com/v
 #### Canonical contributor agreement
 
 Canonical welcomes contributions to the Penpot charm. Please check out our
-[contributor agreement](https://ubuntu.com/legal/contributors) if you're interested in contributing to the solution.
+[contributor agreement](https://canonical.com/legal/contributors) if you're interested in contributing to the solution.
 
 The CLA sign-off is simple line at the
 end of the commit message certifying that you wrote it

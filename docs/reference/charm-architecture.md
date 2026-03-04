@@ -2,7 +2,7 @@
 
 The penpot-operator charm aims to provide the core functionalities of Penpot with horizontally scalable architecture.
 
-Operational capabilities are enhanced through integrations with the Canonical Observability Stack ([COS](https://charmhub.io/topics/canonical-observability-stack/))
+Operational capabilities are enhanced through integrations with the Canonical Observability Stack ([COS](https://charmhub.io/topics/canonical-observability-stack))
 charms.
 
 ## High-level overview of Penpot deployment
@@ -84,18 +84,18 @@ Container_Boundary(juju-container, "Juju sidecar") {
 
 ## Containers
 
-The charm design leverages the [sidecar](https://kubernetes.io/blog/2015/06/the-distributed-system-toolkit-patterns/#example-1-sidecar-containers) pattern to allow multiple containers in each pod with [Pebble](https://juju.is/docs/sdk/pebble) running as the workload container’s entrypoint.
+The charm design leverages the [sidecar](https://kubernetes.io/blog/2015/06/the-distributed-system-toolkit-patterns/#example-1-sidecar-containers) pattern to allow multiple containers in each pod with [Pebble](https://documentation.ubuntu.com/ops/latest/reference/pebble/) running as the workload container’s entrypoint.
 
 Pebble is a lightweight, API-driven process supervisor that is responsible for configuring processes to run in a container and controlling those processes throughout the workload lifecycle.
 
 Pebble `services` are configured through [layers](https://github.com/canonical/pebble#layer-specification), and the following containers represent each one a layer forming the effective Pebble configuration, or `plan`:
 
-1. An [NGINX](https://www.nginx.com/) container, which can be used to efficiently serve static resources, as well as be the incoming point for all web traffic to the pod.
+1. An [NGINX](https://www.f5.com/products/nginx) container, which can be used to efficiently serve static resources, as well as be the incoming point for all web traffic to the pod.
 2. The [Penpot](https://penpot.app) container itself.
 
 ## OCI images
 
-We use [Rockcraft](https://canonical-rockcraft.readthedocs-hosted.com/en/latest/) to build OCI Images for Penpot.
+We use [Rockcraft](https://documentation.ubuntu.com/rockcraft/latest/) to build OCI Images for Penpot.
 The image is defined in [rockcraft.yaml](https://github.com/canonical/penpot-operator/blob/main/penpot_rock/rockcraft.yaml).
 They are published to [Charmhub](https://charmhub.io/), the official repository of charms.
 
@@ -145,7 +145,7 @@ This will disable the user/password login in the Penpot charm and switch to usin
 
 The charm observes the lifecycle events ("created", "changed", "broken"...) associated to the different relations (including the peer relation). It also observes the `config_changed`, `upgrade_charm` and `secret_changed` events.
 
-Following the [holistic](https://ops.readthedocs.io/en/latest/explanation/holistic-vs-delta-charms.html) charm approach, each of these events will trigger a "reconcile" loop.
+Following the [holistic](https://documentation.ubuntu.com/ops/latest/explanation/holistic-vs-delta-charms/) charm approach, each of these events will trigger a "reconcile" loop.
 
 Additionally, two actions event are observed to execute the associated actions:
 
@@ -156,13 +156,13 @@ Additionally, two actions event are observed to execute the associated actions:
 
 The `src/charm.py` file contains all the charm logic. It is the default entry point for the charm and has the `PenpotCharm` Python class which inherits
 from CharmBase. CharmBase is the base class from which all charms are formed, defined
-by [Ops](https://juju.is/docs/sdk/ops) (Python framework for developing charms).
+by [Ops](https://documentation.ubuntu.com/ops/latest/) (Python framework for developing charms).
 
 > See more in the Juju docs: [Charm](https://documentation.ubuntu.com/juju/latest/user/reference/charm/)
 
 The `__init__` method guarantees that the charm observes all events relevant to its operation and handles them.
 
-The charm follows the [holistic](https://ops.readthedocs.io/en/latest/explanation/holistic-vs-delta-charms.html) pattern, so almost all events will trigger a "reconcile loop".
+The charm follows the [holistic](https://documentation.ubuntu.com/ops/latest/explanation/holistic-vs-delta-charms/) pattern, so almost all events will trigger a "reconcile loop".
 
 Take, for example, when a configuration is changed by using the CLI.
 
