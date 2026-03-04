@@ -35,7 +35,7 @@ If there's a particular area of documentation that you'd like to see that's miss
 
 1. [Tutorial](tutorial)
   1. [Tutorial: Deploy the Penpot charm](tutorial/getting-started.md)
-1. [How-to](how-to)
+1. [How-to](how-to/index.md)
   1. [Configure S3](how-to/configure-s3.md)
   1. [Configure SMTP](how-to/configure-smtp.md)
   1. [Configure Single Sign-On (SSO)](how-to/configure-sso.md)
