@@ -2,7 +2,7 @@
 
 The following guides cover key processes and common tasks for managing and using the Penpot charm.
 
-## Configure integrations
+## Configure and integrate
 
 Once you've finished setting up the charm, now you can perform a number of actions with your deployment. These guides provide instructions on basic operations you can complete with the charm.
 
@@ -20,6 +20,6 @@ The following guides provide instructions on upgrading your deployment, includin
 
 ## Development
 
-These guides can help you with troubleshooting and contributing to the project.
+These guides can help you with contributing to the project.
 
 - [Contribute](contribute.md)
