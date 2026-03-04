@@ -4,8 +4,8 @@ This document explains the processes and practices recommended for contributing 
 
 ## Overview
 
-- Generally, before developing enhancements to this charm, you should consider [opening an issue
-  ](https://github.com/canonical/penpot-operator/issues) explaining your use case.
+- Generally, before developing enhancements to this charm,
+  you should consider [opening an issue](https://github.com/canonical/penpot-operator/issues) explaining your use case.
 - If you would like to chat with us about your use-cases or proposed implementation, you can reach
   us at [Canonical Matrix public channel](https://matrix.to/#/#charmhub-charmdev:ubuntu.com)
   or [Discourse](https://discourse.charmhub.io/).
@@ -108,7 +108,7 @@ To make contributions to this charm, you'll need a working
 
 The code for this charm can be downloaded as follows:
 
-```
+```bash
 git clone https://github.com/canonical/penpot-operator
 ```
 
@@ -140,12 +140,12 @@ source .venv/bin/activate
 This project uses `tox` for managing test environments. There are some pre-configured environments
 that can be used for linting and formatting code when you're preparing contributions to the charm:
 
-* ``tox``: Executes all of the basic checks and tests (``lint``, ``unit``, ``static``, and ``coverage-report``).
-* ``tox -e fmt``: Runs formatting using ``ruff``.
-* ``tox -e lint``: Runs a range of static code analysis to check the code.
-* ``tox -e static``: Runs other checks such as ``bandit`` for security issues.
-* ``tox -e unit``: Runs the unit tests.
-* ``tox -e integration``: Runs the integration tests.
+- ``tox``: Executes all of the basic checks and tests (``lint``, ``unit``, ``static``, and ``coverage-report``).
+- ``tox -e fmt``: Runs formatting using ``ruff``.
+- ``tox -e lint``: Runs a range of static code analysis to check the code.
+- ``tox -e static``: Runs other checks such as ``bandit`` for security issues.
+- ``tox -e unit``: Runs the unit tests.
+- ``tox -e integration``: Runs the integration tests.
 
 ### Build the rock and charm
 
@@ -171,7 +171,7 @@ skopeo --insecure-policy copy --dest-tls-verify=false oci-archive:<rock-name>.ro
 
 Build the charm in this git repository using:
 
-```shell
+```bash
 charmcraft pack
 ```
 

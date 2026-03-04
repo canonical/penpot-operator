@@ -9,6 +9,6 @@ Then run the following command to integrate the `smtp-integrator` charm
 and the `penpot` charm to supply the SMTP configuration to the `penpot`
 charm.
 
-```
+```bash
 juju integrate penpot:smtp smtp-integrator
 ```

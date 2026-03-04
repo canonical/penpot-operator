@@ -14,9 +14,7 @@ C4Context
 title Containers diagram for Penpot Charm
 
 Container_Boundary(penpot, "Penpot Charm") {
-  
   Component(penpot, "Penpot", "Main Application", "")
-  
 }
 
 Container_Boundary(postgresql, "PostgreSQL Charm") {
@@ -59,33 +57,30 @@ C4Component
 title Component diagram for Penpot Charm
 
 Container_Boundary(penpot-container, "Penpot container") {
-  
+
   Component(penpot, "Penpot", "Main Application", "")
   Component(penpot-exporter, "Penpot Exporter", "File exporter", "")
   Component(nginx, "Penpot NGINX", "Reverse Proxy", "Reverse proxy")
   Component(pebble, "Pebble", "Workload manager", "")
-  
+
   Rel(pebble, nginx, "Manages")
   Rel(pebble, penpot, "Manages")
   Rel(pebble, penpot-exporter, "Manages")
   Rel(nginx, penpot, "Reverse proxy")
-  
+
   UpdateRelStyle(pebble, nginx, $offsetX="-20", $offsetY="10")
   UpdateRelStyle(pebble, penpot, $offsetX="10", $offsetY="-20")
   UpdateRelStyle(pebble, penpot-exporter, $offsetX="10", $offsetY="0")
   UpdateRelStyle(nginx, penpot, $offsetX="10", $offsetY="0")
-  
+
 }
 
 Container_Boundary(juju-container, "Juju sidecar") {
-  
+
   Component(juju, "Juju agent", "", "")
 
 }
-
-
 ```
-
 
 ## Containers
 
@@ -171,13 +166,17 @@ The charm follows the [holistic](https://ops.readthedocs.io/en/latest/explanatio
 
 Take, for example, when a configuration is changed by using the CLI.
 
-1. User runs the configuration command: 
-```
-juju config smtp-from-address=myaddress@mydomain.com
-```
+1. User runs the configuration command:
+
+    ```bash
+    juju config smtp-from-address=myaddress@mydomain.com
+    ```
+
 2. A `config-changed` event is emitted.
-3. In the `__init__` method is defined how to handle this event like this: 
-```
-python self.framework.observe(self.on.config_changed, self._reconcile)
-```
+3. In the `__init__` method is defined how to handle this event like this:
+
+    ```python
+    self.framework.observe(self.on.config_changed, self._reconcile)
+    ```
+
 4. The method `_reconcile`, for its turn, will take the necessary actions such as waiting for all the relations to be ready and then configuring the containers.
