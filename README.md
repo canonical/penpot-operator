@@ -1,8 +1,8 @@
 # Penpot charm
 
 [![CharmHub Badge](https://charmhub.io/penpot/badge.svg)](https://charmhub.io/penpot)
-[![Publish to edge](https://github.com/canonical/penpot-operator/actions/workflows/publish_charm.yaml/badge.svg)](https://github.com/canonical/penpot-operator/actions/workflows/publish_charm.yaml)
-[![Promote charm](https://github.com/canonical/penpot-operator/actions/workflows/promote_charm.yaml/badge.svg)](https://github.com/canonical/penpot-operator/actions/workflows/promote_charm.yaml)
+[![Publish to edge](https://github.com/canonical/penpot-operator/actions/workflows/publish_charm.yaml/badge.svg)](https://github.com/canonical/penpot-operator/blob/main/.github/workflows/publish_charm.yaml)
+[![Promote charm](https://github.com/canonical/penpot-operator/actions/workflows/promote_charm.yaml/badge.svg)](https://github.com/canonical/penpot-operator/blob/main/.github/workflows/promote_charm.yaml)
 [![Discourse Status](https://img.shields.io/discourse/status?server=https%3A%2F%2Fdiscourse.charmhub.io&style=flat&label=CharmHub%20Discourse)](https://discourse.charmhub.io)
 
 A [Juju](https://canonical.com/juju) [charm](https://documentation.ubuntu.com/juju/3.6/reference/charm/)
