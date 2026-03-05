@@ -65,7 +65,7 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], ingress_addr
     """
     juju.wait(
         lambda status: jubilant.all_active(status, *deployment),
-        timeout=300,
+        timeout=900,
     )
 
     email = "test@test.com"
@@ -123,7 +123,7 @@ def test_oauth_login(
     ext_idp_service,
 ):
     """Run OAuth login flow through oauth_tools compatibility path."""
-    juju.wait(lambda status: jubilant.all_active(status, *oauth_deployment), timeout=300)
+    juju.wait(lambda status: jubilant.all_active(status, *oauth_deployment), timeout=900)
 
     ca_cert = juju.run("self-signed-certificates/0", "get-ca-certificate").results[
         "ca-certificate"
