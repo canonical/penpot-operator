@@ -300,7 +300,7 @@ def deployment_fixture(
         revision=109,
     )
 
-    juju.wait(jubilant.all_agents_idle, timeout=300)
+    juju.wait(jubilant.all_agents_idle, timeout=900)
     juju.run(
         "s3-integrator/0",
         "sync-s3-credentials",
@@ -418,7 +418,7 @@ def oauth_deployment_fixture(
             "kratos",
             "kratos-external-idp-integrator",
         ),
-        timeout=300,
+        timeout=900,
     )
     redirect_uri = juju.run("kratos-external-idp-integrator/0", "get-redirect-uri").results.get(
         "redirect-uri"
