@@ -19,6 +19,8 @@ jobs:
     secrets: inherit
     with:
       provider: k8s
+      extra-arguments: |
+        --kube-config=~/.kube/config
       channel: 1.32-classic/stable
       charmcraft-channel: latest/edge
       juju-channel: 3/stable
