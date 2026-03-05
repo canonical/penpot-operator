@@ -238,7 +238,7 @@ def ingress_address_fixture(pytestconfig: pytest.Config):
     """Get ingress address test option."""
     address = pytestconfig.getoption("--ingress-address")
     if not address:
-        return "127.0.0.1"
+        return "penpot.local"
     return address
 
 
