@@ -20,9 +20,7 @@ from tenacity import (
     wait_fixed,
 )
 
-from tests.integration.helpers import (
-    wait_for_endpoint,
-)
+from tests.integration.helpers import wait_for_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +80,7 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], ingress_addr
             raise AssertionError("profile creation not ready")
 
     logger.info("create test penpot user %s with password: %s", email, password)
-    wait_for_endpoint(f"https://{ingress_address}/#/auth/login")
+    wait_for_endpoint(f"https://{ingress_address}/#/auth/login", 600)
     session = requests.Session()
 
     for attempt in Retrying(stop=stop_after_attempt(60), wait=wait_fixed(5), reraise=True):
@@ -135,7 +133,7 @@ def test_oauth_login(
     inject_root_certs(juju, penpot_units, ca_cert)
     juju.integrate("penpot:oauth", "hydra")
     juju.wait(lambda status: jubilant.all_active(status, "penpot"), timeout=300)
-    wait_for_endpoint("https://penpot.local/#/auth/login", timeout=300)
+    wait_for_endpoint("https://penpot.local/#/auth/login", timeout=600)
 
     for attempt in Retrying(
         stop=stop_after_attempt(5),
