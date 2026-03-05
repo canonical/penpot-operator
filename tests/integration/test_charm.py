@@ -117,6 +117,7 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], ingress_addr
 def test_oauth_login(
     juju: jubilant.Juju,
     oauth_deployment: list[str],
+    ingress_address: str,
     page: Page,
     ext_idp_service,
 ):
@@ -133,7 +134,8 @@ def test_oauth_login(
     inject_root_certs(juju, penpot_units, ca_cert)
     juju.integrate("penpot:oauth", "hydra")
     juju.wait(lambda status: jubilant.all_active(status, "penpot"), timeout=300)
-    wait_for_endpoint("https://penpot.local/#/auth/login", timeout=600)
+    wait_for_endpoint(f"https://{ingress_address}/#/auth/login", timeout=600)
+    escaped_ingress_address = re.escape(ingress_address)
 
     for attempt in Retrying(
         stop=stop_after_attempt(5),
@@ -145,11 +147,13 @@ def test_oauth_login(
         ),
     ):
         with attempt:
-            page.goto("https://penpot.local/#/auth/login")
+            page.goto(f"https://{ingress_address}/#/auth/login")
             with page.expect_navigation():
                 page.get_by_text("OpenID").click()
             page.wait_for_url(re.compile(r".*/ui/login.*"), timeout=60000)
             with page.expect_navigation():
                 page.get_by_role("button", name="Dex").click()
             ext_idp_service.complete_user_login(page)
-            expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+            expect(page).to_have_url(
+                re.compile(rf"^https://{escaped_ingress_address}/#/auth/register.*")
+            )
