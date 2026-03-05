@@ -14,14 +14,15 @@ jobs:
       vale-style-check: false
       with-uv: true
   integration-tests:
-    uses: 
+    uses:
       canonical/operator-workflows/.github/workflows/integration_test.yaml@main
     secrets: inherit
     with:
-      channel: 1.28-strict/stable
+      provider: k8s
+      channel: 1.32-classic/stable
       charmcraft-channel: latest/edge
       juju-channel: 3/stable
-      microk8s-addons: "dns ingress rbac storage metallb:10.64.140.43-10.64.140.49"
+      use-canonical-k8s: true
       pre-run-script: tests/integration/prepare.sh
       with-uv: true
   allure-report:
