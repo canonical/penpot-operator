@@ -7,10 +7,20 @@ set -exo pipefail
 
 sudo k8s enable ingress
 
-ingress_ip="$(sudo k8s kubectl get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')"
+# Prefer the ingress controller service address used by tests.
+ingress_ip=""
+for _ in $(seq 1 20); do
+	ingress_ip="$(sudo k8s kubectl -n kube-system get svc cilium-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+	if [[ -n "$ingress_ip" ]]; then
+		break
+	fi
+	sleep 3
+done
 
 if [[ -z "$ingress_ip" ]]; then
-	ingress_ip="127.0.0.1"
+	echo "ERROR: cilium-ingress Service has no load balancer IP" >&2
+	echo "ERROR: cannot map penpot.local for ingress tests" >&2
+	exit 1
 fi
 
 sudo sed -i '/[[:space:]]penpot\.local$/d' /etc/hosts
