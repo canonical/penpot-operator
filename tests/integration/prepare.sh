@@ -5,6 +5,8 @@
 
 set -exo pipefail
 
+sudo k8s enable ingress
+
 ingress_ip="$(sudo k8s kubectl get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')"
 
 if [[ -z "$ingress_ip" ]]; then
