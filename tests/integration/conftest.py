@@ -234,12 +234,20 @@ def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential
 
 
 @pytest.fixture(name="ingress_address", scope="module")
-def ingress_address_fixture(pytestconfig: pytest.Config):
-    """Get ingress address test option."""
+def ingress_address_fixture(
+    pytestconfig: pytest.Config,
+    juju: jubilant.Juju,
+    deployment: list[str],
+):
+    """Get ingress address test option, defaulting to a Penpot unit IP."""
     address = pytestconfig.getoption("--ingress-address")
-    if not address:
-        return "penpot.local"
-    return address
+    if address:
+        return address
+
+    status = juju.status()
+    units = status.apps["penpot"].units
+    first_unit_name = sorted(units.keys(), key=lambda n: int(n.split("/")[-1]))[0]
+    return units[first_unit_name].address
 
 
 @pytest.fixture(name="ext_idp_service", scope="module")

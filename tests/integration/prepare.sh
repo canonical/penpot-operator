@@ -7,7 +7,6 @@ set -exo pipefail
 
 sudo k8s enable ingress
 
-# Prefer the ingress controller service address used by tests.
 ingress_ip=""
 for _ in $(seq 1 20); do
 	ingress_ip="$(sudo k8s kubectl -n kube-system get svc cilium-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
@@ -23,7 +22,6 @@ if [[ -z "$ingress_ip" ]]; then
 	exit 1
 fi
 
-sudo sed -i '/[[:space:]]penpot\.local$/d' /etc/hosts
 echo "$ingress_ip penpot.local" | sudo tee -a /etc/hosts >/dev/null
 
 getent hosts penpot.local

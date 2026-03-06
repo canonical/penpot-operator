@@ -80,7 +80,11 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], ingress_addr
             raise AssertionError("profile creation not ready")
 
     logger.info("create test penpot user %s with password: %s", email, password)
-    wait_for_endpoint(f"https://{ingress_address}/#/auth/login", 600)
+    wait_for_endpoint(
+        f"https://{ingress_address}/#/auth/login",
+        300,
+        headers={"Host": "penpot.local"},
+    )
     session = requests.Session()
 
     for attempt in Retrying(stop=stop_after_attempt(60), wait=wait_fixed(5), reraise=True):
@@ -134,7 +138,11 @@ def test_oauth_login(
     inject_root_certs(juju, penpot_units, ca_cert)
     juju.integrate("penpot:oauth", "hydra")
     juju.wait(lambda status: jubilant.all_active(status, "penpot"), timeout=300)
-    wait_for_endpoint(f"https://{ingress_address}/#/auth/login", timeout=600)
+    wait_for_endpoint(
+        f"https://{ingress_address}/#/auth/login",
+        timeout=300,
+        headers={"Host": "penpot.local"},
+    )
     escaped_ingress_address = re.escape(ingress_address)
 
     for attempt in Retrying(
