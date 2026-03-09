@@ -57,7 +57,7 @@ def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str
         juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
 
 
-def test_create_profile(juju: jubilant.Juju, deployment: list[str], ingress_address: str):
+def test_create_profile(juju: jubilant.Juju, deployment: list[str], public_url: str):
     """
     arrange: deploy the Penpot charm.
     act: create a Penpot account using the 'create-profile' charm action.
@@ -81,22 +81,34 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], ingress_addr
             logger.info("waiting for penpot started: %s", task.results)
             raise AssertionError("profile creation not ready")
 
-    logger.info("create test penpot user %s with password: %s", email, password)
-    wait_for_endpoint(f"https://{ingress_address}/#/auth/login")
+    logger.info("`create test penpot` user %s with password: %s", email, password)
+    logger.info("using public URL: %s", public_url)
+    login_endpoint = f"{public_url}/api/rpc/command/login-with-password"
+    login_headers: dict[str, str] = {}
+    logger.info(
+        "login endpoint: %s headers=%s",
+        login_endpoint,
+        login_headers,
+    )
+    wait_for_endpoint(f"{public_url}/#/auth/login")
     session = requests.Session()
 
-    for attempt in Retrying(stop=stop_after_attempt(60), wait=wait_fixed(5), reraise=True):
+    for attempt in Retrying(stop=stop_after_attempt(30), wait=wait_fixed(5), reraise=True):
         with attempt:
             response = session.post(
-                f"https://{ingress_address}/api/rpc/command/login-with-password",
-                headers={"Host": "penpot.local"},
+                login_endpoint,
+                headers=login_headers,
                 json={"~:email": email, "~:password": password},
                 timeout=10,
                 verify=False,
             )
             if response.status_code == 200:
                 break
-            logger.info("penpot login status: %s", response.status_code)
+            logger.info(
+                "penpot login status: %s (url=%s)",
+                response.status_code,
+                response.url,
+            )
             raise AssertionError(f"login status {response.status_code}")
 
     juju.run(unit, "delete-profile", {"email": email})
@@ -104,15 +116,19 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], ingress_addr
     for attempt in Retrying(stop=stop_after_attempt(60), wait=wait_fixed(5), reraise=True):
         with attempt:
             response = session.post(
-                f"https://{ingress_address}/api/rpc/command/login-with-password",
-                headers={"Host": "penpot.local"},
+                login_endpoint,
+                headers=login_headers,
                 json={"~:email": email, "~:password": password},
                 timeout=10,
                 verify=False,
             )
             if response.status_code == 400:
                 break
-            logger.info("penpot login status: %s", response.status_code)
+            logger.info(
+                "penpot login status: %s (url=%s)",
+                response.status_code,
+                response.url,
+            )
             raise AssertionError(f"login status {response.status_code}")
 
 

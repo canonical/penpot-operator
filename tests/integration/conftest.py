@@ -233,13 +233,18 @@ def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential
     )
 
 
-@pytest.fixture(name="ingress_address", scope="module")
-def ingress_address_fixture(pytestconfig: pytest.Config):
-    """Get ingress address test option."""
-    address = pytestconfig.getoption("--ingress-address")
-    if not address:
-        return "127.0.0.1"
-    return address
+@pytest.fixture(name="public_url", scope="module")
+def public_url_fixture(pytestconfig: pytest.Config, juju: jubilant.Juju) -> str:
+    """Get the Penpot public URL.
+
+    Prefer a deterministic URL from --ingress-address, fallback to Traefik status messages.
+    """
+    ingress_address = pytestconfig.getoption("--ingress-address")
+    if ingress_address:
+        return f"https://{ingress_address}/{juju.model}-penpot"
+
+    # With Traefik external_hostname configured, route becomes deterministic in path mode.
+    return f"https://penpot.local/{juju.model}-penpot"
 
 
 @pytest.fixture(name="ext_idp_service", scope="module")
@@ -293,11 +298,10 @@ def deployment_fixture(
         config={"bucket": minio.bucket, "endpoint": minio.endpoint},
     )
     juju.deploy(
-        "nginx-ingress-integrator",
-        channel="edge",
-        config={"path-routes": "/", "service-hostname": "penpot.local"},
+        "traefik-k8s",
+        channel="latest/stable",
+        config={"external_hostname": "penpot.local"},
         trust=True,
-        revision=109,
     )
 
     juju.wait(jubilant.all_agents_idle, timeout=300)
@@ -310,14 +314,12 @@ def deployment_fixture(
         },
     )
 
-    juju.integrate(
-        "self-signed-certificates:certificates", "nginx-ingress-integrator:certificates"
-    )
+    juju.integrate("self-signed-certificates:certificates", "traefik-k8s:certificates")
     juju.integrate("penpot:postgresql", "postgresql-k8s:database")
     juju.integrate("penpot:redis", "redis-k8s")
     juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
     juju.integrate("penpot:smtp", "smtp-integrator:smtp")
-    juju.integrate("penpot:ingress", "nginx-ingress-integrator:ingress")
+    juju.integrate("penpot:ingress", "traefik-k8s:ingress")
 
     deployed_apps = [
         "postgresql-k8s",
@@ -326,7 +328,7 @@ def deployment_fixture(
         "redis-k8s",
         "s3-integrator",
         "smtp-integrator",
-        "nginx-ingress-integrator",
+        "traefik-k8s",
     ]
 
     return deployed_apps
