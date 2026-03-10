@@ -8,6 +8,7 @@
 import logging
 import re
 import tempfile
+import urllib.parse
 
 import jubilant
 import requests
@@ -57,7 +58,9 @@ def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str
         juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
 
 
-def test_create_profile(juju: jubilant.Juju, deployment: list[str], public_url: str):
+def test_create_profile(
+    juju: jubilant.Juju, deployment: list[str], public_url: str, ingress_host: str
+):
     """
     arrange: deploy the Penpot charm.
     act: create a Penpot account using the 'create-profile' charm action.
@@ -84,13 +87,16 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], public_url: 
     logger.info("`create test penpot` user %s with password: %s", email, password)
     logger.info("using public URL: %s", public_url)
     login_endpoint = f"{public_url}/api/rpc/command/login-with-password"
+    parsed = urllib.parse.urlparse(public_url)
     login_headers: dict[str, str] = {}
+    if parsed.hostname and parsed.hostname != ingress_host:
+        login_headers = {"Host": ingress_host}
     logger.info(
         "login endpoint: %s headers=%s",
         login_endpoint,
         login_headers,
     )
-    wait_for_endpoint(f"{public_url}/#/auth/login")
+    wait_for_endpoint(f"{public_url}/#/auth/login", headers=login_headers)
     session = requests.Session()
 
     for attempt in Retrying(stop=stop_after_attempt(30), wait=wait_fixed(5), reraise=True):
