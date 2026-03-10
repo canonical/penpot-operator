@@ -26,6 +26,28 @@ from playwright.sync_api import Page, expect
 logger = logging.getLogger(__name__)
 
 
+def _read_ingress_path(juju: jubilant.Juju) -> str | None:
+    """Read the model/app ingress path from penpot relation databag URL."""
+    stdout = juju.cli("show-unit", "penpot/0", "--format", "json")
+    unit_data = json.loads(stdout).get("penpot/0", {})
+    for relation in unit_data.get("relation-info", []):
+        if relation.get("endpoint") != "ingress":
+            continue
+        ingress_raw = relation.get("application-data", {}).get("ingress")
+        if not ingress_raw:
+            continue
+        ingress_url = json.loads(ingress_raw).get("url")
+        if ingress_url:
+            return urllib.parse.urlparse(str(ingress_url)).path or "/"
+    return None
+
+
+def _get_ingress_url(juju: jubilant.Juju) -> str:
+    """Get ingress base URL from Traefik unit address."""
+    traefik_unit = juju.status().apps["traefik-k8s"].units["traefik-k8s/0"]
+    return f"https://{traefik_unit.address}".rstrip("/")
+
+
 def pytest_configure(config: pytest.Config):
     """Configure integration test environment."""
     kube_config = config.getoption("kube_config")
@@ -242,46 +264,22 @@ def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential
 
 
 @pytest.fixture(name="public_url", scope="module")
-def public_url_fixture(pytestconfig: pytest.Config, juju: jubilant.Juju) -> str:
+def public_url_fixture(
+    pytestconfig: pytest.Config, juju: jubilant.Juju, ingress_host: str
+) -> str:
     """Get the Penpot public URL.
 
-    Use Traefik app address for transport and ingress databag URL path for routing.
+    Use Traefik workload status URL and append ingress path.
     """
     deadline = time.time() + 300
     while time.time() < deadline:
-        status = juju.status()
-        traefik_app = status.apps.get("traefik-k8s")
-        traefik_addr = ""
-        if traefik_app:
-            units = getattr(traefik_app, "units", {}) or {}
-            if units and "traefik-k8s/0" in units:
-                traefik_addr = str(getattr(units["traefik-k8s/0"], "address", "") or "")
-            if not traefik_addr:
-                traefik_addr = str(getattr(traefik_app, "address", "") or "")
-        if not traefik_addr:
-            time.sleep(5)
-            continue
-
-        stdout = juju.cli("show-unit", "penpot/0", "--format", "json")
-        unit_data = json.loads(stdout).get("penpot/0", {})
-        relation_info = unit_data.get("relation-info", [])
-        for relation in relation_info:
-            if relation.get("endpoint") != "ingress":
-                continue
-            ingress_raw = relation.get("application-data", {}).get("ingress")
-            if not ingress_raw:
-                continue
-            ingress_data = json.loads(ingress_raw)
-            ingress_url = ingress_data.get("url")
-            if not ingress_url:
-                continue
-            parsed = urllib.parse.urlparse(str(ingress_url))
-            path = parsed.path or ""
-            return f"{parsed.scheme}://{traefik_addr}{path}".rstrip("/")
+        ingress_path = _read_ingress_path(juju)
+        if ingress_path:
+            return f"{_get_ingress_url(juju)}{ingress_path}".rstrip("/")
 
         time.sleep(5)
 
-    raise TimeoutError("timed out waiting for ingress URL in relation databag")
+    raise TimeoutError("timed out waiting for traefik endpoint URL")
 
 
 @pytest.fixture(name="ext_idp_service", scope="module")

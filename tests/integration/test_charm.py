@@ -8,7 +8,6 @@
 import logging
 import re
 import tempfile
-import urllib.parse
 
 import jubilant
 import requests
@@ -87,10 +86,7 @@ def test_create_profile(
     logger.info("`create test penpot` user %s with password: %s", email, password)
     logger.info("using public URL: %s", public_url)
     login_endpoint = f"{public_url}/api/rpc/command/login-with-password"
-    parsed = urllib.parse.urlparse(public_url)
-    login_headers: dict[str, str] = {}
-    if parsed.hostname and parsed.hostname != ingress_host:
-        login_headers = {"Host": ingress_host}
+    login_headers: dict[str, str] = {"Host": ingress_host}
     logger.info(
         "login endpoint: %s headers=%s",
         login_endpoint,
