@@ -8,11 +8,12 @@
 import logging
 import re
 import tempfile
+import urllib.parse
 
 import jubilant
 import requests
 from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import Page, expect
+from playwright.sync_api import expect, sync_playwright
 from tenacity import (
     Retrying,
     retry_if_exception_type,
@@ -137,7 +138,8 @@ def test_create_profile(
 def test_oauth_login(
     juju: jubilant.Juju,
     oauth_deployment: list[str],
-    page: Page,
+    public_url: str,
+    ingress_host: str,
     ext_idp_service,
 ):
     """Run OAuth login flow through oauth_tools compatibility path."""
@@ -153,23 +155,46 @@ def test_oauth_login(
     inject_root_certs(juju, penpot_units, ca_cert)
     juju.integrate("penpot:oauth", "hydra")
     juju.wait(lambda status: jubilant.all_active(status, "penpot"), timeout=300)
-    wait_for_endpoint("https://penpot.local/#/auth/login", timeout=300)
 
-    for attempt in Retrying(
-        stop=stop_after_attempt(5),
-        wait=wait_fixed(60),
-        retry=retry_if_exception_type((AssertionError, PlaywrightError)),
-        reraise=True,
-        before_sleep=lambda retry_state: logger.exception(
-            "login attempt %d failed, retrying in 60 seconds", retry_state.attempt_number
-        ),
-    ):
-        with attempt:
-            page.goto("https://penpot.local/#/auth/login")
-            with page.expect_navigation():
-                page.get_by_text("OpenID").click()
-            page.wait_for_url(re.compile(r".*/ui/login.*"), timeout=60000)
-            with page.expect_navigation():
-                page.get_by_role("button", name="Dex").click()
-            ext_idp_service.complete_user_login(page)
-            expect(page).to_have_url(re.compile("^https://penpot\\.local/#/auth/register.*"))
+    parsed = urllib.parse.urlparse(public_url)
+    path_prefix = (parsed.path or "").rstrip("/")
+    login_url = f"{public_url}/#/auth/login"
+    mapped_login_url = f"https://{ingress_host}{path_prefix}/#/auth/login"
+
+    wait_for_endpoint(login_url, timeout=300, headers={"Host": ingress_host})
+
+    host_resolver_rules = f"MAP {ingress_host} {parsed.hostname}" if parsed.hostname else ""
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(
+            headless=True,
+            args=[f"--host-resolver-rules={host_resolver_rules}"] if host_resolver_rules else [],
+        )
+        context = browser.new_context(ignore_https_errors=True)
+        page = context.new_page()
+
+        for attempt in Retrying(
+            stop=stop_after_attempt(5),
+            wait=wait_fixed(60),
+            retry=retry_if_exception_type((AssertionError, PlaywrightError)),
+            reraise=True,
+            before_sleep=lambda retry_state: logger.exception(
+                "login attempt %d failed, retrying in 60 seconds", retry_state.attempt_number
+            ),
+        ):
+            with attempt:
+                page.goto(mapped_login_url)
+                with page.expect_navigation():
+                    page.get_by_text("OpenID").click()
+                page.wait_for_url(re.compile(r".*/ui/login.*"), timeout=60000)
+                with page.expect_navigation():
+                    page.get_by_role("button", name="Dex").click()
+                ext_idp_service.complete_user_login(page)
+                expect(page).to_have_url(
+                    re.compile(
+                        rf"^https://{re.escape(ingress_host)}{re.escape(path_prefix)}/#/auth/register.*"
+                    )
+                )
+
+        context.close()
+        browser.close()

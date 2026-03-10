@@ -264,9 +264,7 @@ def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential
 
 
 @pytest.fixture(name="public_url", scope="module")
-def public_url_fixture(
-    pytestconfig: pytest.Config, juju: jubilant.Juju, ingress_host: str
-) -> str:
+def public_url_fixture(juju: jubilant.Juju) -> str:
     """Get the Penpot public URL.
 
     Use Traefik workload status URL and append ingress path.
