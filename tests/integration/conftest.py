@@ -6,11 +6,12 @@
 # pylint: disable=unused-argument
 
 import collections
-import ipaddress
+import json
 import logging
 import os
 import re
 import time
+import urllib.parse
 
 import boto3
 import botocore.client
@@ -241,56 +242,46 @@ def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential
 
 
 @pytest.fixture(name="public_url", scope="module")
-def public_url_fixture(
-    pytestconfig: pytest.Config, load_kube_config, juju: jubilant.Juju
-) -> str:
+def public_url_fixture(pytestconfig: pytest.Config, juju: jubilant.Juju) -> str:
     """Get the Penpot public URL.
 
-    Prefer a deterministic URL from --ingress-address, fallback to Traefik status messages.
+    Use Traefik app address for transport and ingress databag URL path for routing.
     """
-    ingress_address = pytestconfig.getoption("--ingress-address")
-    if ingress_address:
-        try:
-            ipaddress.ip_address(ingress_address)
-            return f"https://{ingress_address}/{juju.model}-penpot"
-        except ValueError:
-            pass
-
-        # Use LB IP as URL target and keep hostname for Host header routing in tests.
-        v1 = kubernetes.client.CoreV1Api()
-        svc = v1.read_namespaced_service(name="traefik-k8s-lb", namespace=juju.model)
-        lb = getattr(getattr(svc, "status", None), "load_balancer", None)
-        ingress = getattr(lb, "ingress", None)
-        if ingress and ingress[0] and getattr(ingress[0], "ip", None):
-            return f"https://{ingress[0].ip}/{juju.model}-penpot"
-        return f"https://{ingress_address}/{juju.model}-penpot"
-
     deadline = time.time() + 300
-    v1 = kubernetes.client.CoreV1Api()
     while time.time() < deadline:
-        try:
-            svc = v1.read_namespaced_service(name="traefik-k8s-lb", namespace=juju.model)
-            lb = getattr(getattr(svc, "status", None), "load_balancer", None)
-            ingress = getattr(lb, "ingress", None)
-            if ingress and ingress[0] and getattr(ingress[0], "ip", None):
-                return f"https://{ingress[0].ip}/{juju.model}-penpot"
-        except kubernetes.client.ApiException:
-            pass
-
         status = juju.status()
         traefik_app = status.apps.get("traefik-k8s")
+        traefik_addr = ""
         if traefik_app:
-            messages = [traefik_app.app_status.message or ""]
-            messages.extend(unit.workload_status.message or "" for unit in traefik_app.units.values())
+            units = getattr(traefik_app, "units", {}) or {}
+            if units and "traefik-k8s/0" in units:
+                traefik_addr = str(getattr(units["traefik-k8s/0"], "address", "") or "")
+            if not traefik_addr:
+                traefik_addr = str(getattr(traefik_app, "address", "") or "")
+        if not traefik_addr:
+            time.sleep(5)
+            continue
 
-            for message in messages:
-                match = re.search(r"https?://[^\s]+", message)
-                if match:
-                    return match.group(0).rstrip("/")
+        stdout = juju.cli("show-unit", "penpot/0", "--format", "json")
+        unit_data = json.loads(stdout).get("penpot/0", {})
+        relation_info = unit_data.get("relation-info", [])
+        for relation in relation_info:
+            if relation.get("endpoint") != "ingress":
+                continue
+            ingress_raw = relation.get("application-data", {}).get("ingress")
+            if not ingress_raw:
+                continue
+            ingress_data = json.loads(ingress_raw)
+            ingress_url = ingress_data.get("url")
+            if not ingress_url:
+                continue
+            parsed = urllib.parse.urlparse(str(ingress_url))
+            path = parsed.path or ""
+            return f"{parsed.scheme}://{traefik_addr}{path}".rstrip("/")
 
         time.sleep(5)
 
-    raise TimeoutError("timed out waiting for Traefik ingress URL")
+    raise TimeoutError("timed out waiting for ingress URL in relation databag")
 
 
 @pytest.fixture(name="ext_idp_service", scope="module")
