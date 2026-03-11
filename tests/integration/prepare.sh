@@ -5,8 +5,4 @@
 
 set -exo pipefail
 
-if command -v k8s >/dev/null 2>&1; then
-	sudo k8s enable ingress
-fi
-
 tox -e playwright-install
