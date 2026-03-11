@@ -9,7 +9,6 @@ import collections
 import json
 import logging
 import os
-import re
 import time
 import urllib.parse
 
@@ -18,34 +17,8 @@ import botocore.client
 import jubilant
 import kubernetes
 import pytest
-from lightkube import Client, KubeConfig
-from lightkube.resources.core_v1 import Node, Service
-from oauth_tools.external_idp import DexIdpService
-from playwright.sync_api import Page, expect
 
 logger = logging.getLogger(__name__)
-
-
-def _read_ingress_path(juju: jubilant.Juju) -> str | None:
-    """Read the model/app ingress path from penpot relation databag URL."""
-    stdout = juju.cli("show-unit", "penpot/0", "--format", "json")
-    unit_data = json.loads(stdout).get("penpot/0", {})
-    for relation in unit_data.get("relation-info", []):
-        if relation.get("endpoint") != "ingress":
-            continue
-        ingress_raw = relation.get("application-data", {}).get("ingress")
-        if not ingress_raw:
-            continue
-        ingress_url = json.loads(ingress_raw).get("url")
-        if ingress_url:
-            return urllib.parse.urlparse(str(ingress_url)).path or "/"
-    return None
-
-
-def _get_ingress_url(juju: jubilant.Juju) -> str:
-    """Get ingress base URL from Traefik unit address."""
-    traefik_unit = juju.status().apps["traefik-k8s"].units["traefik-k8s/0"]
-    return f"https://{traefik_unit.address}".rstrip("/")
 
 
 def pytest_configure(config: pytest.Config):
@@ -53,6 +26,12 @@ def pytest_configure(config: pytest.Config):
     kube_config = config.getoption("kube_config")
     if kube_config and not os.environ.get("TESTING_KUBECONFIG"):
         os.environ["TESTING_KUBECONFIG"] = kube_config
+
+
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args: dict) -> dict:
+    """Add --no-sandbox for headless Chromium on Linux (required in some environments)."""
+    return {**browser_type_launch_args, "args": ["--no-sandbox"]}
 
 
 @pytest.fixture(scope="session")
@@ -77,12 +56,6 @@ def penpot_image_fixture(pytestconfig: pytest.Config) -> str:
     return image
 
 
-@pytest.fixture(name="ingress_host", scope="module")
-def ingress_host_fixture(pytestconfig: pytest.Config) -> str:
-    """Return the ingress host used for Host header routing."""
-    return pytestconfig.getoption("--ingress-address") or "penpot.local"
-
-
 @pytest.fixture(name="keep_models", scope="module")
 def keep_models_fixture(pytestconfig: pytest.Config) -> bool:
     """Return whether integration model retention is enabled."""
@@ -94,52 +67,6 @@ def load_kube_config_fixture(pytestconfig: pytest.Config):
     """Load kubernetes config file."""
     kube_config = pytestconfig.getoption("kube_config")
     kubernetes.config.load_kube_config(config_file=kube_config)
-
-
-class StableDexIdpService(DexIdpService):
-    """Dex manager that tolerates delayed load balancer IP assignment."""
-
-    @property
-    def issuer_url(self) -> str:
-        for _ in range(40):
-            service = self._client.get(Service, "dex", namespace=self.namespace)
-            load_balancer = getattr(getattr(service, "status", None), "loadBalancer", None)
-            ingress = getattr(load_balancer, "ingress", None)
-            if ingress and ingress[0] and getattr(ingress[0], "ip", None):
-                return f"http://{ingress[0].ip}:5556/"
-
-            ports = getattr(getattr(service, "spec", None), "ports", None) or []
-            node_port = None
-            for port in ports:
-                if getattr(port, "port", None) == 5556 and getattr(port, "nodePort", None):
-                    node_port = port.nodePort
-                    break
-            if node_port:
-                for node in self._client.list(Node):
-                    addresses = getattr(getattr(node, "status", None), "addresses", None) or []
-                    internal_ip = next(
-                        (
-                            addr.address
-                            for addr in addresses
-                            if getattr(addr, "type", None) == "InternalIP"
-                        ),
-                        None,
-                    )
-                    if internal_ip:
-                        return f"http://{internal_ip}:{node_port}/"
-
-            time.sleep(3)
-        raise RuntimeError("Dex load balancer ingress IP is not available")
-
-    def complete_user_login(self, page: Page) -> None:
-        """Get a page on the IDP login page and login the user."""
-        logger.info("Signing in to dex")
-        expect(page).to_have_url(re.compile(rf"{self.issuer_url}*"))
-        page.get_by_placeholder("email address").click()
-        page.get_by_placeholder("email address").fill(self.user_email)
-        page.get_by_placeholder("password").click()
-        page.get_by_placeholder("password").fill(self.user_password)
-        page.get_by_role("button", name="Login").click()
 
 
 @pytest.fixture(name="juju", scope="module")
@@ -265,34 +192,28 @@ def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential
 
 @pytest.fixture(name="public_url", scope="module")
 def public_url_fixture(juju: jubilant.Juju) -> str:
-    """Get the Penpot public URL.
-
-    Use Traefik workload status URL and append ingress path.
-    """
+    """Get the Penpot public URL from traefik-public proxied endpoints."""
     deadline = time.time() + 300
     while time.time() < deadline:
-        ingress_path = _read_ingress_path(juju)
-        if ingress_path:
-            return f"{_get_ingress_url(juju)}{ingress_path}".rstrip("/")
-
+        try:
+            result = juju.run("traefik-public/0", "show-proxied-endpoints")
+            endpoints = json.loads(result.results["proxied-endpoints"])
+            url = endpoints.get("penpot", {}).get("url", "")
+            if url:
+                url = url.rstrip("/")
+                parsed = urllib.parse.urlsplit(url)
+                # In Traefik subdomain routing mode, this action can report a root
+                # URL even when the real route is model-app.<external-hostname>.
+                if parsed.path in ("", "/"):
+                    traefik_url = endpoints.get("traefik-public", {}).get("url", "")
+                    traefik_parsed = urllib.parse.urlsplit(traefik_url)
+                    if traefik_parsed.hostname:
+                        return f"{parsed.scheme}://{juju.model}-penpot.{traefik_parsed.hostname}"
+                return url
+        except Exception:  # broad catch needed for jubilant/juju errors before app is deployed
+            pass
         time.sleep(5)
-
-    raise TimeoutError("timed out waiting for traefik endpoint URL")
-
-
-@pytest.fixture(name="ext_idp_service", scope="module")
-def ext_idp_service_fixture(keep_models: bool):
-    """Deploy and manage Dex with resilient issuer URL resolution."""
-    logger.info("Deploying dex resources")
-    kubeconfig = os.environ.get("TESTING_KUBECONFIG", "~/.kube/config")
-    client = Client(config=KubeConfig.from_file(kubeconfig), field_manager="dex-test")
-    ext_idp_manager = StableDexIdpService(client=client)
-    try:
-        yield ext_idp_manager
-    finally:
-        if not keep_models:
-            logger.info("Deleting dex resources")
-            ext_idp_manager.remove_idp_service()
+    raise TimeoutError("timed out waiting for penpot URL from traefik-public")
 
 
 @pytest.fixture(name="deployment", scope="module")
@@ -302,6 +223,7 @@ def deployment_fixture(
     penpot_image: str,
     minio: S3Credential,
     mailcatcher: SmtpCredential,
+    get_unit_ips,
 ) -> list[str]:
     """Deploy base Penpot stack used by integration tests.
 
@@ -332,12 +254,24 @@ def deployment_fixture(
     )
     juju.deploy(
         "traefik-k8s",
-        channel="latest/stable",
-        config={"external_hostname": "penpot.local"},
+        app="traefik-public",
+        channel="latest/edge",
         trust=True,
     )
 
     juju.wait(jubilant.all_agents_idle, timeout=300)
+
+    # Use host-based routing so apps are exposed at URL root (required by Penpot SPA).
+    # sslip.io maps this hostname back to the Traefik service IP without extra DNS setup.
+    traefik_ip = get_unit_ips("traefik-public")[0]
+    traefik_hostname = f"{traefik_ip.replace('.', '-')}.sslip.io"
+    juju.config(
+        "traefik-public",
+        {
+            "routing_mode": "subdomain",
+            "external_hostname": traefik_hostname,
+        },
+    )
     juju.run(
         "s3-integrator/0",
         "sync-s3-credentials",
@@ -347,12 +281,12 @@ def deployment_fixture(
         },
     )
 
-    juju.integrate("self-signed-certificates:certificates", "traefik-k8s:certificates")
+    juju.integrate("self-signed-certificates:certificates", "traefik-public:certificates")
     juju.integrate("penpot:postgresql", "postgresql-k8s:database")
     juju.integrate("penpot:redis", "redis-k8s")
     juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
     juju.integrate("penpot:smtp", "smtp-integrator:smtp")
-    juju.integrate("penpot:ingress", "traefik-k8s:ingress")
+    juju.integrate("penpot:ingress", "traefik-public:ingress")
 
     deployed_apps = [
         "postgresql-k8s",
@@ -361,116 +295,83 @@ def deployment_fixture(
         "redis-k8s",
         "s3-integrator",
         "smtp-integrator",
-        "traefik-k8s",
+        "traefik-public",
     ]
 
     return deployed_apps
+
+
+@pytest.fixture(name="identity_bundle", scope="module")
+def identity_bundle_fixture(juju: jubilant.Juju, deployment: list[str]) -> None:
+    """Deploy Canonical identity bundle on top of base deployment.
+
+    Deploys hydra, kratos, identity-platform-login-ui-operator and traefik-admin,
+    wired to the traefik-public and postgresql-k8s instances from the base deployment.
+    """
+    if juju.status().apps.get("hydra"):
+        logger.info("identity bundle already deployed")
+        return
+
+    juju.deploy("hydra", channel="latest/edge", revision=399, trust=True)
+    juju.deploy("kratos", channel="latest/edge", revision=567, trust=True)
+    juju.deploy(
+        "identity-platform-login-ui-operator",
+        channel="latest/edge",
+        revision=200,
+        trust=True,
+    )
+    # traefik-admin is part of the canonical identity bundle (ref: paas-charm)
+    juju.deploy("traefik-k8s", "traefik-admin", channel="latest/stable", revision=176, trust=True)
+
+    juju.integrate("postgresql-k8s:database", "hydra:pg-database")
+    juju.integrate("postgresql-k8s:database", "kratos:pg-database")
+    juju.integrate("hydra:hydra-endpoint-info", "kratos:hydra-endpoint-info")
+    juju.integrate(
+        "hydra:hydra-endpoint-info",
+        "identity-platform-login-ui-operator:hydra-endpoint-info",
+    )
+    juju.integrate(
+        "hydra:ui-endpoint-info",
+        "identity-platform-login-ui-operator:ui-endpoint-info",
+    )
+    juju.integrate(
+        "kratos:ui-endpoint-info",
+        "identity-platform-login-ui-operator:ui-endpoint-info",
+    )
+    juju.integrate("kratos:kratos-info", "identity-platform-login-ui-operator:kratos-info")
+    # traefik-public:certificates is already integrated in deployment_fixture; only add traefik-admin
+    juju.integrate("self-signed-certificates:certificates", "traefik-admin:certificates")
+    juju.integrate("traefik-public:traefik-route", "hydra:public-route")
+    juju.integrate("traefik-public:traefik-route", "kratos:public-route")
+    juju.integrate(
+        "traefik-public:traefik-route",
+        "identity-platform-login-ui-operator:public-route",
+    )
+
+    juju.config("kratos", {"enforce_mfa": False})
+
+    juju.wait(
+        lambda status: jubilant.all_active(
+            status,
+            "hydra",
+            "kratos",
+            "identity-platform-login-ui-operator",
+            "traefik-admin",
+        ),
+        timeout=600,
+    )
 
 
 @pytest.fixture(name="oauth_deployment", scope="module")
 def oauth_deployment_fixture(
     juju: jubilant.Juju,
     deployment: list[str],
-    ext_idp_service: StableDexIdpService,
-):
-    """Deploy OAuth identity stack and relations on top of base deployment."""
-    juju.deploy(
-        "hydra",
-        channel="edge",
-        revision=339,
-        trust=True,
-        resources={"oci-image": "ghcr.io/canonical/hydra:2.3.0-canonical"},
-    )
-    juju.deploy(
-        "kratos",
-        channel="edge",
-        revision=500,
-        trust=True,
-        resources={"oci-image": "ghcr.io/canonical/kratos:1.3.1"},
-    )
-    juju.deploy("kratos-external-idp-integrator", channel="edge", revision=245)
-    juju.deploy(
-        "identity-platform-login-ui-operator",
-        channel="edge",
-        revision=146,
-        trust=True,
-        resources={"oci-image": "ghcr.io/canonical/identity-platform-login-ui:v0.21.2"},
-    )
-    juju.deploy(
-        "traefik-k8s",
-        app="traefik-admin",
-        channel="latest/stable",
-        revision=176,
-        trust=True,
-    )
-    juju.deploy(
-        "traefik-k8s",
-        app="traefik-public",
-        channel="latest/stable",
-        revision=176,
-        trust=True,
-    )
-
-    juju.integrate("hydra:pg-database", "postgresql-k8s:database")
-    juju.integrate("kratos:pg-database", "postgresql-k8s:database")
-    juju.integrate("kratos:hydra-endpoint-info", "hydra:hydra-endpoint-info")
-    juju.integrate(
-        "kratos-external-idp-integrator:kratos-external-idp", "kratos:kratos-external-idp"
-    )
-    juju.integrate("hydra:admin-ingress", "traefik-admin:ingress")
-    juju.integrate("hydra:public-ingress", "traefik-public:ingress")
-    juju.integrate("kratos:admin-ingress", "traefik-admin:ingress")
-    juju.integrate("kratos:public-ingress", "traefik-public:ingress")
-    juju.integrate("identity-platform-login-ui-operator:ingress", "traefik-public:ingress")
-    juju.integrate(
-        "identity-platform-login-ui-operator:hydra-endpoint-info", "hydra:hydra-endpoint-info"
-    )
-    juju.integrate(
-        "identity-platform-login-ui-operator:ui-endpoint-info", "hydra:ui-endpoint-info"
-    )
-    juju.integrate(
-        "identity-platform-login-ui-operator:ui-endpoint-info", "kratos:ui-endpoint-info"
-    )
-    juju.integrate("identity-platform-login-ui-operator:kratos-info", "kratos:kratos-info")
-    juju.integrate("traefik-admin:certificates", "self-signed-certificates:certificates")
-    juju.integrate("traefik-public:certificates", "self-signed-certificates:certificates")
-
-    juju.config(
-        "kratos-external-idp-integrator",
-        {
-            "client_id": ext_idp_service.client_id,
-            "client_secret": ext_idp_service.client_secret,
-            "provider": "generic",
-            "issuer_url": ext_idp_service.issuer_url,
-            "scope": "profile email",
-            "provider_id": "Dex",
-        },
-    )
-    juju.wait(
-        lambda status: jubilant.all_active(
-            status,
-            "hydra",
-            "kratos",
-            "kratos-external-idp-integrator",
-        ),
-        timeout=300,
-    )
-    redirect_uri = juju.run("kratos-external-idp-integrator/0", "get-redirect-uri").results.get(
-        "redirect-uri"
-    )
-    assert redirect_uri, (
-        "kratos-external-idp-integrator get-redirect-uri did not return redirect-uri"
-    )
-    ext_idp_service.update_redirect_uri(redirect_uri=redirect_uri)
-
-    deployed_apps = [
+    identity_bundle: None,
+) -> list[str]:
+    """Extend the base deployment with the identity bundle for OAuth tests."""
+    return [
         *deployment,
         "hydra",
         "kratos",
-        "kratos-external-idp-integrator",
         "identity-platform-login-ui-operator",
-        "traefik-admin",
-        "traefik-public",
     ]
-
-    return deployed_apps
