@@ -11,7 +11,7 @@ import tempfile
 
 import jubilant
 import requests
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 from tenacity import (
     Retrying,
     stop_after_attempt,
@@ -144,7 +144,9 @@ def test_oauth_login(
     act: integrate penpot with hydra and log in using Kratos native credentials.
     assert: the login flow completes successfully and the user is directed to the validate registration page.
     """
-    juju.wait(lambda status: jubilant.all_active(status, *deployment_with_identity_bundle), timeout=900)
+    juju.wait(
+        lambda status: jubilant.all_active(status, *deployment_with_identity_bundle), timeout=900
+    )
 
     ca_cert = juju.run("self-signed-certificates/0", "get-ca-certificate").results[
         "ca-certificate"
@@ -163,15 +165,11 @@ def test_oauth_login(
     test_username = "admin"
 
     if not _admin_identity_exists(juju, test_email):
-        for attempt in Retrying(stop=stop_after_attempt(20), wait=wait_fixed(10), reraise=True):
-            with attempt:
-                task = juju.run(
-                    "kratos/0",
-                    "create-admin-account",
-                    {"email": test_email, "password": test_password, "username": test_username},
-                )
-                if task.status != "completed":
-                    raise AssertionError(f"create-admin-account not ready: {task.results}")
+        juju.run(
+            "kratos/0",
+            "create-admin-account",
+            {"email": test_email, "password": test_password, "username": test_username},
+        )
 
     secret_name = f"oauth-password-{juju.model}"
     secret_id = juju.add_secret(secret_name, {"password": test_password})
@@ -210,27 +208,24 @@ def test_oauth_login(
 
     submit_button = page.get_by_role(
         "button",
-        name=re.compile(r"sign in", re.IGNORECASE),
+        name="Sign in",
     ).first
-    try:
+    submit_button.wait_for(state="visible", timeout=15_000)
+    submit_button.click(timeout=15_000)
 
-        submit_button.wait_for(state="visible", timeout=15_000)
-        submit_button.click(timeout=15_000)
-    except Exception:
-        password_input.press("Enter")
-
-    try:
-        page.wait_for_url(f"{public_url}/**", timeout=30_000)
-    except Exception:
+    # Current login UI either redirects directly to Penpot or shows consent first.
+    page.wait_for_url(
+        re.compile(rf".*/ui/consent\?.*|^{re.escape(public_url)}/.*"),
+        timeout=30_000,
+    )
+    if "/ui/consent" in page.url:
         consent_button = page.get_by_role(
             "button",
             name=re.compile(r"accept|allow|authorize|continue", re.IGNORECASE),
         ).first
-        if "/ui/consent" in page.url or consent_button.count() > 0:
-            try:
-                consent_button.click(timeout=10_000)
-            except Exception:
-                page.keyboard.press("Enter")
+        # In this UI version, consent can auto-forward quickly after challenge validation.
+        if consent_button.is_visible(timeout=5_000):
+            consent_button.click(timeout=15_000)
         page.wait_for_url(f"{public_url}/**", timeout=30_000)
 
     logger.info("final url: %s", page.url)

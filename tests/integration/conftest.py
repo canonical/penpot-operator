@@ -215,7 +215,6 @@ def public_url_fixture(juju: jubilant.Juju) -> str:
         time.sleep(5)
     raise TimeoutError("timed out waiting for penpot URL from traefik-public")
 
-
 @pytest.fixture(name="deployment", scope="module")
 def deployment_fixture(
     juju: jubilant.Juju,
