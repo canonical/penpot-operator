@@ -224,11 +224,11 @@ def deployment_fixture(
     minio: S3Credential,
     mailcatcher: SmtpCredential,
     get_unit_ips,
-) -> list[str]:
+) -> set[str]:
     """Deploy base Penpot stack used by integration tests.
 
     Returns:
-        A list of deployed application names.
+        A set of deployed application names.
     """
     juju.deploy("postgresql-k8s", channel="14/stable", trust=True)
     juju.deploy("self-signed-certificates", channel="latest/stable", trust=True)
@@ -288,7 +288,7 @@ def deployment_fixture(
     juju.integrate("penpot:smtp", "smtp-integrator:smtp")
     juju.integrate("penpot:ingress", "traefik-public:ingress")
 
-    deployed_apps = [
+    deployed_apps = {
         "postgresql-k8s",
         "self-signed-certificates",
         "penpot",
@@ -296,22 +296,18 @@ def deployment_fixture(
         "s3-integrator",
         "smtp-integrator",
         "traefik-public",
-    ]
+    }
 
     return deployed_apps
 
 
-@pytest.fixture(name="identity_bundle", scope="module")
-def identity_bundle_fixture(juju: jubilant.Juju, deployment: list[str]) -> None:
+@pytest.fixture(name="deployment_with_identity_bundle", scope="module")
+def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set[str]) -> set[str]:
     """Deploy Canonical identity bundle on top of base deployment.
 
     Deploys hydra, kratos, identity-platform-login-ui-operator and traefik-admin,
     wired to the traefik-public and postgresql-k8s instances from the base deployment.
     """
-    if juju.status().apps.get("hydra"):
-        logger.info("identity bundle already deployed")
-        return
-
     juju.deploy("hydra", channel="latest/edge", revision=399, trust=True)
     juju.deploy("kratos", channel="latest/edge", revision=567, trust=True)
     juju.deploy(
@@ -320,7 +316,6 @@ def identity_bundle_fixture(juju: jubilant.Juju, deployment: list[str]) -> None:
         revision=200,
         trust=True,
     )
-    # traefik-admin is part of the canonical identity bundle (ref: paas-charm)
     juju.deploy("traefik-k8s", "traefik-admin", channel="latest/stable", revision=176, trust=True)
 
     juju.integrate("postgresql-k8s:database", "hydra:pg-database")
@@ -339,7 +334,7 @@ def identity_bundle_fixture(juju: jubilant.Juju, deployment: list[str]) -> None:
         "identity-platform-login-ui-operator:ui-endpoint-info",
     )
     juju.integrate("kratos:kratos-info", "identity-platform-login-ui-operator:kratos-info")
-    # traefik-public:certificates is already integrated in deployment_fixture; only add traefik-admin
+
     juju.integrate("self-signed-certificates:certificates", "traefik-admin:certificates")
     juju.integrate("traefik-public:traefik-route", "hydra:public-route")
     juju.integrate("traefik-public:traefik-route", "kratos:public-route")
@@ -350,28 +345,9 @@ def identity_bundle_fixture(juju: jubilant.Juju, deployment: list[str]) -> None:
 
     juju.config("kratos", {"enforce_mfa": False})
 
-    juju.wait(
-        lambda status: jubilant.all_active(
-            status,
-            "hydra",
-            "kratos",
-            "identity-platform-login-ui-operator",
-            "traefik-admin",
-        ),
-        timeout=600,
-    )
-
-
-@pytest.fixture(name="oauth_deployment", scope="module")
-def oauth_deployment_fixture(
-    juju: jubilant.Juju,
-    deployment: list[str],
-    identity_bundle: None,
-) -> list[str]:
-    """Extend the base deployment with the identity bundle for OAuth tests."""
-    return [
-        *deployment,
+    return deployment | {
         "hydra",
         "kratos",
         "identity-platform-login-ui-operator",
-    ]
+        "traefik-admin",
+    }

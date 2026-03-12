@@ -135,16 +135,16 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], public_url: 
 
 def test_oauth_login(
     juju: jubilant.Juju,
-    oauth_deployment: list[str],
+    deployment_with_identity_bundle: set[str],
     public_url: str,
     page: Page,
 ):
     """
     arrange: deploy the Penpot charm with OAuth identity stack.
     act: integrate penpot with hydra and log in using Kratos native credentials.
-    assert: the OAuth login flow redirects back to Penpot successfully.
+    assert: the login flow completes successfully and the user is directed to the validate registration page.
     """
-    juju.wait(lambda status: jubilant.all_active(status, *oauth_deployment), timeout=900)
+    juju.wait(lambda status: jubilant.all_active(status, *deployment_with_identity_bundle), timeout=900)
 
     ca_cert = juju.run("self-signed-certificates/0", "get-ca-certificate").results[
         "ca-certificate"
@@ -155,8 +155,7 @@ def test_oauth_login(
     )
     inject_root_certs(juju, penpot_units, ca_cert)
     juju.integrate("penpot:oauth", "hydra")
-    # Wait for both penpot and hydra to fully settle after oauth integration so that
-    # the charm reconcile propagates enable-login-with-oidc to the frontend flags.
+
     juju.wait(lambda status: jubilant.all_active(status, "penpot", "hydra"), timeout=600)
 
     test_email = "test@example.com"
@@ -187,129 +186,54 @@ def test_oauth_login(
 
     wait_for_endpoint(f"{public_url}/#/auth/login", timeout=300)
 
-    for attempt in Retrying(
-        stop=stop_after_attempt(2),
-        wait=wait_fixed(30),
-        reraise=True,
-        before_sleep=lambda retry_state: logger.info(
-            "login attempt %d failed, retrying in 30 seconds", retry_state.attempt_number
-        ),
-    ):
-        with attempt:
-            page.goto(f"{public_url}/#/auth/login")
-            logger.info("Navigated to penpot login. Current URL: %s", page.url)
-            # Wait for the ClojureScript SPA to fully boot and render the OpenID action.
-            oidc_button = page.locator(
-                ", ".join(
-                    [
-                        'a[href*="/api/auth/oauth/oidc"]',
-                        'button:has-text("OpenID")',
-                        'a:has-text("OpenID")',
-                    ]
-                )
-            ).first
-            try:
-                oidc_button.wait_for(state="visible", timeout=90_000)
-            except Exception:
-                # Copy screenshot to project dir (bind-mounted from host) for easy viewing.
-                project_dir = "/home/ubuntu/projects/penpot-operator"
-                screenshot_path = f"{project_dir}/penpot-login-screenshot.png"
-                try:
-                    page.screenshot(path=screenshot_path, full_page=True)
-                    logger.info("Screenshot saved to %s", screenshot_path)
-                except Exception as ss_err:
-                    logger.info("Screenshot failed: %s", ss_err)
-                body_html = page.evaluate("() => document.body.innerHTML")
-                auth_controls = page.locator("a, button").all_inner_texts()
-                logger.info(
-                    "OIDC entry point not found after 90s."
-                    "\n  Page URL: %s"
-                    "\n  Body HTML (first 3000): %s"
-                    "\n  Auth control texts (first 30): %s",
-                    page.url,
-                    body_html[:3000],
-                    auth_controls[:30],
-                )
-                raise
-            logger.info("OIDC button visible, clicking")
-            oidc_button.click()
-            page.wait_for_url(re.compile(r".*/(oauth2/auth|ui/login)\?.*"), timeout=60_000)
-            logger.info("after OIDC click, url: %s", page.url)
+    page.goto(f"{public_url}/#/auth/login")
+    logger.info("Navigated to penpot login. Current URL: %s", page.url)
+    logger.info("Penpot login page content (first 1200): %s", page.content()[:1200])
 
-            # Hydra/Kratos login labels can vary by UI version and locale.
-            email_input = page.locator(
-                'input[name="identifier"], input[name="email"], input[type="email"]'
-            ).first
-            password_input = page.locator('input[name="password"], input[type="password"]').first
-            email_input.wait_for(state="visible", timeout=30_000)
-            password_input.wait_for(state="visible", timeout=30_000)
-            email_input.fill(test_email)
-            password_input.fill(test_password)
-            submit_button = page.get_by_role(
-                "button",
-                name=re.compile(r"sign in|log in|login|continue|next", re.IGNORECASE),
-            ).first
-            try:
-                submit_button.wait_for(state="visible", timeout=15_000)
-                submit_button.click(timeout=15_000)
-            except Exception:
-                button_texts = page.get_by_role("button").all_inner_texts()
-                logger.info(
-                    "Hydra submit button not matched; visible button texts: %s",
-                    button_texts[:20],
-                )
-                # Some login UI variants do not expose a semantic submit button.
-                password_input.press("Enter")
+    oidc_button = page.locator(
+        'a[href*="/api/auth/oauth/oidc"], button:has-text("OpenID"), a:has-text("OpenID")'
+    ).first
+    oidc_button.wait_for(state="visible", timeout=90_000)
+    oidc_button.click()
+    page.wait_for_url(re.compile(r".*/(oauth2/auth|ui/login)\?.*"), timeout=60_000)
+    logger.info("after OIDC click, url: %s", page.url)
+    logger.info("IdP login page content (first 1200): %s", page.content()[:1200])
 
-            try:
-                page.wait_for_url(f"{public_url}/**", timeout=30_000)
-            except Exception:
-                current_url = page.url
-                consent_button = page.get_by_role(
-                    "button",
-                    name=re.compile(r"accept|allow|authorize|continue", re.IGNORECASE),
-                ).first
-                if "/ui/consent" in current_url or consent_button.count() > 0:
-                    logger.info("OIDC consent step detected at %s", current_url)
-                    try:
-                        consent_button.click(timeout=10_000)
-                    except Exception:
-                        page.keyboard.press("Enter")
+    email_input = page.locator(
+        'input[name="identifier"], input[name="email"], input[type="email"]'
+    ).first
+    password_input = page.locator('input[name="password"], input[type="password"]').first
+    email_input.wait_for(state="visible", timeout=30_000)
+    password_input.wait_for(state="visible", timeout=30_000)
+    email_input.fill(test_email)
+    password_input.fill(test_password)
 
-                # One final wait for redirect back to Penpot.
-                try:
-                    page.wait_for_url(f"{public_url}/**", timeout=30_000)
-                except Exception:
-                    page_buttons = page.get_by_role("button").all_inner_texts()
-                    page_text = page.evaluate("() => document.body.innerText")
-                    logger.info(
-                        "OIDC login did not return to Penpot."
-                        "\n  Current URL: %s"
-                        "\n  Visible buttons (first 20): %s"
-                        "\n  Body text (first 1200): %s",
-                        page.url,
-                        page_buttons[:20],
-                        page_text[:1200],
-                    )
-                    raise
-            logger.info("final url: %s", page.url)
-            register_url = re.compile(rf"^{re.escape(public_url)}/#/auth/register.*")
-            callback_url = re.compile(
-                rf"^{re.escape(public_url)}/api/auth/oauth/oidc/callback\?.*code=.*state=.*"
-            )
+    submit_button = page.get_by_role(
+        "button",
+        name=re.compile(r"sign in", re.IGNORECASE),
+    ).first
+    try:
+
+        submit_button.wait_for(state="visible", timeout=15_000)
+        submit_button.click(timeout=15_000)
+    except Exception:
+        password_input.press("Enter")
+
+    try:
+        page.wait_for_url(f"{public_url}/**", timeout=30_000)
+    except Exception:
+        consent_button = page.get_by_role(
+            "button",
+            name=re.compile(r"accept|allow|authorize|continue", re.IGNORECASE),
+        ).first
+        if "/ui/consent" in page.url or consent_button.count() > 0:
             try:
-                expect(page).to_have_url(register_url)
-            except AssertionError:
-                # Some environments can remain on the callback URL briefly while
-                # the SPA processes the token and performs hash navigation.
-                if callback_url.match(page.url):
-                    logger.info(
-                        "OIDC callback reached; waiting for Penpot SPA register redirect"
-                    )
-                    try:
-                        page.wait_for_url(register_url, timeout=60_000)
-                    except Exception:
-                        # Callback URL proves OAuth authentication succeeded.
-                        logger.info("SPA redirect not observed within timeout; keeping callback URL")
-                else:
-                    raise
+                consent_button.click(timeout=10_000)
+            except Exception:
+                page.keyboard.press("Enter")
+        page.wait_for_url(f"{public_url}/**", timeout=30_000)
+
+    logger.info("final url: %s", page.url)
+    logger.info("Final page content (first 1200): %s", page.content()[:1200])
+    validate_url = re.compile(rf"^{re.escape(public_url)}/#/auth/register/validate.*")
+    page.wait_for_url(validate_url, timeout=120_000)
