@@ -7,6 +7,6 @@ Then run the following command to integrate the `s3-integrator` charm
 and the `penpot` charm to supply the S3 configuration to the `penpot`
 charm.
 
-```
+```bash
 juju integrate penpot:s3 s3-integrator
 ```

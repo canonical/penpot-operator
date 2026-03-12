@@ -3,7 +3,7 @@
 Our documentation is hosted on the Charmhub forum to enable collaboration.
 Please use the “Help us improve this documentation” links on each documentation page
 to either directly change something you see that’s wrong, ask a question, or make
-a suggestion about a potential change via the comments section.
+a suggestion about a potential change through the comments section.
 
 Our documentation is also available alongside the
 [source code on GitHub](https://github.com/canonical/penpot-operator). You may
