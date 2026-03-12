@@ -50,7 +50,7 @@ class PenpotCharm(ops.CharmBase):
         self.redis = RedisRequires(self, "redis")
         self.smtp = SmtpRequires(self)
         self.s3 = S3Requirer(self, relation_name="s3")
-        self.ingress = IngressPerAppRequirer(self, port=8080, strip_prefix=True)
+        self.ingress = IngressPerAppRequirer(self, port=8080)
         self.oauth: OAuthRequirer | None = None
         self._grafana_dashboards = GrafanaDashboardProvider(self)
         self._metrics_endpoint = MetricsEndpointProvider(
