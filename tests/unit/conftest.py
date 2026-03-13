@@ -16,7 +16,7 @@ from scenario.state import Container as ScenarioContainer
 from src.charm import PenpotCharm
 
 SMTP_TEST_PASSWORD = token_hex(16)
-SMTP_TEST_USER = token_hex(16)
+SMTP_TEST_USER = "smtp-user"
 SMTP_SECRET_ID = token_hex(16)
 PEER_SECRET_ID = token_hex(16)
 

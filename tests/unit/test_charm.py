@@ -3,7 +3,6 @@
 
 """Unit tests."""
 
-import dns.exception
 import pytest
 from ops import testing
 from ops.testing import Exec, Secret
@@ -217,9 +216,7 @@ def test_public_uri(context: testing.Context[PenpotCharm]):
     assert charm._get_public_uri() == "https://penpot.local/"
 
 
-def test_penpot_pebble_layer(
-    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
-):
+def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
     """
     arrange: initialize the testing context and set up all required integrations.
     act: retrieve the pebble layer for penpot.
@@ -241,10 +238,6 @@ def test_penpot_pebble_layer(
         model=testing.Model(name="test"),
     )
 
-    def _fail_dns(*_, **__):  # pragma: no cover - helper for deterministic resolver
-        raise dns.exception.DNSException("dns disabled for tests")
-
-    monkeypatch.setattr("dns.resolver.resolve", _fail_dns)
     with context(context.on.start(), state) as mgr:
         mgr.run()
         charm = mgr.charm
