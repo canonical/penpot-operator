@@ -3,6 +3,8 @@
 
 """Unit tests."""
 
+from secrets import token_hex
+
 import pytest
 from ops import testing
 from ops.testing import Exec, Secret
@@ -25,139 +27,178 @@ from tests.unit.conftest import (
 
 def test_postgresql_config(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing context with the postgresql integration.
-    act: retrieve the postgresql configuration for penpot.
-    assert: ensure the postgresql configuration for penpot matches the expectations.
+    arrange: initialize the testing context with required integrations.
+    act: run reconcile and retrieve backend container environment.
+    assert: ensure postgresql variables are rendered in backend env.
     """
+    peer_secret = Secret(tracked_content={"penpot-secret-key": token_hex(16)}, id=PEER_SECRET_ID)
     state = testing.State(
-        relations={postgresql_relation()},
+        relations={
+            peer_relation(secret_id=peer_secret.id),
+            postgresql_relation(),
+            redis_relation(),
+            s3_relation(),
+        },
+        secrets={peer_secret},
         containers={penpot_container()},
     )
     with context(context.on.start(), state) as mgr:
         mgr.run()
         charm = mgr.charm
-    assert charm._get_postgresql_credentials() == {
-        "PENPOT_DATABASE_PASSWORD": "postgresql-password",
-        "PENPOT_DATABASE_URI": "postgresql://postgresql-endpoint:5432/penpot",
-        "PENPOT_DATABASE_USERNAME": "postgresql-username",
-    }
+    backend_env = charm._gen_pebble_plan()["services"]["backend"]["environment"]
+    assert backend_env["PENPOT_DATABASE_PASSWORD"] == "postgresql-password"
+    assert backend_env["PENPOT_DATABASE_URI"] == "postgresql://postgresql-endpoint:5432/penpot"
+    assert backend_env["PENPOT_DATABASE_USERNAME"] == "postgresql-username"
 
 
 def test_redis_config(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing context with the redis integration.
-    act: retrieve the redis configuration for penpot.
-    assert: ensure the redis configuration for penpot matches the expectations.
+    arrange: initialize the testing context with required integrations.
+    act: run reconcile and retrieve backend container environment.
+    assert: ensure redis variables are rendered in backend env.
     """
+    peer_secret = Secret(tracked_content={"penpot-secret-key": token_hex(16)}, id=PEER_SECRET_ID)
     state = testing.State(
-        relations={redis_relation()},
+        relations={
+            peer_relation(secret_id=peer_secret.id),
+            postgresql_relation(),
+            redis_relation(),
+            s3_relation(),
+        },
+        secrets={peer_secret},
         containers={penpot_container()},
     )
     with context(context.on.start(), state) as mgr:
         mgr.run()
         charm = mgr.charm
-    assert charm._get_redis_credentials() == {"PENPOT_REDIS_URI": "redis://redis-hostname:6379"}
+    backend_env = charm._gen_pebble_plan()["services"]["backend"]["environment"]
+    assert backend_env["PENPOT_REDIS_URI"] == "redis://redis-hostname:6379"
 
 
 def test_s3_config(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing context with the s3 integration.
-    act: retrieve the s3 configuration for penpot.
-    assert: ensure the s3 configuration for penpot matches the expectations.
+    arrange: initialize the testing context with required integrations.
+    act: run reconcile and retrieve backend container environment.
+    assert: ensure s3 variables are rendered in backend env.
     """
+    peer_secret = Secret(tracked_content={"penpot-secret-key": token_hex(16)}, id=PEER_SECRET_ID)
     state = testing.State(
-        relations={s3_relation()},
+        relations={
+            peer_relation(secret_id=peer_secret.id),
+            postgresql_relation(),
+            redis_relation(),
+            s3_relation(),
+        },
+        secrets={peer_secret},
         containers={penpot_container()},
     )
     with context(context.on.start(), state) as mgr:
         mgr.run()
         charm = mgr.charm
-    assert charm._get_s3_credentials() == {
-        "AWS_ACCESS_KEY_ID": "s3-access-key",
-        "AWS_SECRET_ACCESS_KEY": "s3-secret-key",
-        "PENPOT_ASSETS_STORAGE_BACKEND": "assets-s3",
-        "PENPOT_STORAGE_ASSETS_S3_BUCKET": "penpot",
-        "PENPOT_STORAGE_ASSETS_S3_ENDPOINT": "s3-endpoint",
-        "PENPOT_STORAGE_ASSETS_S3_REGION": "us-east-1",
-    }
+    backend_env = charm._gen_pebble_plan()["services"]["backend"]["environment"]
+    assert backend_env["AWS_ACCESS_KEY_ID"] == "s3-access-key"
+    assert backend_env["AWS_SECRET_ACCESS_KEY"] == "s3-secret-key"
+    assert backend_env["PENPOT_ASSETS_STORAGE_BACKEND"] == "assets-s3"
+    assert backend_env["PENPOT_STORAGE_ASSETS_S3_BUCKET"] == "penpot"
+    assert backend_env["PENPOT_STORAGE_ASSETS_S3_ENDPOINT"] == "s3-endpoint"
+    assert backend_env["PENPOT_STORAGE_ASSETS_S3_REGION"] == "us-east-1"
 
 
 def test_smtp_config(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing context with the smtp integration.
-    act: retrieve the smtp configuration for penpot.
-    assert: ensure the smtp configuration for penpot matches the expectations.
+    arrange: initialize the testing context with required integrations.
+    act: run reconcile and retrieve backend container environment.
+    assert: ensure smtp variables are rendered in backend env.
     """
+    peer_secret = Secret(tracked_content={"penpot-secret-key": token_hex(16)}, id=PEER_SECRET_ID)
     state = testing.State(
-        relations={smtp_relation()},
+        relations={
+            peer_relation(secret_id=peer_secret.id),
+            postgresql_relation(),
+            redis_relation(),
+            s3_relation(),
+            smtp_relation(),
+        },
+        secrets={peer_secret},
         containers={penpot_container()},
     )
     with context(context.on.start(), state) as mgr:
         mgr.run()
         charm = mgr.charm
-    assert charm._get_smtp_credentials() == {
-        "PENPOT_SMTP_DEFAULT_FROM": "no-reply@example.com",
-        "PENPOT_SMTP_DEFAULT_REPLY_TO": "no-reply@example.com",
-        "PENPOT_SMTP_HOST": "smtp-host",
-        "PENPOT_SMTP_PORT": "1025",
-        "PENPOT_SMTP_SSL": "false",
-        "PENPOT_SMTP_TLS": "false",
-    }
+    backend_env = charm._gen_pebble_plan()["services"]["backend"]["environment"]
+    assert backend_env["PENPOT_SMTP_DEFAULT_FROM"] == "no-reply@example.com"
+    assert backend_env["PENPOT_SMTP_DEFAULT_REPLY_TO"] == "no-reply@example.com"
+    assert backend_env["PENPOT_SMTP_HOST"] == "smtp-host"
+    assert backend_env["PENPOT_SMTP_PORT"] == "1025"
+    assert backend_env["PENPOT_SMTP_SSL"] == "false"
+    assert backend_env["PENPOT_SMTP_TLS"] == "false"
 
 
 def test_smtp_config_with_password(context: testing.Context[PenpotCharm]):
     """
-    arrange: set up the smtp integration with password authentication.
-    act: retrieve the smtp configuration for penpot.
-    assert: ensure the smtp configuration for penpot matches the expectations.
+    arrange: set up required integrations and smtp password authentication.
+    act: run reconcile and retrieve backend container environment.
+    assert: ensure smtp password variables are rendered in backend env.
     """
     smtp_secret = Secret(tracked_content={"password": SMTP_TEST_PASSWORD}, id=SMTP_SECRET_ID)
+    peer_secret = Secret(tracked_content={"penpot-secret-key": token_hex(16)}, id=PEER_SECRET_ID)
     state = testing.State(
-        relations={smtp_relation(use_password=True, password_id=smtp_secret.id)},
-        secrets={smtp_secret},
+        relations={
+            peer_relation(secret_id=peer_secret.id),
+            postgresql_relation(),
+            redis_relation(),
+            s3_relation(),
+            smtp_relation(use_password=True, password_id=smtp_secret.id),
+        },
+        secrets={peer_secret, smtp_secret},
         containers={penpot_container()},
     )
     with context(context.on.start(), state) as mgr:
         mgr.run()
         charm = mgr.charm
-    assert charm._get_smtp_credentials() == {
-        "PENPOT_SMTP_DEFAULT_FROM": f"{SMTP_TEST_USER}@example.com",
-        "PENPOT_SMTP_DEFAULT_REPLY_TO": f"{SMTP_TEST_USER}@example.com",
-        "PENPOT_SMTP_HOST": "smtp-host",
-        "PENPOT_SMTP_PASSWORD": SMTP_TEST_PASSWORD,
-        "PENPOT_SMTP_PORT": "1025",
-        "PENPOT_SMTP_SSL": "false",
-        "PENPOT_SMTP_TLS": "false",
-        "PENPOT_SMTP_USERNAME": SMTP_TEST_USER,
-    }
+    backend_env = charm._gen_pebble_plan()["services"]["backend"]["environment"]
+    assert backend_env["PENPOT_SMTP_DEFAULT_FROM"] == f"{SMTP_TEST_USER}@example.com"
+    assert backend_env["PENPOT_SMTP_DEFAULT_REPLY_TO"] == f"{SMTP_TEST_USER}@example.com"
+    assert backend_env["PENPOT_SMTP_HOST"] == "smtp-host"
+    assert backend_env["PENPOT_SMTP_PASSWORD"] == SMTP_TEST_PASSWORD
+    assert backend_env["PENPOT_SMTP_PORT"] == "1025"
+    assert backend_env["PENPOT_SMTP_SSL"] == "false"
+    assert backend_env["PENPOT_SMTP_TLS"] == "false"
+    assert backend_env["PENPOT_SMTP_USERNAME"] == SMTP_TEST_USER
 
 
 def test_smtp_config_override_from_address(context: testing.Context[PenpotCharm]):
     """
-    arrange: initialize the testing context and set up the smtp integration.
-    act: set smtp-from-address configuration and retrieve the smtp configuration for penpot.
-    assert: ensure the smtp configuration for penpot matches the expectations.
+    arrange: initialize required integrations and set smtp-from-address config.
+    act: run reconcile and retrieve backend container environment.
+    assert: ensure smtp override variables are rendered in backend env.
     """
     smtp_secret = Secret(tracked_content={"password": SMTP_TEST_PASSWORD}, id=SMTP_SECRET_ID)
+    peer_secret = Secret(tracked_content={"penpot-secret-key": token_hex(16)}, id=PEER_SECRET_ID)
     state = testing.State(
-        relations={smtp_relation(use_password=True, password_id=smtp_secret.id)},
-        secrets={smtp_secret},
+        relations={
+            peer_relation(secret_id=peer_secret.id),
+            postgresql_relation(),
+            redis_relation(),
+            s3_relation(),
+            smtp_relation(use_password=True, password_id=smtp_secret.id),
+        },
+        secrets={peer_secret, smtp_secret},
         containers={penpot_container()},
         config={"smtp-from-address": "test@test.com"},
     )
     with context(context.on.start(), state) as mgr:
         mgr.run()
         charm = mgr.charm
-    assert charm._get_smtp_credentials() == {
-        "PENPOT_SMTP_DEFAULT_FROM": "test@test.com",
-        "PENPOT_SMTP_DEFAULT_REPLY_TO": "test@test.com",
-        "PENPOT_SMTP_HOST": "smtp-host",
-        "PENPOT_SMTP_PASSWORD": SMTP_TEST_PASSWORD,
-        "PENPOT_SMTP_PORT": "1025",
-        "PENPOT_SMTP_SSL": "false",
-        "PENPOT_SMTP_TLS": "false",
-        "PENPOT_SMTP_USERNAME": SMTP_TEST_USER,
-    }
+    backend_env = charm._gen_pebble_plan()["services"]["backend"]["environment"]
+    assert backend_env["PENPOT_SMTP_DEFAULT_FROM"] == "test@test.com"
+    assert backend_env["PENPOT_SMTP_DEFAULT_REPLY_TO"] == "test@test.com"
+    assert backend_env["PENPOT_SMTP_HOST"] == "smtp-host"
+    assert backend_env["PENPOT_SMTP_PASSWORD"] == SMTP_TEST_PASSWORD
+    assert backend_env["PENPOT_SMTP_PORT"] == "1025"
+    assert backend_env["PENPOT_SMTP_SSL"] == "false"
+    assert backend_env["PENPOT_SMTP_TLS"] == "false"
+    assert backend_env["PENPOT_SMTP_USERNAME"] == SMTP_TEST_USER
 
 
 def test_smtp_penpot_option(context: testing.Context[PenpotCharm]):
