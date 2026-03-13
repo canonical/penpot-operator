@@ -215,6 +215,7 @@ def public_url_fixture(juju: jubilant.Juju) -> str:
         time.sleep(5)
     raise TimeoutError("timed out waiting for penpot URL from traefik-public")
 
+
 @pytest.fixture(name="deployment", scope="module")
 def deployment_fixture(
     juju: jubilant.Juju,
@@ -315,7 +316,7 @@ def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set
         revision=200,
         trust=True,
     )
-    juju.deploy("traefik-k8s", "traefik-admin", channel="latest/stable", revision=176, trust=True)
+    juju.deploy("traefik-k8s", "traefik-admin", channel="latest/stable", trust=True)
 
     juju.integrate("postgresql-k8s:database", "hydra:pg-database")
     juju.integrate("postgresql-k8s:database", "kratos:pg-database")
