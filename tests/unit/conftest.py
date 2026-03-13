@@ -19,6 +19,8 @@ SMTP_TEST_PASSWORD = token_hex(16)
 SMTP_TEST_USER = "smtp-user"
 SMTP_SECRET_ID = token_hex(16)
 PEER_SECRET_ID = token_hex(16)
+POSTGRESQL_PASSWORD = token_hex(16)
+S3_SECRET_KEY = token_hex(16)
 
 
 @pytest.fixture(name="context")
@@ -73,7 +75,7 @@ def postgresql_relation() -> Relation:
             "database": "penpot",
             "endpoints": "postgresql-endpoint:5432",
             "username": "postgresql-username",
-            "password": "postgresql-password",
+            "password": POSTGRESQL_PASSWORD,
             "version": "14.11",
         },
     )
@@ -93,7 +95,7 @@ def s3_relation() -> Relation:
         remote_app_name="s3-integrator",
         remote_app_data={
             "access-key": "s3-access-key",
-            "secret-key": "s3-secret-key",
+            "secret-key": S3_SECRET_KEY,
             "bucket": "penpot",
             "endpoint": "s3-endpoint",
         },
