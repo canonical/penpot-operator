@@ -5,6 +5,7 @@
 
 from secrets import token_hex
 
+import ops
 import pytest
 from ops import testing
 from ops.testing import Exec, Secret
@@ -47,6 +48,7 @@ def test_postgresql_config(
         containers={penpot_container()},
     )
     out = context.run(context.on.config_changed(), state)
+    assert out.unit_status == testing.ActiveStatus()
     backend_env = out.get_container("penpot").plan.services["backend"].environment
     assert backend_env["PENPOT_DATABASE_PASSWORD"] == "postgresql-password"
     assert backend_env["PENPOT_DATABASE_URI"] == "postgresql://postgresql-endpoint:5432/penpot"
@@ -75,6 +77,7 @@ def test_redis_config(
         containers={penpot_container()},
     )
     out = context.run(context.on.config_changed(), state)
+    assert out.unit_status == testing.ActiveStatus()
     backend_env = out.get_container("penpot").plan.services["backend"].environment
     assert backend_env["PENPOT_REDIS_URI"] == "redis://redis-hostname:6379"
 
@@ -101,6 +104,7 @@ def test_s3_config(
         containers={penpot_container()},
     )
     out = context.run(context.on.config_changed(), state)
+    assert out.unit_status == testing.ActiveStatus()
     backend_env = out.get_container("penpot").plan.services["backend"].environment
     assert backend_env["AWS_ACCESS_KEY_ID"] == "s3-access-key"
     assert backend_env["AWS_SECRET_ACCESS_KEY"] == "s3-secret-key"
@@ -133,6 +137,7 @@ def test_smtp_config(
         containers={penpot_container()},
     )
     out = context.run(context.on.config_changed(), state)
+    assert out.unit_status == testing.ActiveStatus()
     backend_env = out.get_container("penpot").plan.services["backend"].environment
     assert backend_env["PENPOT_SMTP_DEFAULT_FROM"] == "no-reply@example.com"
     assert backend_env["PENPOT_SMTP_DEFAULT_REPLY_TO"] == "no-reply@example.com"
@@ -166,6 +171,7 @@ def test_smtp_config_with_password(
         containers={penpot_container()},
     )
     out = context.run(context.on.config_changed(), state)
+    assert out.unit_status == testing.ActiveStatus()
     backend_env = out.get_container("penpot").plan.services["backend"].environment
     assert backend_env["PENPOT_SMTP_DEFAULT_FROM"] == f"{SMTP_TEST_USER}@example.com"
     assert backend_env["PENPOT_SMTP_DEFAULT_REPLY_TO"] == f"{SMTP_TEST_USER}@example.com"
@@ -202,6 +208,7 @@ def test_smtp_config_override_from_address(
         config={"smtp-from-address": "test@test.com"},
     )
     out = context.run(context.on.config_changed(), state)
+    assert out.unit_status == testing.ActiveStatus()
     backend_env = out.get_container("penpot").plan.services["backend"].environment
     assert backend_env["PENPOT_SMTP_DEFAULT_FROM"] == "test@test.com"
     assert backend_env["PENPOT_SMTP_DEFAULT_REPLY_TO"] == "test@test.com"
