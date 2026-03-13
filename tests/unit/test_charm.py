@@ -5,7 +5,6 @@
 
 from secrets import token_hex
 
-import ops
 import pytest
 from ops import testing
 from ops.testing import Exec, Secret
@@ -26,9 +25,7 @@ from tests.unit.conftest import (
 )
 
 
-def test_postgresql_config(
-    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
-):
+def test_postgresql_config(monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]):
     """
     arrange: initialize the testing context with required integrations.
     act: run reconcile via config-changed and retrieve the output state.
@@ -55,9 +52,7 @@ def test_postgresql_config(
     assert backend_env["PENPOT_DATABASE_USERNAME"] == "postgresql-username"
 
 
-def test_redis_config(
-    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
-):
+def test_redis_config(monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]):
     """
     arrange: initialize the testing context with required integrations.
     act: run reconcile via config-changed and retrieve the output state.
@@ -82,9 +77,7 @@ def test_redis_config(
     assert backend_env["PENPOT_REDIS_URI"] == "redis://redis-hostname:6379"
 
 
-def test_s3_config(
-    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
-):
+def test_s3_config(monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]):
     """
     arrange: initialize the testing context with required integrations.
     act: run reconcile via config-changed and retrieve the output state.
@@ -114,9 +107,7 @@ def test_s3_config(
     assert backend_env["PENPOT_STORAGE_ASSETS_S3_REGION"] == "us-east-1"
 
 
-def test_smtp_config(
-    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
-):
+def test_smtp_config(monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]):
     """
     arrange: initialize the testing context with required integrations.
     act: run reconcile via config-changed and retrieve the output state.
