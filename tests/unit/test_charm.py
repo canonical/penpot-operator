@@ -13,6 +13,7 @@ from tests.unit.conftest import (
     PEER_SECRET_ID,
     SMTP_SECRET_ID,
     SMTP_TEST_PASSWORD,
+    SMTP_TEST_USER,
     ingress_relation,
     peer_relation,
     penpot_container,
@@ -121,14 +122,14 @@ def test_smtp_config_with_password(context: testing.Context[PenpotCharm]):
         mgr.run()
         charm = mgr.charm
     assert charm._get_smtp_credentials() == {
-        "PENPOT_SMTP_DEFAULT_FROM": "smtp-user@example.com",
-        "PENPOT_SMTP_DEFAULT_REPLY_TO": "smtp-user@example.com",
+        "PENPOT_SMTP_DEFAULT_FROM": f"{SMTP_TEST_USER}@example.com",
+        "PENPOT_SMTP_DEFAULT_REPLY_TO": f"{SMTP_TEST_USER}@example.com",
         "PENPOT_SMTP_HOST": "smtp-host",
-        "PENPOT_SMTP_PASSWORD": "smtp-password",
+        "PENPOT_SMTP_PASSWORD": SMTP_TEST_PASSWORD,
         "PENPOT_SMTP_PORT": "1025",
         "PENPOT_SMTP_SSL": "false",
         "PENPOT_SMTP_TLS": "false",
-        "PENPOT_SMTP_USERNAME": "smtp-user",
+        "PENPOT_SMTP_USERNAME": SMTP_TEST_USER,
     }
 
 
@@ -152,11 +153,11 @@ def test_smtp_config_override_from_address(context: testing.Context[PenpotCharm]
         "PENPOT_SMTP_DEFAULT_FROM": "test@test.com",
         "PENPOT_SMTP_DEFAULT_REPLY_TO": "test@test.com",
         "PENPOT_SMTP_HOST": "smtp-host",
-        "PENPOT_SMTP_PASSWORD": "smtp-password",
+        "PENPOT_SMTP_PASSWORD": SMTP_TEST_PASSWORD,
         "PENPOT_SMTP_PORT": "1025",
         "PENPOT_SMTP_SSL": "false",
         "PENPOT_SMTP_TLS": "false",
-        "PENPOT_SMTP_USERNAME": "smtp-user",
+        "PENPOT_SMTP_USERNAME": SMTP_TEST_USER,
     }
 
 
