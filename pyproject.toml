@@ -31,7 +31,7 @@ lint = [
   "codespell",
   "jubilant~=1.0",
   "mypy",
-  "ops-scenario",
+  "ops[testing]==3.5.2",
   "pep8-naming",
   "pytest",
   "pytest-asyncio",
@@ -43,7 +43,7 @@ lint = [
 ]
 unit = [
   "coverage[toml]",
-  "ops-scenario",
+  "ops[testing]==3.5.2",
   "pytest",
 ]
 coverage-report = [
