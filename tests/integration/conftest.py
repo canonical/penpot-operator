@@ -1,4 +1,4 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """Integration test fixtures."""
@@ -8,23 +8,90 @@
 import collections
 import json
 import logging
+import os
 import time
+import urllib.parse
 
 import boto3
 import botocore.client
+import jubilant
 import kubernetes
 import pytest
-import pytest_asyncio
-from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
 
-@pytest_asyncio.fixture(name="get_unit_ips", scope="module")
-async def get_unit_ips_fixture(ops_test: OpsTest):
+def pytest_configure(config: pytest.Config):
+    """Configure integration test environment."""
+    kube_config = config.getoption("kube_config")
+    if kube_config and not os.environ.get("TESTING_KUBECONFIG"):
+        os.environ["TESTING_KUBECONFIG"] = kube_config
+
+
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args: dict) -> dict:
+    """Add --no-sandbox for headless Chromium on Linux (required in some environments)."""
+    return {**browser_type_launch_args, "args": ["--no-sandbox"]}
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args: dict) -> dict:
+    """Configure Playwright sync browser context for self-signed TLS."""
+    return {**browser_context_args, "ignore_https_errors": True}
+
+
+@pytest.fixture(name="charm_file", scope="module")
+def charm_file_fixture(pytestconfig: pytest.Config) -> str:
+    """Return the required charm file path for integration tests."""
+    charm = pytestconfig.getoption("charm_file")
+    assert charm, "--charm-file is required"
+    return charm
+
+
+@pytest.fixture(name="penpot_image", scope="module")
+def penpot_image_fixture(pytestconfig: pytest.Config) -> str:
+    """Return the required penpot image for integration tests."""
+    image = pytestconfig.getoption("penpot_image")
+    assert image, "--penpot-image is required"
+    return image
+
+
+@pytest.fixture(name="keep_models", scope="module")
+def keep_models_fixture(pytestconfig: pytest.Config) -> bool:
+    """Return whether integration model retention is enabled."""
+    return bool(pytestconfig.getoption("keep_models"))
+
+
+@pytest.fixture(scope="module", name="load_kube_config")
+def load_kube_config_fixture(pytestconfig: pytest.Config):
+    """Load kubernetes config file."""
+    kube_config = pytestconfig.getoption("kube_config")
+    kubernetes.config.load_kube_config(config_file=kube_config)
+
+
+@pytest.fixture(name="juju", scope="module")
+def juju_fixture(pytestconfig: pytest.Config):
+    """Provide a Jubilant Juju client with a temporary model."""
+    keep_models = pytestconfig.getoption("--keep-models")
+    with jubilant.temp_model(keep=keep_models) as juju_model:
+        yield juju_model
+
+
+@pytest.fixture(scope="module", autouse=True)
+def wait_for_agents_idle_before_module_teardown(juju: jubilant.Juju):
+    """Wait for Juju to become idle before fixture teardown starts."""
+    yield
+    try:
+        juju.wait(jubilant.all_agents_idle, timeout=600)
+    except Exception as err:
+        logger.warning("timed out waiting for idle agents during teardown: %s", err)
+
+
+@pytest.fixture(name="get_unit_ips", scope="module")
+def get_unit_ips_fixture(juju: jubilant.Juju):
     """A function to get unit ips of a charm application."""
 
-    async def _get_unit_ips(name: str):
+    def _get_unit_ips(name: str):
         """A function to get unit ips of a charm application.
 
         Args:
@@ -33,34 +100,26 @@ async def get_unit_ips_fixture(ops_test: OpsTest):
         Returns:
             A list of unit ips.
         """
-        _, status, _ = await ops_test.juju("status", "--format", "json")
-        status = json.loads(status)
-        units = status["applications"][name]["units"]
+        status = juju.status()
+        units = status.apps[name].units
         ip_list = []
         for key in sorted(units.keys(), key=lambda n: int(n.split("/")[-1])):
-            ip_list.append(units[key]["address"])
+            ip_list.append(units[key].address)
         return ip_list
 
     return _get_unit_ips
 
 
-@pytest.fixture(scope="module", name="load_kube_config")
-def load_kube_config_fixture(pytestconfig: pytest.Config):
-    """Load kubernetes config file."""
-    kube_config = pytestconfig.getoption("--kube-config")
-    kubernetes.config.load_kube_config(config_file=kube_config)
+S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_key secret_key")
 
 
-@pytest_asyncio.fixture(name="minio", scope="module")
-async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
+@pytest.fixture(name="minio", scope="module")
+def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju) -> S3Credential:
     """Deploy test minio service."""
     key = "minioadmin"
-    assert ops_test.model
-    minio = await ops_test.model.deploy(
-        "minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key}
-    )
-    await ops_test.model.wait_for_idle(apps=[minio.name], status="active", timeout=300)
-    ip = (await get_unit_ips(minio.name))[0]
+    juju.deploy("minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key})
+    juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=300)
+    ip = get_unit_ips("minio")[0]
     s3 = boto3.client(
         "s3",
         endpoint_url=f"http://{ip}:9000",
@@ -70,20 +129,21 @@ async def minio_fixture(get_unit_ips, load_kube_config, ops_test: OpsTest):
     )
     bucket = "penpot"
     s3.create_bucket(Bucket=bucket)
-    S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_key secret_key")
     return S3Credential(
-        endpoint=f"http://minio-endpoints.{ops_test.model.name}.svc.cluster.local:9000",
+        endpoint=f"http://minio-endpoints.{juju.model}.svc.cluster.local:9000",
         bucket=bucket,
         access_key=key,
         secret_key=key,
     )
 
 
-@pytest.fixture(scope="module")
-def mailcatcher(load_kube_config, ops_test: OpsTest):
+SmtpCredential = collections.namedtuple("SmtpCredential", "host port")
+
+
+@pytest.fixture(name="mailcatcher", scope="module")
+def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential:
     """Deploy test mailcatcher service."""
-    assert ops_test.model
-    namespace = ops_test.model.name
+    namespace = juju.model
     v1 = kubernetes.client.CoreV1Api()
     pod = kubernetes.client.V1Pod(
         api_version="v1",
@@ -134,17 +194,170 @@ def mailcatcher(load_kube_config, ops_test: OpsTest):
             pass
         logger.info("waiting for mailcatcher pod")
         time.sleep(1)
-    SmtpCredential = collections.namedtuple("SmtpCredential", "host port")
     return SmtpCredential(
         host=f"mailcatcher-service.{namespace}.svc.cluster.local",
         port=1025,
     )
 
 
-@pytest.fixture(scope="module")
-def ingress_address(pytestconfig: pytest.Config):
-    """Get ingress address test option."""
-    address = pytestconfig.getoption("--ingress-address")
-    if not address:
-        return "127.0.0.1"
-    return address
+@pytest.fixture(name="public_url", scope="module")
+def public_url_fixture(juju: jubilant.Juju) -> str:
+    """Get the Penpot public URL from traefik-public proxied endpoints."""
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        try:
+            result = juju.run("traefik-public/0", "show-proxied-endpoints")
+            endpoints = json.loads(result.results["proxied-endpoints"])
+            url = endpoints.get("penpot", {}).get("url", "")
+            if url:
+                url = url.rstrip("/")
+                parsed = urllib.parse.urlsplit(url)
+                # In Traefik subdomain routing mode, this action can report a root
+                # URL even when the real route is model-app.<external-hostname>.
+                if parsed.path in ("", "/"):
+                    traefik_url = endpoints.get("traefik-public", {}).get("url", "")
+                    traefik_parsed = urllib.parse.urlsplit(traefik_url)
+                    if traefik_parsed.hostname:
+                        return f"{parsed.scheme}://{juju.model}-penpot.{traefik_parsed.hostname}"
+                return url
+        except Exception:
+            pass
+        time.sleep(5)
+    raise TimeoutError("timed out waiting for penpot URL from traefik-public")
+
+
+@pytest.fixture(name="deployment", scope="module")
+def deployment_fixture(
+    juju: jubilant.Juju,
+    charm_file: str,
+    penpot_image: str,
+    minio: S3Credential,
+    mailcatcher: SmtpCredential,
+    get_unit_ips,
+) -> set[str]:
+    """Deploy base Penpot stack used by integration tests.
+
+    Returns:
+        A set of deployed application names.
+    """
+    juju.deploy("postgresql-k8s", channel="14/stable", trust=True)
+    juju.deploy("self-signed-certificates", channel="latest/stable", trust=True)
+    juju.deploy(
+        f"./{charm_file}",
+        app="penpot",
+        resources={"penpot-image": penpot_image},
+        num_units=2,
+    )
+    juju.deploy("redis-k8s", channel="edge")
+    juju.deploy(
+        "smtp-integrator",
+        config={
+            "auth_type": "none",
+            "domain": "example.com",
+            "host": mailcatcher.host,
+            "port": mailcatcher.port,
+        },
+    )
+    juju.deploy(
+        "s3-integrator",
+        config={"bucket": minio.bucket, "endpoint": minio.endpoint},
+    )
+    juju.deploy(
+        "traefik-k8s",
+        app="traefik-public",
+        channel="latest/edge",
+        trust=True,
+    )
+
+    juju.wait(jubilant.all_agents_idle, timeout=300)
+
+    # Use host-based routing so apps are exposed at URL root (required by Penpot SPA).
+    # sslip.io maps this hostname back to the Traefik service IP without extra DNS setup.
+    traefik_ip = get_unit_ips("traefik-public")[0]
+    traefik_hostname = f"{traefik_ip.replace('.', '-')}.sslip.io"
+    juju.config(
+        "traefik-public",
+        {
+            "routing_mode": "subdomain",
+            "external_hostname": traefik_hostname,
+        },
+    )
+    juju.run(
+        "s3-integrator/0",
+        "sync-s3-credentials",
+        {
+            "access-key": minio.access_key,
+            "secret-key": minio.secret_key,
+        },
+    )
+
+    juju.integrate("self-signed-certificates:certificates", "traefik-public:certificates")
+    juju.integrate("penpot:postgresql", "postgresql-k8s:database")
+    juju.integrate("penpot:redis", "redis-k8s")
+    juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
+    juju.integrate("penpot:smtp", "smtp-integrator:smtp")
+    juju.integrate("penpot:ingress", "traefik-public:ingress")
+
+    deployed_apps = {
+        "postgresql-k8s",
+        "self-signed-certificates",
+        "penpot",
+        "redis-k8s",
+        "s3-integrator",
+        "smtp-integrator",
+        "traefik-public",
+    }
+
+    return deployed_apps
+
+
+@pytest.fixture(name="deployment_with_identity_bundle", scope="module")
+def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set[str]) -> set[str]:
+    """Deploy Canonical identity bundle on top of base deployment.
+
+    Deploys hydra, kratos, identity-platform-login-ui-operator and traefik-admin,
+    wired to the traefik-public and postgresql-k8s instances from the base deployment.
+    """
+    juju.deploy("hydra", channel="latest/edge", revision=399, trust=True)
+    juju.deploy("kratos", channel="latest/edge", revision=567, trust=True)
+    juju.deploy(
+        "identity-platform-login-ui-operator",
+        channel="latest/edge",
+        revision=200,
+        trust=True,
+    )
+    juju.deploy("traefik-k8s", "traefik-admin", channel="latest/stable", trust=True)
+
+    juju.integrate("postgresql-k8s:database", "hydra:pg-database")
+    juju.integrate("postgresql-k8s:database", "kratos:pg-database")
+    juju.integrate("hydra:hydra-endpoint-info", "kratos:hydra-endpoint-info")
+    juju.integrate(
+        "hydra:hydra-endpoint-info",
+        "identity-platform-login-ui-operator:hydra-endpoint-info",
+    )
+    juju.integrate(
+        "hydra:ui-endpoint-info",
+        "identity-platform-login-ui-operator:ui-endpoint-info",
+    )
+    juju.integrate(
+        "kratos:ui-endpoint-info",
+        "identity-platform-login-ui-operator:ui-endpoint-info",
+    )
+    juju.integrate("kratos:kratos-info", "identity-platform-login-ui-operator:kratos-info")
+
+    juju.integrate("self-signed-certificates:certificates", "traefik-admin:certificates")
+    juju.integrate("traefik-public:traefik-route", "hydra:public-route")
+    juju.integrate("traefik-public:traefik-route", "kratos:public-route")
+    juju.integrate(
+        "traefik-public:traefik-route",
+        "identity-platform-login-ui-operator:public-route",
+    )
+
+    juju.config("kratos", {"enforce_mfa": False})
+
+    return deployment | {
+        "hydra",
+        "kratos",
+        "identity-platform-login-ui-operator",
+        "traefik-admin",
+    }

@@ -12,6 +12,8 @@ from ops.testing import Exec, Secret
 from src.charm import PenpotCharm
 from tests.unit.conftest import (
     PEER_SECRET_ID,
+    POSTGRESQL_PASSWORD,
+    S3_SECRET_KEY,
     SMTP_SECRET_ID,
     SMTP_TEST_PASSWORD,
     SMTP_TEST_USER,
@@ -313,10 +315,10 @@ def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
                 "command": "/opt/penpot/backend/run.sh",
                 "environment": {
                     "AWS_ACCESS_KEY_ID": "s3-access-key",
-                    "AWS_SECRET_ACCESS_KEY": "s3-secret-key",
+                    "AWS_SECRET_ACCESS_KEY": S3_SECRET_KEY,
                     "JAVA_HOME": "/usr/lib/jvm/java-21-openjdk-amd64",
                     "PENPOT_ASSETS_STORAGE_BACKEND": "assets-s3",
-                    "PENPOT_DATABASE_PASSWORD": "postgresql-password",
+                    "PENPOT_DATABASE_PASSWORD": POSTGRESQL_PASSWORD,
                     "PENPOT_DATABASE_URI": "postgresql://postgresql-endpoint:5432/penpot",
                     "PENPOT_DATABASE_USERNAME": "postgresql-username",
                     "PENPOT_FLAGS": (
@@ -414,7 +416,8 @@ def test_penpot_create_profile_action(
         containers={penpot_container(include_backend=True, execs={Exec(command)})}
     )
 
-    monkeypatch.setattr("secrets.token_urlsafe", lambda _: "test-password")
+    test_password = token_hex(16)
+    monkeypatch.setattr("secrets.token_urlsafe", lambda _: test_password)
     event = context.on.action(
         "create-profile", params={"email": "test@test.com", "fullname": "test"}
     )
@@ -423,11 +426,11 @@ def test_penpot_create_profile_action(
     assert context.action_results == {
         "email": "test@test.com",
         "fullname": "test",
-        "password": "test-password",
+        "password": test_password,
     }
     exec_args = context.exec_history["penpot"][0]
     assert exec_args.command == command
-    assert exec_args.stdin == "test-password\n"
+    assert exec_args.stdin == f"{test_password}\n"
 
 
 def test_penpot_delete_profile_action(context: testing.Context[PenpotCharm]):

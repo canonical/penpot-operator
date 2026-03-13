@@ -146,7 +146,7 @@ class PenpotCharm(ops.CharmBase):
         """Reconcile penpot services."""
         oauth = self._get_oauth()
         if oauth:
-            oauth.update_client_config(self._get_oauth_client_config())
+            oauth.update_client_config(self._get_oauth_client_config())  # type: ignore[arg-type]
         if not self._check_ready():
             if self.container.can_connect() and self.container.get_services():
                 self.container.stop("backend")
@@ -314,7 +314,7 @@ class PenpotCharm(ops.CharmBase):
         database = self.postgresql.fetch_relation_field(relation.id, "database")
         username = self.postgresql.fetch_relation_field(relation.id, "username")
         password = self.postgresql.fetch_relation_field(relation.id, "password")
-        if not all((endpoint, database, username, password)):
+        if endpoint is None or database is None or username is None or password is None:
             return None
         return {
             "PENPOT_DATABASE_URI": f"postgresql://{endpoint}/{database}",
@@ -334,7 +334,10 @@ class PenpotCharm(ops.CharmBase):
         relation_data = self.redis.relation_data
         if not relation_data:
             return None
-        return {"PENPOT_REDIS_URI": self.redis.url}
+        url = self.redis.url
+        if not url:
+            return None
+        return {"PENPOT_REDIS_URI": url}
 
     def _get_smtp_credentials(self) -> dict[str, str]:
         """Get penpot smtp credentials from the smtp integration.
@@ -527,6 +530,10 @@ class PenpotCharm(ops.CharmBase):
             return {}
         oauth_provider = oauth.get_provider_info()
         if not oauth_provider:
+            return {}
+        if not (
+            oauth_provider.client_id and oauth_provider.issuer_url and oauth_provider.client_secret
+        ):
             return {}
         return {
             "PENPOT_OIDC_CLIENT_ID": oauth_provider.client_id,
