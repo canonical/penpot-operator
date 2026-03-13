@@ -77,6 +77,16 @@ def juju_fixture(pytestconfig: pytest.Config):
         yield juju_model
 
 
+@pytest.fixture(scope="module", autouse=True)
+def wait_for_agents_idle_before_module_teardown(juju: jubilant.Juju):
+    """Wait for Juju to become idle before fixture teardown starts."""
+    yield
+    try:
+        juju.wait(jubilant.all_agents_idle, timeout=600)
+    except Exception as err:
+        logger.warning("timed out waiting for idle agents during teardown: %s", err)
+
+
 @pytest.fixture(name="get_unit_ips", scope="module")
 def get_unit_ips_fixture(juju: jubilant.Juju):
     """A function to get unit ips of a charm application."""
@@ -210,7 +220,7 @@ def public_url_fixture(juju: jubilant.Juju) -> str:
                     if traefik_parsed.hostname:
                         return f"{parsed.scheme}://{juju.model}-penpot.{traefik_parsed.hostname}"
                 return url
-        except Exception:  # broad catch needed for jubilant/juju errors before app is deployed
+        except Exception:
             pass
         time.sleep(5)
     raise TimeoutError("timed out waiting for penpot URL from traefik-public")
