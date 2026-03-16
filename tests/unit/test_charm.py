@@ -49,7 +49,7 @@ def test_postgresql_config(monkeypatch: pytest.MonkeyPatch, context: testing.Con
     out = context.run(context.on.config_changed(), state)
     assert out.unit_status == testing.ActiveStatus()
     backend_env = out.get_container("penpot").plan.services["backend"].environment
-    assert backend_env["PENPOT_DATABASE_PASSWORD"] == "postgresql-password"
+    assert backend_env["PENPOT_DATABASE_PASSWORD"] == POSTGRESQL_PASSWORD
     assert backend_env["PENPOT_DATABASE_URI"] == "postgresql://postgresql-endpoint:5432/penpot"
     assert backend_env["PENPOT_DATABASE_USERNAME"] == "postgresql-username"
 
@@ -102,7 +102,7 @@ def test_s3_config(monkeypatch: pytest.MonkeyPatch, context: testing.Context[Pen
     assert out.unit_status == testing.ActiveStatus()
     backend_env = out.get_container("penpot").plan.services["backend"].environment
     assert backend_env["AWS_ACCESS_KEY_ID"] == "s3-access-key"
-    assert backend_env["AWS_SECRET_ACCESS_KEY"] == "s3-secret-key"
+    assert backend_env["AWS_SECRET_ACCESS_KEY"] == S3_SECRET_KEY
     assert backend_env["PENPOT_ASSETS_STORAGE_BACKEND"] == "assets-s3"
     assert backend_env["PENPOT_STORAGE_ASSETS_S3_BUCKET"] == "penpot"
     assert backend_env["PENPOT_STORAGE_ASSETS_S3_ENDPOINT"] == "s3-endpoint"
