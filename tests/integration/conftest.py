@@ -222,12 +222,6 @@ def deployment_fixture(
         channel="latest/edge",
         trust=True,
     )
-    juju.integrate("self-signed-certificates:certificates", "traefik-public:certificates")
-    juju.integrate("penpot:postgresql", "postgresql-k8s:database")
-    juju.integrate("penpot:redis", "redis-k8s")
-    juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
-    juju.integrate("penpot:smtp", "smtp-integrator:smtp")
-    juju.integrate("penpot:ingress", "traefik-public:ingress")
 
     juju.wait(
         lambda status: jubilant.all_agents_idle(status, "traefik-public", "s3-integrator"),
@@ -253,6 +247,13 @@ def deployment_fixture(
             "secret-key": minio.secret_key,
         },
     )
+
+    juju.integrate("self-signed-certificates:certificates", "traefik-public:certificates")
+    juju.integrate("penpot:postgresql", "postgresql-k8s:database")
+    juju.integrate("penpot:redis", "redis-k8s")
+    juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
+    juju.integrate("penpot:smtp", "smtp-integrator:smtp")
+    juju.integrate("penpot:ingress", "traefik-public:ingress")
 
     deployed_apps = {
         "postgresql-k8s",
