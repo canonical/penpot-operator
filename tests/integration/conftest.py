@@ -56,12 +56,12 @@ def keep_models_fixture(pytestconfig: pytest.Config) -> bool:
 @pytest.fixture(scope="module", name="load_kube_config")
 def load_kube_config_fixture(pytestconfig: pytest.Config):
     """Load kubernetes config file."""
-    kube_config = pytestconfig.getoption("kube_config")
+    kube_config = pytestconfig.getoption("--kube-config")
     kubernetes.config.load_kube_config(config_file=kube_config)
 
 
 @pytest.fixture(name="juju", scope="module")
-def juju_fixture(pytestconfig: pytest.Config, keep_models: bool) -> Iterator[jubilant.Juju]:
+def juju_fixture(keep_models: bool) -> Iterator[jubilant.Juju]:
     """Provide a Jubilant Juju client with a temporary model."""
     with jubilant.temp_model(keep=keep_models) as juju_model:
         yield juju_model
