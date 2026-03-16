@@ -6,11 +6,9 @@
 # pylint: disable=unused-argument
 
 import collections
-import json
 import logging
 import os
 import time
-import urllib.parse
 
 import boto3
 import botocore.client
@@ -188,32 +186,6 @@ def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential
         host=f"mailcatcher-service.{namespace}.svc.cluster.local",
         port=1025,
     )
-
-
-@pytest.fixture(name="public_url", scope="module")
-def public_url_fixture(juju: jubilant.Juju) -> str:
-    """Get the Penpot public URL from traefik-public proxied endpoints."""
-    deadline = time.time() + 300
-    while time.time() < deadline:
-        try:
-            result = juju.run("traefik-public/0", "show-proxied-endpoints")
-            endpoints = json.loads(result.results["proxied-endpoints"])
-            url = endpoints.get("penpot", {}).get("url", "")
-            if url:
-                url = url.rstrip("/")
-                parsed = urllib.parse.urlsplit(url)
-                # In Traefik subdomain routing mode, this action can report a root
-                # URL even when the real route is model-app.<external-hostname>.
-                if parsed.path in ("", "/"):
-                    traefik_url = endpoints.get("traefik-public", {}).get("url", "")
-                    traefik_parsed = urllib.parse.urlsplit(traefik_url)
-                    if traefik_parsed.hostname:
-                        return f"{parsed.scheme}://{juju.model}-penpot.{traefik_parsed.hostname}"
-                return url
-        except Exception:  # broad catch needed for jubilant/juju errors before app is deployed
-            pass
-        time.sleep(5)
-    raise TimeoutError("timed out waiting for penpot URL from traefik-public")
 
 
 @pytest.fixture(name="deployment", scope="module")

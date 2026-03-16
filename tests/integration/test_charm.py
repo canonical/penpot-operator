@@ -19,6 +19,7 @@ from tenacity import (
 )
 
 from tests.integration.helpers import (
+    get_public_url,
     wait_for_endpoint,
 )
 
@@ -65,7 +66,7 @@ def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str
         juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
 
 
-def test_create_profile(juju: jubilant.Juju, deployment: list[str], public_url: str):
+def test_create_profile(juju: jubilant.Juju, deployment: list[str]):
     """
     arrange: deploy the Penpot charm.
     act: create a Penpot account using the 'create-profile' charm action.
@@ -75,6 +76,7 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], public_url: 
         lambda status: jubilant.all_active(status, *deployment),
         timeout=900,
     )
+    public_url = get_public_url(juju)
 
     email = "test@test.com"
     unit = "penpot/0"
@@ -136,7 +138,6 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str], public_url: 
 def test_oauth_login(
     juju: jubilant.Juju,
     deployment_with_identity_bundle: set[str],
-    public_url: str,
     page: Page,
 ):
     """
@@ -147,6 +148,7 @@ def test_oauth_login(
     juju.wait(
         lambda status: jubilant.all_active(status, *deployment_with_identity_bundle), timeout=900
     )
+    public_url = get_public_url(juju)
 
     ca_cert = juju.run("self-signed-certificates/0", "get-ca-certificate").results[
         "ca-certificate"
