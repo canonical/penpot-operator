@@ -3,6 +3,10 @@
 
 """Framework-agnostic helpers for integration tests."""
 
+import json
+import urllib.parse
+
+import jubilant
 import requests
 from tenacity import RetryError, Retrying, retry_if_exception_type, stop_after_delay, wait_fixed
 
