@@ -212,11 +212,11 @@ class PenpotCharm(ops.CharmBase):
                         "PENPOT_TELEMETRY_ENABLED": "false",
                         "PENPOT_PUBLIC_URI": typing.cast(str, self._get_public_uri()),
                         "PENPOT_FLAGS": " ".join(self._get_penpot_backend_options()),
-                        **typing.cast(dict[str, str], self._get_penpot_secret_key()),
-                        **typing.cast(dict[str, str], self._get_postgresql_credentials()),
+                        **self._get_penpot_secret_key(),
+                        **self._get_postgresql_credentials(),
                         **self._get_redis_credentials(),
-                        **typing.cast(dict[str, str], self._get_smtp_credentials()),
-                        **typing.cast(dict[str, str], self._get_s3_credentials()),
+                        **self._get_smtp_credentials(),
+                        **self._get_s3_credentials(),
                         **self._get_penpot_oauth_config(),
                     },
                 },
@@ -377,7 +377,7 @@ class PenpotCharm(ops.CharmBase):
             smtp_credentials["PENPOT_SMTP_SSL"] = "true"
         return smtp_credentials
 
-    def _get_s3_credentials(self) -> dict[str, str] | None:
+    def _get_s3_credentials(self) -> dict[str, str]:
         """Get penpot s3 credentials from the s3 integration.
 
         Returns:
@@ -385,10 +385,10 @@ class PenpotCharm(ops.CharmBase):
         """
         relation = self.model.get_relation("s3")
         if not relation or not relation.app:
-            return None
+            return {}
         s3_data = self.s3.get_s3_connection_info()
         if not s3_data or "access-key" not in s3_data:
-            return None
+            return {}
         return {
             "AWS_ACCESS_KEY_ID": s3_data["access-key"],
             "AWS_SECRET_ACCESS_KEY": s3_data["secret-key"],
