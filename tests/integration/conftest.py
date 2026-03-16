@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def pytest_configure(config: pytest.Config):
     """Configure integration test environment."""
-    kube_config = config.getoption("kube_config")
+    kube_config = config.getoption("--kube-config")
     if kube_config and not os.environ.get("TESTING_KUBECONFIG"):
         os.environ["TESTING_KUBECONFIG"] = kube_config
 
@@ -41,7 +41,7 @@ def browser_context_args(browser_context_args: dict) -> dict:
 @pytest.fixture(name="charm_file", scope="module")
 def charm_file_fixture(pytestconfig: pytest.Config) -> str:
     """Return the required charm file path for integration tests."""
-    charm = pytestconfig.getoption("charm_file")
+    charm = pytestconfig.getoption("--charm-file")
     assert charm, "--charm-file is required"
     return charm
 
@@ -49,7 +49,7 @@ def charm_file_fixture(pytestconfig: pytest.Config) -> str:
 @pytest.fixture(name="penpot_image", scope="module")
 def penpot_image_fixture(pytestconfig: pytest.Config) -> str:
     """Return the required penpot image for integration tests."""
-    image = pytestconfig.getoption("penpot_image")
+    image = pytestconfig.getoption("--penpot-image")
     assert image, "--penpot-image is required"
     return image
 
@@ -57,7 +57,7 @@ def penpot_image_fixture(pytestconfig: pytest.Config) -> str:
 @pytest.fixture(name="keep_models", scope="module")
 def keep_models_fixture(pytestconfig: pytest.Config) -> bool:
     """Return whether integration model retention is enabled."""
-    return bool(pytestconfig.getoption("keep_models"))
+    return bool(pytestconfig.getoption("--keep-models"))
 
 
 @pytest.fixture(scope="module", name="load_kube_config")
