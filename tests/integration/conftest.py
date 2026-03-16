@@ -9,6 +9,7 @@ import collections
 import logging
 import os
 import time
+from collections.abc import Iterator
 
 import boto3
 import botocore.client
@@ -68,9 +69,8 @@ def load_kube_config_fixture(pytestconfig: pytest.Config):
 
 
 @pytest.fixture(name="juju", scope="module")
-def juju_fixture(pytestconfig: pytest.Config):
+def juju_fixture(pytestconfig: pytest.Config, keep_models: bool) -> Iterator[jubilant.Juju]:
     """Provide a Jubilant Juju client with a temporary model."""
-    keep_models = pytestconfig.getoption("--keep-models")
     with jubilant.temp_model(keep=keep_models) as juju_model:
         yield juju_model
 
