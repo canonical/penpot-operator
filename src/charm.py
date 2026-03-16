@@ -214,7 +214,7 @@ class PenpotCharm(ops.CharmBase):
                         "PENPOT_FLAGS": " ".join(self._get_penpot_backend_options()),
                         **typing.cast(dict[str, str], self._get_penpot_secret_key()),
                         **typing.cast(dict[str, str], self._get_postgresql_credentials()),
-                        **typing.cast(dict[str, str], self._get_redis_credentials()),
+                        **self._get_redis_credentials(),
                         **typing.cast(dict[str, str], self._get_smtp_credentials()),
                         **typing.cast(dict[str, str], self._get_s3_credentials()),
                         **self._get_penpot_oauth_config(),
@@ -228,7 +228,7 @@ class PenpotCharm(ops.CharmBase):
                     "environment": {
                         "PENPOT_PUBLIC_URI": "http://127.0.0.1:8080",
                         "PLAYWRIGHT_BROWSERS_PATH": "/opt/penpot/exporter/browsers",
-                        **typing.cast(dict[str, str], self._get_redis_credentials()),
+                        **self._get_redis_credentials(),
                     },
                 },
             },
@@ -274,7 +274,7 @@ class PenpotCharm(ops.CharmBase):
             return False
         return True
 
-    def _get_penpot_secret_key(self) -> dict[str, str] | None:
+    def _get_penpot_secret_key(self) -> dict[str, str]:
         """Retrieve or generate a Penpot secret key.
 
         Checks if the Penpot secret key already exists within the peer relation.
@@ -286,7 +286,7 @@ class PenpotCharm(ops.CharmBase):
         """
         peer_relation = self.model.get_relation("penpot_peer")
         if peer_relation is None:
-            return None
+            return {}
         secret_id = peer_relation.data[self.app].get("secrets")
         if secret_id is None:
             if self.unit.is_leader():
@@ -295,13 +295,13 @@ class PenpotCharm(ops.CharmBase):
                 secret.set_content(new_secret)
                 peer_relation.data[self.app]["secrets"] = typing.cast(str, secret.id)
                 return {k.replace("-", "_").upper(): v for k, v in new_secret.items()}
-            return None
+            return {}
         secret = self.model.get_secret(id=secret_id)
         return {
             k.replace("-", "_").upper(): v for k, v in secret.get_content(refresh=True).items()
         }
 
-    def _get_postgresql_credentials(self) -> dict[str, str] | None:
+    def _get_postgresql_credentials(self) -> dict[str, str]:
         """Get penpot postgresql credentials from the postgresql integration.
 
         Returns:
@@ -309,20 +309,20 @@ class PenpotCharm(ops.CharmBase):
         """
         relation = self.model.get_relation("postgresql")
         if not relation or not relation.app:
-            return None
+            return {}
         endpoint = self.postgresql.fetch_relation_field(relation.id, "endpoints")
         database = self.postgresql.fetch_relation_field(relation.id, "database")
         username = self.postgresql.fetch_relation_field(relation.id, "username")
         password = self.postgresql.fetch_relation_field(relation.id, "password")
         if endpoint is None or database is None or username is None or password is None:
-            return None
+            return {}
         return {
             "PENPOT_DATABASE_URI": f"postgresql://{endpoint}/{database}",
             "PENPOT_DATABASE_USERNAME": username,
             "PENPOT_DATABASE_PASSWORD": password,
         }
 
-    def _get_redis_credentials(self) -> dict[str, str] | None:
+    def _get_redis_credentials(self) -> dict[str, str]:
         """Get penpot redis credentials from the redis integration.
 
         Returns:
@@ -330,13 +330,13 @@ class PenpotCharm(ops.CharmBase):
         """
         relation = self.model.get_relation("redis")
         if not relation or not relation.app:
-            return None
+            return {}
         relation_data = self.redis.relation_data
         if not relation_data:
-            return None
+            return {}
         url = self.redis.url
         if not url:
-            return None
+            return {}
         return {"PENPOT_REDIS_URI": url}
 
     def _get_smtp_credentials(self) -> dict[str, str]:
