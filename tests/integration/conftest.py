@@ -230,8 +230,17 @@ def deployment_fixture(
         channel="latest/edge",
         trust=True,
     )
+    juju.integrate("self-signed-certificates:certificates", "traefik-public:certificates")
+    juju.integrate("penpot:postgresql", "postgresql-k8s:database")
+    juju.integrate("penpot:redis", "redis-k8s")
+    juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
+    juju.integrate("penpot:smtp", "smtp-integrator:smtp")
+    juju.integrate("penpot:ingress", "traefik-public:ingress")
 
-    juju.wait(jubilant.all_agents_idle, timeout=300)
+    juju.wait(
+        lambda status: jubilant.all_agents_idle(status, "traefik-public", "s3-integrator"),
+        timeout=300,
+    )
 
     # Use host-based routing so apps are exposed at URL root (required by Penpot SPA).
     # sslip.io maps this hostname back to the Traefik service IP without extra DNS setup.
@@ -252,13 +261,6 @@ def deployment_fixture(
             "secret-key": minio.secret_key,
         },
     )
-
-    juju.integrate("self-signed-certificates:certificates", "traefik-public:certificates")
-    juju.integrate("penpot:postgresql", "postgresql-k8s:database")
-    juju.integrate("penpot:redis", "redis-k8s")
-    juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
-    juju.integrate("penpot:smtp", "smtp-integrator:smtp")
-    juju.integrate("penpot:ingress", "traefik-public:ingress")
 
     deployed_apps = {
         "postgresql-k8s",
