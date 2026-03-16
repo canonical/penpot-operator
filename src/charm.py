@@ -146,7 +146,7 @@ class PenpotCharm(ops.CharmBase):
         """Reconcile penpot services."""
         oauth = self._get_oauth()
         if oauth:
-            oauth.update_client_config(self._get_oauth_client_config())  # type: ignore[arg-type]
+            oauth.update_client_config(self._get_oauth_client_config())
         if not self._check_ready():
             if self.container.can_connect() and self.container.get_services():
                 self.container.stop("backend")
