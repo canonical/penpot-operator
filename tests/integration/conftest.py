@@ -7,7 +7,6 @@
 
 import collections
 import logging
-import os
 import time
 from collections.abc import Iterator
 
@@ -18,13 +17,6 @@ import kubernetes
 import pytest
 
 logger = logging.getLogger(__name__)
-
-
-def pytest_configure(config: pytest.Config):
-    """Configure integration test environment."""
-    kube_config = config.getoption("--kube-config")
-    if kube_config and not os.environ.get("TESTING_KUBECONFIG"):
-        os.environ["TESTING_KUBECONFIG"] = kube_config
 
 
 @pytest.fixture(scope="session")
