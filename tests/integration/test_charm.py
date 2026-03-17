@@ -7,6 +7,7 @@
 
 import logging
 import re
+import secrets
 import tempfile
 
 import jubilant
@@ -78,10 +79,9 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str]):
     )
     public_url = get_public_url(juju)
 
-    email = "test@test.com"
+    email = secrets.token_hex(8) + "@example.com"
     unit = "penpot/0"
 
-    password = ""  # nosec: B105
     for attempt in Retrying(stop=stop_after_attempt(60), wait=wait_fixed(5), reraise=True):
         with attempt:
             task = juju.run(unit, "create-profile", {"email": email, "fullname": "test"})
@@ -162,9 +162,9 @@ def test_oauth_login(
 
     juju.wait(lambda status: jubilant.all_active(status, "penpot", "hydra"), timeout=600)
 
-    test_email = "test@example.com"
-    test_password = "Testing1234!"  # nosec: B105
-    test_username = "admin"
+    test_email = secrets.token_hex(8) + "@example.com"
+    test_password = secrets.token_hex(16)
+    test_username = secrets.token_hex(16)
 
     if not _admin_identity_exists(juju, test_email):
         juju.run(
