@@ -334,10 +334,9 @@ class PenpotCharm(ops.CharmBase):
         relation_data = self.redis.relation_data
         if not relation_data:
             return {}
-        url = self.redis.url
-        if not url:
-            return {}
-        return {"PENPOT_REDIS_URI": url}
+        if url := self.redis.url:
+            return {"PENPOT_REDIS_URI": url}
+        return {}
 
     def _get_smtp_credentials(self) -> dict[str, str]:
         """Get penpot smtp credentials from the smtp integration.
