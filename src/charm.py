@@ -315,7 +315,7 @@ class PenpotCharm(ops.CharmBase):
         username = self.postgresql.fetch_relation_field(relation.id, "username")
         password = self.postgresql.fetch_relation_field(relation.id, "password")
         if not all((endpoint, database, username, password)):
-            return None
+            return {}
         return {
             "PENPOT_DATABASE_URI": f"postgresql://{endpoint}/{database}",
             "PENPOT_DATABASE_USERNAME": username,
