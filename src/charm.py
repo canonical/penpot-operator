@@ -212,11 +212,11 @@ class PenpotCharm(ops.CharmBase):
                         "PENPOT_TELEMETRY_ENABLED": "false",
                         "PENPOT_PUBLIC_URI": typing.cast(str, self._get_public_uri()),
                         "PENPOT_FLAGS": " ".join(self._get_penpot_backend_options()),
-                        **typing.cast(dict[str, str], self._get_penpot_secret_key()),
-                        **typing.cast(dict[str, str], self._get_postgresql_credentials()),
-                        **typing.cast(dict[str, str], self._get_redis_credentials()),
-                        **typing.cast(dict[str, str], self._get_smtp_credentials()),
-                        **typing.cast(dict[str, str], self._get_s3_credentials()),
+                        **self._get_penpot_secret_key(),
+                        **self._get_postgresql_credentials(),
+                        **self._get_redis_credentials(),
+                        **self._get_smtp_credentials(),
+                        **self._get_s3_credentials(),
                         **self._get_penpot_oauth_config(),
                     },
                 },
@@ -228,7 +228,7 @@ class PenpotCharm(ops.CharmBase):
                     "environment": {
                         "PENPOT_PUBLIC_URI": "http://127.0.0.1:8080",
                         "PLAYWRIGHT_BROWSERS_PATH": "/opt/penpot/exporter/browsers",
-                        **typing.cast(dict[str, str], self._get_redis_credentials()),
+                        **self._get_redis_credentials(),
                     },
                 },
             },
@@ -274,7 +274,7 @@ class PenpotCharm(ops.CharmBase):
             return False
         return True
 
-    def _get_penpot_secret_key(self) -> dict[str, str] | None:
+    def _get_penpot_secret_key(self) -> dict[str, str]:
         """Retrieve or generate a Penpot secret key.
 
         Checks if the Penpot secret key already exists within the peer relation.
@@ -286,7 +286,7 @@ class PenpotCharm(ops.CharmBase):
         """
         peer_relation = self.model.get_relation("penpot_peer")
         if peer_relation is None:
-            return None
+            return {}
         secret_id = peer_relation.data[self.app].get("secrets")
         if secret_id is None:
             if self.unit.is_leader():
@@ -295,13 +295,13 @@ class PenpotCharm(ops.CharmBase):
                 secret.set_content(new_secret)
                 peer_relation.data[self.app]["secrets"] = typing.cast(str, secret.id)
                 return {k.replace("-", "_").upper(): v for k, v in new_secret.items()}
-            return None
+            return {}
         secret = self.model.get_secret(id=secret_id)
         return {
             k.replace("-", "_").upper(): v for k, v in secret.get_content(refresh=True).items()
         }
 
-    def _get_postgresql_credentials(self) -> dict[str, str] | None:
+    def _get_postgresql_credentials(self) -> dict[str, str]:
         """Get penpot postgresql credentials from the postgresql integration.
 
         Returns:
@@ -309,20 +309,20 @@ class PenpotCharm(ops.CharmBase):
         """
         relation = self.model.get_relation("postgresql")
         if not relation or not relation.app:
-            return None
+            return {}
         endpoint = self.postgresql.fetch_relation_field(relation.id, "endpoints")
         database = self.postgresql.fetch_relation_field(relation.id, "database")
         username = self.postgresql.fetch_relation_field(relation.id, "username")
         password = self.postgresql.fetch_relation_field(relation.id, "password")
         if not all((endpoint, database, username, password)):
-            return None
+            return {}
         return {
             "PENPOT_DATABASE_URI": f"postgresql://{endpoint}/{database}",
             "PENPOT_DATABASE_USERNAME": username,
             "PENPOT_DATABASE_PASSWORD": password,
         }
 
-    def _get_redis_credentials(self) -> dict[str, str] | None:
+    def _get_redis_credentials(self) -> dict[str, str]:
         """Get penpot redis credentials from the redis integration.
 
         Returns:
@@ -330,11 +330,13 @@ class PenpotCharm(ops.CharmBase):
         """
         relation = self.model.get_relation("redis")
         if not relation or not relation.app:
-            return None
+            return {}
         relation_data = self.redis.relation_data
         if not relation_data:
-            return None
-        return {"PENPOT_REDIS_URI": self.redis.url}
+            return {}
+        if url := self.redis.url:
+            return {"PENPOT_REDIS_URI": url}
+        return {}
 
     def _get_smtp_credentials(self) -> dict[str, str]:
         """Get penpot smtp credentials from the smtp integration.
@@ -374,7 +376,7 @@ class PenpotCharm(ops.CharmBase):
             smtp_credentials["PENPOT_SMTP_SSL"] = "true"
         return smtp_credentials
 
-    def _get_s3_credentials(self) -> dict[str, str] | None:
+    def _get_s3_credentials(self) -> dict[str, str]:
         """Get penpot s3 credentials from the s3 integration.
 
         Returns:
@@ -382,10 +384,10 @@ class PenpotCharm(ops.CharmBase):
         """
         relation = self.model.get_relation("s3")
         if not relation or not relation.app:
-            return None
+            return {}
         s3_data = self.s3.get_s3_connection_info()
         if not s3_data or "access-key" not in s3_data:
-            return None
+            return {}
         return {
             "AWS_ACCESS_KEY_ID": s3_data["access-key"],
             "AWS_SECRET_ACCESS_KEY": s3_data["secret-key"],
@@ -527,6 +529,10 @@ class PenpotCharm(ops.CharmBase):
             return {}
         oauth_provider = oauth.get_provider_info()
         if not oauth_provider:
+            return {}
+        if not (
+            oauth_provider.client_id and oauth_provider.issuer_url and oauth_provider.client_secret
+        ):
             return {}
         return {
             "PENPOT_OIDC_CLIENT_ID": oauth_provider.client_id,
