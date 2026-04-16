@@ -97,7 +97,9 @@ S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_ke
 def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju) -> S3Credential:
     """Deploy test minio service."""
     key = "minioadmin"
-    juju.deploy("minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key})
+    juju.deploy(
+        "minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key}, log=False
+    )
     juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=300)
     ip = get_unit_ips("minio")[0]
     s3 = boto3.client(
@@ -194,15 +196,16 @@ def deployment_fixture(
     Returns:
         A set of deployed application names.
     """
-    juju.deploy("postgresql-k8s", channel="14/stable", trust=True)
-    juju.deploy("self-signed-certificates", channel="latest/stable", trust=True)
+    juju.deploy("postgresql-k8s", channel="14/stable", trust=True, log=False)
+    juju.deploy("self-signed-certificates", channel="latest/stable", trust=True, log=False)
     juju.deploy(
         f"./{charm_file}",
         app="penpot",
         resources={"penpot-image": penpot_image},
         num_units=2,
+        log=False,
     )
-    juju.deploy("redis-k8s", channel="edge")
+    juju.deploy("redis-k8s", channel="edge", log=False)
     juju.deploy(
         "smtp-integrator",
         config={
@@ -211,17 +214,12 @@ def deployment_fixture(
             "host": mailcatcher.host,
             "port": mailcatcher.port,
         },
+        log=False,
     )
     juju.deploy(
-        "s3-integrator",
-        config={"bucket": minio.bucket, "endpoint": minio.endpoint},
+        "s3-integrator", config={"bucket": minio.bucket, "endpoint": minio.endpoint}, log=False
     )
-    juju.deploy(
-        "traefik-k8s",
-        app="traefik-public",
-        channel="latest/edge",
-        trust=True,
-    )
+    juju.deploy("traefik-k8s", app="traefik-public", channel="latest/edge", trust=True, log=False)
 
     juju.wait(
         lambda status: jubilant.all_agents_idle(status, "traefik-public", "s3-integrator"),
@@ -238,6 +236,7 @@ def deployment_fixture(
             "routing_mode": "subdomain",
             "external_hostname": traefik_hostname,
         },
+        log=False,
     )
     juju.run(
         "s3-integrator/0",
@@ -275,15 +274,16 @@ def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set
     Deploys hydra, kratos, identity-platform-login-ui-operator and traefik-admin,
     wired to the traefik-public and postgresql-k8s instances from the base deployment.
     """
-    juju.deploy("hydra", channel="latest/edge", revision=399, trust=True)
-    juju.deploy("kratos", channel="latest/edge", revision=567, trust=True)
+    juju.deploy("hydra", channel="latest/edge", revision=399, trust=True, log=False)
+    juju.deploy("kratos", channel="latest/edge", revision=567, trust=True, log=False)
     juju.deploy(
         "identity-platform-login-ui-operator",
         channel="latest/edge",
         revision=200,
         trust=True,
+        log=False,
     )
-    juju.deploy("traefik-k8s", "traefik-admin", channel="latest/stable", trust=True)
+    juju.deploy("traefik-k8s", "traefik-admin", channel="latest/stable", trust=True, log=False)
 
     juju.integrate("postgresql-k8s:database", "hydra:pg-database")
     juju.integrate("postgresql-k8s:database", "kratos:pg-database")
@@ -310,7 +310,7 @@ def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set
         "identity-platform-login-ui-operator:public-route",
     )
 
-    juju.config("kratos", {"enforce_mfa": False})
+    juju.config("kratos", {"enforce_mfa": False}, log=False)
 
     return deployment | {
         "hydra",
