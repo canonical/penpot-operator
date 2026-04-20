@@ -13,6 +13,7 @@ import tempfile
 import jubilant
 import requests
 from playwright.sync_api import Page
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from tenacity import (
     Retrying,
     stop_after_attempt,
@@ -186,16 +187,31 @@ def test_oauth_login(
 
     wait_for_endpoint(f"{public_url}/#/auth/login", timeout=300)
 
-    page.goto(f"{public_url}/#/auth/login")
-    logger.info("Navigated to penpot login. Current URL: %s", page.url)
-    logger.info("Penpot login page content (first 1200): %s", page.content()[:1200])
+    idp_url = re.compile(r".*/(oauth2/auth|ui/login)\?.*")
+    for attempt in Retrying(stop=stop_after_attempt(4), wait=wait_fixed(10), reraise=True):
+        with attempt:
+            page.goto(f"{public_url}/#/auth/login", wait_until="domcontentloaded")
+            logger.info("Navigated to penpot login. Current URL: %s", page.url)
+            logger.info("Penpot login page content (first 1200): %s", page.content()[:1200])
 
-    oidc_button = page.locator(
-        'a[href*="/api/auth/oauth/oidc"], button:has-text("OpenID"), a:has-text("OpenID")'
-    ).first
-    oidc_button.wait_for(state="visible", timeout=90_000)
-    oidc_button.click()
-    page.wait_for_url(re.compile(r".*/(oauth2/auth|ui/login)\?.*"), timeout=60_000)
+            if idp_url.match(page.url):
+                break
+
+            oidc_button = page.locator(
+                'a[href*="/api/auth/oauth/oidc"], button:has-text("OpenID"), a:has-text("OpenID")'
+            ).first
+            try:
+                oidc_button.wait_for(state="visible", timeout=30_000)
+            except PlaywrightTimeoutError as err:
+                raise AssertionError("OIDC button did not become visible") from err
+
+            oidc_button.click()
+            try:
+                page.wait_for_url(idp_url, timeout=30_000)
+            except PlaywrightTimeoutError as err:
+                raise AssertionError("OIDC click did not redirect to the identity provider") from err
+
+            break
     logger.info("after OIDC click, url: %s", page.url)
     logger.info("IdP login page content (first 1200): %s", page.content()[:1200])
 
