@@ -16,6 +16,17 @@ import jubilant
 import kubernetes
 import pytest
 
+MINIO_REVISION = 383
+POSTGRESQL_REVISION = 774
+REDIS_REVISION = 42
+S3_INTEGRATOR_REVISION = 330
+SELF_SIGNED_CERTIFICATES_REVISION = 264
+SMTP_INTEGRATOR_REVISION = 93
+TRAEFIK_PUBLIC_REVISION = 277
+HYDRA_REVISION = 399
+KRATOS_REVISION = 567
+IDENTITY_PLATFORM_LOGIN_UI_REVISION = 200
+
 logger = logging.getLogger(__name__)
 
 
@@ -97,7 +108,12 @@ S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_ke
 def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju) -> S3Credential:
     """Deploy test minio service."""
     key = "minioadmin"
-    juju.deploy("minio", channel="ckf-1.9/stable", config={"access-key": key, "secret-key": key})
+    juju.deploy(
+        "minio",
+        channel="ckf-1.9/stable",
+        revision=MINIO_REVISION,
+        config={"access-key": key, "secret-key": key},
+    )
     juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=300)
     ip = get_unit_ips("minio")[0]
     s3 = boto3.client(
@@ -194,17 +210,24 @@ def deployment_fixture(
     Returns:
         A set of deployed application names.
     """
-    juju.deploy("postgresql-k8s", channel="14/stable", trust=True)
-    juju.deploy("self-signed-certificates", channel="latest/stable", trust=True)
+    juju.deploy("postgresql-k8s", channel="14/stable", revision=POSTGRESQL_REVISION, trust=True)
+    juju.deploy(
+        "self-signed-certificates",
+        channel="latest/stable",
+        revision=SELF_SIGNED_CERTIFICATES_REVISION,
+        trust=True,
+    )
     juju.deploy(
         f"./{charm_file}",
         app="penpot",
         resources={"penpot-image": penpot_image},
         num_units=2,
     )
-    juju.deploy("redis-k8s", channel="edge")
+    juju.deploy("redis-k8s", channel="edge", revision=REDIS_REVISION)
     juju.deploy(
         "smtp-integrator",
+        channel="latest/stable",
+        revision=SMTP_INTEGRATOR_REVISION,
         config={
             "auth_type": "none",
             "domain": "example.com",
@@ -214,12 +237,15 @@ def deployment_fixture(
     )
     juju.deploy(
         "s3-integrator",
+        channel="1/stable",
+        revision=S3_INTEGRATOR_REVISION,
         config={"bucket": minio.bucket, "endpoint": minio.endpoint},
     )
     juju.deploy(
         "traefik-k8s",
         app="traefik-public",
         channel="latest/edge",
+        revision=TRAEFIK_PUBLIC_REVISION,
         trust=True,
     )
 
@@ -275,15 +301,14 @@ def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set
     Deploys hydra, kratos, identity-platform-login-ui-operator and traefik-admin,
     wired to the traefik-public and postgresql-k8s instances from the base deployment.
     """
-    juju.deploy("hydra", channel="latest/edge", revision=399, trust=True)
-    juju.deploy("kratos", channel="latest/edge", revision=567, trust=True)
+    juju.deploy("hydra", channel="latest/edge", revision=HYDRA_REVISION, trust=True)
+    juju.deploy("kratos", channel="latest/edge", revision=KRATOS_REVISION, trust=True)
     juju.deploy(
         "identity-platform-login-ui-operator",
         channel="latest/edge",
-        revision=200,
+        revision=IDENTITY_PLATFORM_LOGIN_UI_REVISION,
         trust=True,
     )
-    juju.deploy("traefik-k8s", "traefik-admin", channel="latest/stable", trust=True)
 
     juju.integrate("postgresql-k8s:database", "hydra:pg-database")
     juju.integrate("postgresql-k8s:database", "kratos:pg-database")
@@ -302,7 +327,6 @@ def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set
     )
     juju.integrate("kratos:kratos-info", "identity-platform-login-ui-operator:kratos-info")
 
-    juju.integrate("self-signed-certificates:certificates", "traefik-admin:certificates")
     juju.integrate("traefik-public:traefik-route", "hydra:public-route")
     juju.integrate("traefik-public:traefik-route", "kratos:public-route")
     juju.integrate(
@@ -316,5 +340,4 @@ def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set
         "hydra",
         "kratos",
         "identity-platform-login-ui-operator",
-        "traefik-admin",
     }
