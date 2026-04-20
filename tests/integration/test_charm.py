@@ -209,7 +209,9 @@ def test_oauth_login(
             try:
                 page.wait_for_url(idp_url, timeout=30_000)
             except PlaywrightTimeoutError as err:
-                raise AssertionError("OIDC click did not redirect to the identity provider") from err
+                raise AssertionError(
+                    "OIDC click did not redirect to the identity provider"
+                ) from err
 
             break
     logger.info("after OIDC click, url: %s", page.url)
