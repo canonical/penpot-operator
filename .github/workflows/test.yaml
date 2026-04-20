@@ -27,6 +27,7 @@ jobs:
       use-canonical-k8s: true
       pre-run-script: tests/integration/prepare.sh
       with-uv: true
+      self-hosted-runner: false
   allure-report:
     if: ${{ !cancelled() && github.event_name == 'schedule' }}
     needs:
