@@ -4,7 +4,7 @@
 name: penpot
 summary: Web-based open-source design tool.
 description: Penpot is the web-based open-source design tool that bridges the gap between designers and developers.
-version: &penpot-version 2.3.0
+version: &penpot-version 2.4.3
 license: MPL-2.0
 
 base: ubuntu@24.04
@@ -46,23 +46,25 @@ parts:
       -//var penpotFlags = "";
       +var penpotFlags = "";
       diff --git a/docker/images/files/nginx-entrypoint.sh b/docker/images/files/nginx-entrypoint.sh
-      index c34245230..f286e3c0d 100644
       --- a/docker/images/files/nginx-entrypoint.sh
       +++ b/docker/images/files/nginx-entrypoint.sh
-      @@ -7,7 +7,7 @@
+      @@ -7,7 +7,8 @@
        update_flags() {
          if [ -n "$PENPOT_FLAGS" ]; then
-           sed -i \
+      -    sed -i \
       -      -e "s|^//var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
+      -      "$1"
+      +    echo "$(sed \
+      +      -e "s|^//var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
       +      -e "s|^var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
-             "$1"
+      +      "$1")" > "$1"
          fi
        }
       EOF
       
       # install clojure
-      curl -L https://github.com/clojure/brew-install/releases/download/1.11.3.1463/linux-install.sh -o install-clojure
-      echo "0c41063a2fefb53a31bc1bc236899955f759c5103dc0495489cdd74bf8f114bb  install-clojure" | shasum -c
+      curl -L https://github.com/clojure/brew-install/releases/download/1.12.4.1618/linux-install.sh -o install-clojure
+      echo "8a49ab11a639ce1d49e5459a7bfa8fcc74684ad3bc9acd181e3adc7a662918cf  install-clojure" | shasum -c
       chmod +x install-clojure
       ./install-clojure
       
@@ -71,7 +73,8 @@ parts:
       # build assets
       export NODE_ENV=production
       npx --yes corepack@0.31.0 yarn@4.3.1 install
-      clojure -M:dev:shadow-cljs release main --config-merge "{:release-version \"$(git rev-parse --short HEAD)-$(date +%s)\"}"
+      clojure -M:dev:shadow-cljs release main worker --config-merge "{:release-version \"$(git rev-parse --short HEAD)-$(date +%s)\"}"
+      npx --yes corepack@0.31.0 yarn@4.3.1 run build:app:libs
       npx --yes corepack@0.31.0 yarn@4.3.1 run build:app:assets
       sed -i -re "s/\%version\%/${VERSION}/g" ./resources/public/index.html
       sed -i -re "s/\%buildDate\%/$(date -R);/g" ./resources/public/index.html
@@ -129,8 +132,8 @@ parts:
       craftctl default
 
       # install clojure
-      curl -L https://github.com/clojure/brew-install/releases/download/1.11.3.1463/linux-install.sh -o install-clojure
-      echo "0c41063a2fefb53a31bc1bc236899955f759c5103dc0495489cdd74bf8f114bb  install-clojure" | shasum -c
+      curl -L https://github.com/clojure/brew-install/releases/download/1.12.4.1618/linux-install.sh -o install-clojure
+      echo "8a49ab11a639ce1d49e5459a7bfa8fcc74684ad3bc9acd181e3adc7a662918cf  install-clojure" | shasum -c
       chmod +x install-clojure
       ./install-clojure
 
@@ -213,8 +216,8 @@ parts:
       craftctl default
 
       # install clojure
-      curl -L https://github.com/clojure/brew-install/releases/download/1.11.3.1463/linux-install.sh -o install-clojure
-      echo "0c41063a2fefb53a31bc1bc236899955f759c5103dc0495489cdd74bf8f114bb  install-clojure" | shasum -c
+      curl -L https://github.com/clojure/brew-install/releases/download/1.12.4.1618/linux-install.sh -o install-clojure
+      echo "8a49ab11a639ce1d49e5459a7bfa8fcc74684ad3bc9acd181e3adc7a662918cf  install-clojure" | shasum -c
       chmod +x install-clojure
       ./install-clojure
       
