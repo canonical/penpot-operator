@@ -70,7 +70,6 @@ parts:
       
       # build assets
       export NODE_ENV=production
-      export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
       npx --yes corepack@0.31.0 yarn@4.3.1 install
       clojure -M:dev:shadow-cljs release main --config-merge "{:release-version \"$(git rev-parse --short HEAD)-$(date +%s)\"}"
       npx --yes corepack@0.31.0 yarn@4.3.1 run build:app:assets
@@ -222,7 +221,6 @@ parts:
       cd exporter
 
       export NODE_ENV=production
-      export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
       npx --yes corepack@0.31.0 yarn@4.3.1 install
       clojure -J-Xms100M -J-Xmx1000M -J-XX:+UseSerialGC -M:dev:shadow-cljs release main
       mkdir -p target
@@ -236,7 +234,6 @@ parts:
       cp -r target/ $CRAFT_PART_INSTALL/opt/penpot/exporter
       
       cd $CRAFT_PART_INSTALL/opt/penpot/exporter
-      export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
       npx --yes corepack@0.31.0 yarn@4.3.1 install
       
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/exporter/browsers
