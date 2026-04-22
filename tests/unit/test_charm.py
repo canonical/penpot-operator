@@ -316,7 +316,7 @@ def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
                 "environment": {
                     "AWS_ACCESS_KEY_ID": "s3-access-key",
                     "AWS_SECRET_ACCESS_KEY": S3_SECRET_KEY,
-                    "JAVA_HOME": "/usr/lib/jvm/java-21-openjdk-amd64",
+                    "JAVA_HOME": "/usr/lib/jvm/java-25-openjdk-amd64",
                     "PENPOT_ASSETS_STORAGE_BACKEND": "assets-s3",
                     "PENPOT_DATABASE_PASSWORD": POSTGRESQL_PASSWORD,
                     "PENPOT_DATABASE_URI": "postgresql://postgresql-endpoint:5432/penpot",

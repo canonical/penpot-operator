@@ -208,7 +208,7 @@ class PenpotCharm(ops.CharmBase):
                     "override": "replace",
                     "working-dir": "/opt/penpot/backend/",
                     "environment": {
-                        "JAVA_HOME": "/usr/lib/jvm/java-21-openjdk-amd64",
+                        "JAVA_HOME": "/usr/lib/jvm/java-25-openjdk-amd64",
                         "PENPOT_TELEMETRY_ENABLED": "false",
                         "PENPOT_PUBLIC_URI": typing.cast(str, self._get_public_uri()),
                         "PENPOT_FLAGS": " ".join(self._get_penpot_backend_options()),

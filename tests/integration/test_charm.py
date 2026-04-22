@@ -51,13 +51,13 @@ def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str
         logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
         stdout = juju.ssh(
             unit_name,
-            "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
+            "/usr/lib/jvm/java-25-openjdk-amd64/bin/keytool",
             "-import",
             "-trustcacerts",
             "-file",
             "/oauth.crt",
             "-keystore",
-            "/usr/lib/jvm/java-21-openjdk-amd64/lib/security/cacerts",
+            "/usr/lib/jvm/java-25-openjdk-amd64/lib/security/cacerts",
             "-storepass",
             "changeit",
             "-noprompt",

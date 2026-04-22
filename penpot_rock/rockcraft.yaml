@@ -4,7 +4,7 @@
 name: penpot
 summary: Web-based open-source design tool.
 description: Penpot is the web-based open-source design tool that bridges the gap between designers and developers.
-version: &penpot-version 2.7.2
+version: &penpot-version 2.8.1
 license: MPL-2.0
 
 base: ubuntu@24.04
@@ -24,7 +24,7 @@ parts:
       - nginx-full
       - gettext-base
     build-packages:
-      - openjdk-21-jdk
+      - openjdk-25-jdk
       - rlwrap
       - rsync
     build-snaps:
@@ -82,12 +82,15 @@ parts:
       
       mkdir -p $CRAFT_PART_INSTALL/var/www/
       mkdir -p $CRAFT_PART_INSTALL/etc/nginx/
+      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/overrides.d/
       
       cd ..
       cp -r ./frontend/resources/public $CRAFT_PART_INSTALL/var/www/app
       cp ./docker/images/files/nginx-mime.types $CRAFT_PART_INSTALL/etc/nginx/mime.types
       cp ./docker/images/files/config.js $CRAFT_PART_INSTALL/var/www/app/js/config.js
       cp ./docker/images/files/nginx.conf $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
+      cp ./docker/images/files/nginx-proxies.conf $CRAFT_PART_INSTALL/etc/nginx/nginx-proxies.conf
+      cp ./docker/images/files/resolvers.conf $CRAFT_PART_INSTALL/etc/nginx/overrides.d/resolvers.conf.template
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/frontend
       cp ./docker/images/files/nginx-entrypoint.sh $CRAFT_PART_INSTALL/opt/penpot/frontend/nginx-entrypoint.sh
       chmod +x $CRAFT_PART_INSTALL/opt/penpot/frontend/nginx-entrypoint.sh
@@ -111,12 +114,12 @@ parts:
     source: https://github.com/penpot/penpot.git
     source-tag: *penpot-version
     build-packages:
-      - openjdk-21-jdk
+      - openjdk-25-jdk
       - rlwrap
       - rsync
     stage-packages:
       - curl
-      - openjdk-21-jdk
+      - openjdk-25-jdk
       - imagemagick
       - webp
       - rlwrap
@@ -182,13 +185,14 @@ parts:
     source: https://github.com/penpot/penpot.git
     source-tag: *penpot-version
     build-packages:
-      - openjdk-21-jdk
+      - openjdk-25-jdk
       - rlwrap
       - rsync
     build-snaps:
       - node/20/stable
     stage-packages:
       - nodejs
+      - libnode109
       - libasound2t64
       - libatk-bridge2.0-0t64
       - libatk1.0-0t64
@@ -224,6 +228,7 @@ parts:
       cd exporter
 
       export NODE_ENV=production
+      export PATH="/snap/node/current/bin:$PATH"
       npx --yes corepack@0.31.0 yarn@4.6.0 install
       clojure -J-Xms100M -J-Xmx1000M -J-XX:+UseSerialGC -M:dev:shadow-cljs release main
       mkdir -p target
