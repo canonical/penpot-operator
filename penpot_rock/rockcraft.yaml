@@ -4,7 +4,7 @@
 name: penpot
 summary: Web-based open-source design tool.
 description: Penpot is the web-based open-source design tool that bridges the gap between designers and developers.
-version: &penpot-version 2.10.1
+version: &penpot-version 2.11.1
 license: MPL-2.0
 
 base: ubuntu@24.04
@@ -35,33 +35,11 @@ parts:
     override-build: |
       craftctl default
       
-      # The upstream version of the Nginx entrypoint can only apply changes to config.js once. 
-      # Change it so that it can apply changes multiple times.
-      git apply <<'EOF'
-      diff --git a/docker/images/files/config.js b/docker/images/files/config.js
-      index 7bc9ce940..5056b0fa5 100644
-      --- a/docker/images/files/config.js
-      +++ b/docker/images/files/config.js
-      @@ -1,2 +1,2 @@
-       // Frontend configuration
-      -//var penpotFlags = "";
-      +var penpotFlags = "";
-      diff --git a/docker/images/files/nginx-entrypoint.sh b/docker/images/files/nginx-entrypoint.sh
-      --- a/docker/images/files/nginx-entrypoint.sh
-      +++ b/docker/images/files/nginx-entrypoint.sh
-      @@ -7,7 +7,8 @@
-       update_flags() {
-         if [ -n "$PENPOT_FLAGS" ]; then
-      -    sed -i \
-      -      -e "s|^//var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
-      -      "$1"
-      +    echo "$(sed \
-      +      -e "s|^//var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
-      +      -e "s|^var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
-      +      "$1")" > "$1"
-         fi
-       }
-      EOF
+      # Make frontend flag injection idempotent across service restarts.
+      upstream_penpot_flags_match='^//var penpotFlags = .*;'
+      idempotent_penpot_flags_match='^\(//\)\?var penpotFlags = .*;'
+      sed -i "s|$upstream_penpot_flags_match|$idempotent_penpot_flags_match|" \
+        docker/images/files/nginx-entrypoint.sh
       
       # install clojure
       curl -L https://github.com/clojure/brew-install/releases/download/1.12.4.1618/linux-install.sh -o install-clojure
@@ -83,27 +61,26 @@ parts:
       echo ${VERSION} > ./resources/public/version.txt
       
       mkdir -p $CRAFT_PART_INSTALL/var/www/
-      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/
-      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/overrides.d/
+      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/overrides/http.d/
+      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/overrides/server.d/
+      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/overrides/location.d/
+      mkdir -p $CRAFT_PART_INSTALL/tmp/
       
       cd ..
       cp -r ./frontend/resources/public $CRAFT_PART_INSTALL/var/www/app
       cp ./docker/images/files/nginx-mime.types $CRAFT_PART_INSTALL/etc/nginx/mime.types
       cp ./docker/images/files/config.js $CRAFT_PART_INSTALL/var/www/app/js/config.js
-      cp ./docker/images/files/nginx.conf $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
-      cp ./docker/images/files/nginx-proxies.conf $CRAFT_PART_INSTALL/etc/nginx/nginx-proxies.conf
-      cp ./docker/images/files/resolvers.conf $CRAFT_PART_INSTALL/etc/nginx/overrides.d/resolvers.conf.template
+      cp ./docker/images/files/nginx.conf.template $CRAFT_PART_INSTALL/tmp/nginx.conf.template
+      cp ./docker/images/files/nginx-resolvers.conf.template $CRAFT_PART_INSTALL/tmp/resolvers.conf.template
+      cp ./docker/images/files/nginx-external-locations.conf \
+        $CRAFT_PART_INSTALL/etc/nginx/overrides/location.d/external-locations.conf
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/frontend
       cp ./docker/images/files/nginx-entrypoint.sh $CRAFT_PART_INSTALL/opt/penpot/frontend/nginx-entrypoint.sh
       chmod +x $CRAFT_PART_INSTALL/opt/penpot/frontend/nginx-entrypoint.sh
-      
-      # nginx runs as non-root user
-      sed -i "s/listen 80 default_server;/listen 8080 default_server;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
-      sed -i "s/pid \\/run\\/nginx.pid;/pid \\/opt\\/penpot\\/frontend\\/nginx.pid;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
-      sed -i "s/user www-data;/user _daemon_;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
 
     override-stage: |
       chown -R 584792:584792 $CRAFT_PART_INSTALL/etc/nginx/
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/tmp/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/var/www/app/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/var/lib/nginx/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/frontend/
