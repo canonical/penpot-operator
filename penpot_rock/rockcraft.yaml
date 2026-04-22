@@ -4,7 +4,7 @@
 name: penpot
 summary: Web-based open-source design tool.
 description: Penpot is the web-based open-source design tool that bridges the gap between designers and developers.
-version: &penpot-version 2.9.0
+version: &penpot-version 2.10.1
 license: MPL-2.0
 
 base: ubuntu@24.04
@@ -29,7 +29,7 @@ parts:
       - rlwrap
       - rsync
     build-snaps:
-      - node/20/stable
+      - node/22/stable
     build-environment:
       - VERSION: *penpot-version
     override-build: |
@@ -73,10 +73,11 @@ parts:
       
       # build assets
       export NODE_ENV=production
-      npx --yes corepack@0.31.0 yarn@4.6.0 install
+      export PATH="/snap/node/current/bin:$PATH"
+      npx --yes corepack@0.31.0 yarn@4.9.2 install
       clojure -M:dev:shadow-cljs release main worker --config-merge "{:release-version \"$(git rev-parse --short HEAD)-$(date +%s)\"}"
-      npx --yes corepack@0.31.0 yarn@4.6.0 run build:app:libs
-      npx --yes corepack@0.31.0 yarn@4.6.0 run build:app:assets
+      npx --yes corepack@0.31.0 yarn@4.9.2 run build:app:libs
+      npx --yes corepack@0.31.0 yarn@4.9.2 run build:app:assets
       sed -i -re "s/\%version\%/${VERSION}/g" ./resources/public/index.html
       sed -i -re "s/\%buildDate\%/$(date -R);/g" ./resources/public/index.html
       echo ${VERSION} > ./resources/public/version.txt
@@ -191,7 +192,7 @@ parts:
       - rlwrap
       - rsync
     build-snaps:
-      - node/20/stable
+      - node/22/stable
     stage-packages:
       - nodejs
       - libnode109
@@ -231,7 +232,7 @@ parts:
 
       export NODE_ENV=production
       export PATH="/snap/node/current/bin:$PATH"
-      npx --yes corepack@0.31.0 yarn@4.6.0 install
+      npx --yes corepack@0.31.0 yarn@4.9.2 install
       clojure -J-Xms100M -J-Xmx1000M -J-XX:+UseSerialGC -M:dev:shadow-cljs release main
       mkdir -p target
       rm -rf target/app
@@ -244,12 +245,12 @@ parts:
       cp -r target/ $CRAFT_PART_INSTALL/opt/penpot/exporter
       
       cd $CRAFT_PART_INSTALL/opt/penpot/exporter
-      npx --yes corepack@0.31.0 yarn@4.6.0 install
+      npx --yes corepack@0.31.0 yarn@4.9.2 install
       
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/exporter/browsers
       
       export PLAYWRIGHT_BROWSERS_PATH=$CRAFT_PART_INSTALL/opt/penpot/exporter/browsers
-      npx --yes corepack@0.31.0 yarn@4.6.0 run playwright install chromium
+      npx --yes corepack@0.31.0 yarn@4.9.2 run playwright install chromium
 
     override-stage: |
       chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/exporter/
