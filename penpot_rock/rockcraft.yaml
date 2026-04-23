@@ -34,10 +34,10 @@ parts:
     override-build: |
       craftctl default
       
-          # Make frontend flag injection idempotent across service restarts.
-          # Penpot rewrites config.js once on first start, so subsequent restarts must
-          # match both the original commented line and the already-uncommented line.
-          perl -0pi -e 's/-e "s\|\^\/\/var penpotFlags = \.\*;\|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";\|g" \\\n/-e "s|^\/\/var penpotFlags = .*;|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";|g" \\\n      -e "s|^var penpotFlags = .*;|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";|g" \\\n/' docker/images/files/nginx-entrypoint.sh
+      # Make frontend flag injection idempotent across service restarts.
+      # Penpot rewrites config.js once on first start, so subsequent restarts must
+      # match both the original commented line and the already-uncommented line.
+      perl -0pi -e 's/-e "s\|\^\/\/var penpotFlags = \.\*;\|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";\|g" \\\n/-e "s|^\/\/var penpotFlags = .*;|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";|g" \\\n      -e "s|^var penpotFlags = .*;|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";|g" \\\n/' docker/images/files/nginx-entrypoint.sh
       
       # install clojure
       curl -L https://github.com/clojure/brew-install/releases/download/1.12.4.1618/linux-install.sh -o install-clojure
