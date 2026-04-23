@@ -4,7 +4,7 @@
 name: penpot
 summary: Web-based open-source design tool.
 description: Penpot is the web-based open-source design tool that bridges the gap between designers and developers.
-version: &penpot-version 2.13.3
+version: &penpot-version 2.14.3
 license: MPL-2.0
 
 base: ubuntu@24.04
@@ -45,18 +45,25 @@ parts:
       chmod +x install-clojure
       ./install-clojure
       
-      cd frontend
-      
-      # build assets
+      # Build the frontend with the subset of upstream steps that this rock
+      # environment supports. The full upstream script also builds render-wasm
+      # and other extras that require additional toolchains not present here.
       export NODE_ENV=production
+      export VERSION_TAG="$VERSION"
       export PATH="/snap/node/current/bin:$PATH"
-      npx --yes corepack@0.31.0 yarn@4.9.2 install
-      clojure -M:dev:shadow-cljs release main worker --config-merge "{:release-version \"$(git rev-parse --short HEAD)-$(date +%s)\"}"
-      npx --yes corepack@0.31.0 yarn@4.9.2 run build:app:libs
-      npx --yes corepack@0.31.0 yarn@4.9.2 run build:app:assets
+      cd frontend
+      npx --yes corepack@0.31.0 pnpm install --frozen-lockfile
+      npx --yes corepack@0.31.0 pnpm --filter @penpot/ui build
+      test -f ./packages/ui/dist/index.css
+      mkdir -p ./resources/public/css
+      cp ./packages/ui/dist/index.css ./resources/public/css/ui.css
+      clojure -M:dev:shadow-cljs release main worker
+      npx --yes corepack@0.31.0 pnpm run build:app:libs
+      npx --yes corepack@0.31.0 pnpm run build:app:assets
       sed -i -re "s/\%version\%/${VERSION}/g" ./resources/public/index.html
       sed -i -re "s/\%buildDate\%/$(date -R);/g" ./resources/public/index.html
       echo ${VERSION} > ./resources/public/version.txt
+      cd ..
       
       mkdir -p $CRAFT_PART_INSTALL/var/www/
       mkdir -p $CRAFT_PART_INSTALL/etc/nginx/overrides/http.d/
@@ -64,7 +71,6 @@ parts:
       mkdir -p $CRAFT_PART_INSTALL/etc/nginx/overrides/location.d/
       mkdir -p $CRAFT_PART_INSTALL/tmp/
       
-      cd ..
       cp -r ./frontend/resources/public $CRAFT_PART_INSTALL/var/www/app
       cp ./docker/images/files/nginx-mime.types $CRAFT_PART_INSTALL/etc/nginx/mime.types
       cp ./docker/images/files/config.js $CRAFT_PART_INSTALL/var/www/app/js/config.js
@@ -211,13 +217,14 @@ parts:
       "$NODE_BIN" --version
 
       export NODE_ENV=production
-      npx --yes corepack@0.31.0 yarn@4.9.2 install
+      npx --yes corepack@0.31.0 pnpm install --frozen-lockfile
       clojure -J-Xms100M -J-Xmx1000M -J-XX:+UseSerialGC -M:dev:shadow-cljs release main
+      rm -rf target
+      npx --yes corepack@0.31.0 pnpm run build
       mkdir -p target
-      rm -rf target/app
-      cp ../.yarnrc.yml target/
-      cp yarn.lock target/
+      cp ../pnpm-lock.yaml target/
       cp package.json target/
+      touch target/pnpm-workspace.yaml
       sed -i -re "s/\%version\%/$VERSION/g" ./target/app.js
       
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/
@@ -227,12 +234,12 @@ parts:
       cp "$NODE_BIN" $CRAFT_PART_INSTALL/opt/node/bin/node
       
       cd $CRAFT_PART_INSTALL/opt/penpot/exporter
-      npx --yes corepack@0.31.0 yarn@4.9.2 install
+      npx --yes corepack@0.31.0 pnpm install
       
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/exporter/browsers
       
       export PLAYWRIGHT_BROWSERS_PATH=$CRAFT_PART_INSTALL/opt/penpot/exporter/browsers
-      npx --yes corepack@0.31.0 yarn@4.9.2 run playwright install chromium
+      npx --yes corepack@0.31.0 pnpm exec playwright install chromium
 
     override-stage: |
       chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/node/
