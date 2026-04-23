@@ -4,7 +4,7 @@
 name: penpot
 summary: Web-based open-source design tool.
 description: Penpot is the web-based open-source design tool that bridges the gap between designers and developers.
-version: &penpot-version 2.11.1
+version: &penpot-version 2.12.1
 license: MPL-2.0
 
 base: ubuntu@24.04
@@ -27,19 +27,17 @@ parts:
       - libnode109
       - openjdk-25-jdk
       - rlwrap
-      - rsync
     build-snaps:
-      - node/22/stable
+      - &node-snap node/22/stable
     build-environment:
       - VERSION: *penpot-version
     override-build: |
       craftctl default
       
-      # Make frontend flag injection idempotent across service restarts.
-      upstream_penpot_flags_match='^//var penpotFlags = .*;'
-      idempotent_penpot_flags_match='^\(//\)\?var penpotFlags = .*;'
-      sed -i "s|$upstream_penpot_flags_match|$idempotent_penpot_flags_match|" \
-        docker/images/files/nginx-entrypoint.sh
+          # Make frontend flag injection idempotent across service restarts.
+          # Penpot rewrites config.js once on first start, so subsequent restarts must
+          # match both the original commented line and the already-uncommented line.
+          perl -0pi -e 's/-e "s\|\^\/\/var penpotFlags = \.\*;\|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";\|g" \\\n/-e "s|^\/\/var penpotFlags = .*;|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";|g" \\\n      -e "s|^var penpotFlags = .*;|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";|g" \\\n/' docker/images/files/nginx-entrypoint.sh
       
       # install clojure
       curl -L https://github.com/clojure/brew-install/releases/download/1.12.4.1618/linux-install.sh -o install-clojure
@@ -167,12 +165,9 @@ parts:
     build-packages:
       - openjdk-25-jdk
       - rlwrap
-      - rsync
     build-snaps:
-      - node/22/stable
+      - *node-snap
     stage-packages:
-      - nodejs
-      - libnode109
       - libasound2t64
       - libatk-bridge2.0-0t64
       - libatk1.0-0t64
@@ -196,6 +191,7 @@ parts:
       - libxrandr2
     build-environment:
       - VERSION: *penpot-version
+      - NODE_VERSION: 22.22.0
     override-build: |
       craftctl default
 
@@ -204,11 +200,17 @@ parts:
       echo "8a49ab11a639ce1d49e5459a7bfa8fcc74684ad3bc9acd181e3adc7a662918cf  install-clojure" | shasum -c
       chmod +x install-clojure
       ./install-clojure
-      
+
       cd exporter
 
-      export NODE_ENV=production
       export PATH="/snap/node/current/bin:$PATH"
+
+      # Install a self-contained Node 22 binary into the image for exporter runtime.
+      npm install --global "node@${NODE_VERSION}"
+      NODE_BIN="$(npm prefix -g)/lib/node_modules/node/bin/node"
+      "$NODE_BIN" --version
+
+      export NODE_ENV=production
       npx --yes corepack@0.31.0 yarn@4.9.2 install
       clojure -J-Xms100M -J-Xmx1000M -J-XX:+UseSerialGC -M:dev:shadow-cljs release main
       mkdir -p target
@@ -220,6 +222,9 @@ parts:
       
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/
       cp -r target/ $CRAFT_PART_INSTALL/opt/penpot/exporter
+
+      mkdir -p $CRAFT_PART_INSTALL/opt/node/bin
+      cp "$NODE_BIN" $CRAFT_PART_INSTALL/opt/node/bin/node
       
       cd $CRAFT_PART_INSTALL/opt/penpot/exporter
       npx --yes corepack@0.31.0 yarn@4.9.2 install
@@ -230,6 +235,7 @@ parts:
       npx --yes corepack@0.31.0 yarn@4.9.2 run playwright install chromium
 
     override-stage: |
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/node/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/exporter/
       
       craftctl default
