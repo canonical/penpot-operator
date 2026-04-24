@@ -269,6 +269,26 @@ def test_public_uri(context: testing.Context[PenpotCharm]):
     assert charm._get_public_uri() == "https://penpot.local/"
 
 
+def test_oauth_client_config_uses_penpot_212_callback(
+    context: testing.Context[PenpotCharm],
+):
+    """
+    arrange: initialize the testing context with the ingress integration.
+    act: retrieve the OAuth client configuration.
+    assert: ensure the callback URI matches the Penpot 2.12 OIDC endpoint.
+    """
+    state = testing.State(
+        relations={ingress_relation()},
+        containers={penpot_container()},
+    )
+    with context(context.on.start(), state) as mgr:
+        mgr.run()
+        charm = mgr.charm
+    client_config = charm._get_oauth_client_config()
+    assert client_config is not None
+    assert client_config.redirect_uri == "https://penpot.local/api/auth/oidc/callback"
+
+
 def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
     """
     arrange: initialize the testing context and set up all required integrations.
@@ -296,6 +316,7 @@ def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
         charm = mgr.charm
     plan = charm._gen_pebble_plan()
     del plan["services"]["backend"]["environment"]["PENPOT_SECRET_KEY"]
+    del plan["services"]["exporter"]["environment"]["PENPOT_SECRET_KEY"]
     del plan["services"]["frontend"]["environment"]["PENPOT_INTERNAL_RESOLVER"]
     assert plan == {
         "checks": {
@@ -316,7 +337,7 @@ def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
                 "environment": {
                     "AWS_ACCESS_KEY_ID": "s3-access-key",
                     "AWS_SECRET_ACCESS_KEY": S3_SECRET_KEY,
-                    "JAVA_HOME": "/usr/lib/jvm/java-21-openjdk-amd64",
+                    "JAVA_HOME": "/usr/lib/jvm/java-25-openjdk-amd64",
                     "PENPOT_ASSETS_STORAGE_BACKEND": "assets-s3",
                     "PENPOT_DATABASE_PASSWORD": POSTGRESQL_PASSWORD,
                     "PENPOT_DATABASE_URI": "postgresql://postgresql-endpoint:5432/penpot",
@@ -348,7 +369,7 @@ def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
             },
             "exporter": {
                 "after": ["backend", "frontend"],
-                "command": "node app.js",
+                "command": "/opt/node/bin/node app.js",
                 "environment": {
                     "PENPOT_PUBLIC_URI": "http://127.0.0.1:8080",
                     "PENPOT_REDIS_URI": "redis://redis-hostname:6379",

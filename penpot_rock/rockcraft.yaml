@@ -4,7 +4,7 @@
 name: penpot
 summary: Web-based open-source design tool.
 description: Penpot is the web-based open-source design tool that bridges the gap between designers and developers.
-version: &penpot-version 2.1.1
+version: &penpot-version 2.14.3
 license: MPL-2.0
 
 base: ubuntu@24.04
@@ -24,82 +24,67 @@ parts:
       - nginx-full
       - gettext-base
     build-packages:
-      - openjdk-21-jdk
+      - libnode109
+      - openjdk-25-jdk
       - rlwrap
-      - npm
-      - rsync
+    build-snaps:
+      - &node-snap node/22/stable
     build-environment:
       - VERSION: *penpot-version
     override-build: |
       craftctl default
       
-      # The upstream version of the Nginx entrypoint can only apply changes to config.js once. 
-      # Change it so that it can apply changes multiple times.
-      git apply <<'EOF'
-      diff --git a/docker/images/files/config.js b/docker/images/files/config.js
-      index 7bc9ce940..5056b0fa5 100644
-      --- a/docker/images/files/config.js
-      +++ b/docker/images/files/config.js
-      @@ -1,2 +1,2 @@
-       // Frontend configuration
-      -//var penpotFlags = "";
-      +var penpotFlags = "";
-      diff --git a/docker/images/files/nginx-entrypoint.sh b/docker/images/files/nginx-entrypoint.sh
-      index c34245230..f286e3c0d 100644
-      --- a/docker/images/files/nginx-entrypoint.sh
-      +++ b/docker/images/files/nginx-entrypoint.sh
-      @@ -7,7 +7,7 @@
-       update_flags() {
-         if [ -n "$PENPOT_FLAGS" ]; then
-           sed -i \
-      -      -e "s|^//var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
-      +      -e "s|^var penpotFlags = .*;|var penpotFlags = \"$PENPOT_FLAGS\";|g" \
-             "$1"
-         fi
-       }
-      EOF
+      # Make frontend flag injection idempotent across service restarts.
+      # Penpot rewrites config.js once on first start, so subsequent restarts must
+      # match both the original commented line and the already-uncommented line.
+      perl -0pi -e 's/-e "s\|\^\/\/var penpotFlags = \.\*;\|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";\|g" \\\n/-e "s|^\/\/var penpotFlags = .*;|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";|g" \\\n      -e "s|^var penpotFlags = .*;|var penpotFlags = \\\"\$PENPOT_FLAGS\\\";|g" \\\n/' docker/images/files/nginx-entrypoint.sh
       
       # install clojure
-      curl -L https://github.com/clojure/brew-install/releases/download/1.11.3.1463/linux-install.sh -o install-clojure
-      echo "0c41063a2fefb53a31bc1bc236899955f759c5103dc0495489cdd74bf8f114bb  install-clojure" | shasum -c
+      curl -L https://github.com/clojure/brew-install/releases/download/1.12.4.1618/linux-install.sh -o install-clojure
+      echo "8a49ab11a639ce1d49e5459a7bfa8fcc74684ad3bc9acd181e3adc7a662918cf  install-clojure" | shasum -c
       chmod +x install-clojure
       ./install-clojure
       
-      cd frontend
-
-      # install yarn
-      npm install --global corepack
-      corepack enable
-      corepack prepare yarn@4.2.2
-      
-      # build assets
+      # Build the frontend with the subset of upstream steps that this rock
+      # environment supports. The full upstream script also builds render-wasm
+      # and other extras that require additional toolchains not present here.
       export NODE_ENV=production
-      yarn install
-      clojure -M:dev:shadow-cljs release main --config-merge "{:release-version \"$(git rev-parse --short HEAD)-$(date +%s)\"}"
-      yarn run compile
+      export VERSION_TAG="$VERSION"
+      export PATH="/snap/node/current/bin:$PATH"
+      cd frontend
+      npx --yes corepack@0.31.0 pnpm install --frozen-lockfile
+      npx --yes corepack@0.31.0 pnpm --filter @penpot/ui build
+      test -f ./packages/ui/dist/index.css
+      mkdir -p ./resources/public/css
+      cp ./packages/ui/dist/index.css ./resources/public/css/ui.css
+      clojure -M:dev:shadow-cljs release main worker
+      npx --yes corepack@0.31.0 pnpm run build:app:libs
+      npx --yes corepack@0.31.0 pnpm run build:app:assets
       sed -i -re "s/\%version\%/${VERSION}/g" ./resources/public/index.html
       sed -i -re "s/\%buildDate\%/$(date -R);/g" ./resources/public/index.html
       echo ${VERSION} > ./resources/public/version.txt
+      cd ..
       
       mkdir -p $CRAFT_PART_INSTALL/var/www/
-      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/
+      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/overrides/http.d/
+      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/overrides/server.d/
+      mkdir -p $CRAFT_PART_INSTALL/etc/nginx/overrides/location.d/
+      mkdir -p $CRAFT_PART_INSTALL/tmp/
       
-      cd ..
       cp -r ./frontend/resources/public $CRAFT_PART_INSTALL/var/www/app
       cp ./docker/images/files/nginx-mime.types $CRAFT_PART_INSTALL/etc/nginx/mime.types
       cp ./docker/images/files/config.js $CRAFT_PART_INSTALL/var/www/app/js/config.js
-      cp ./docker/images/files/nginx.conf $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
+      cp ./docker/images/files/nginx.conf.template $CRAFT_PART_INSTALL/tmp/nginx.conf.template
+      cp ./docker/images/files/nginx-resolvers.conf.template $CRAFT_PART_INSTALL/tmp/resolvers.conf.template
+      cp ./docker/images/files/nginx-external-locations.conf \
+        $CRAFT_PART_INSTALL/etc/nginx/overrides/location.d/external-locations.conf
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/frontend
       cp ./docker/images/files/nginx-entrypoint.sh $CRAFT_PART_INSTALL/opt/penpot/frontend/nginx-entrypoint.sh
       chmod +x $CRAFT_PART_INSTALL/opt/penpot/frontend/nginx-entrypoint.sh
-      
-      # nginx runs as non-root user
-      sed -i "s/listen 80 default_server;/listen 8080 default_server;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
-      sed -i "s/pid \\/run\\/nginx.pid;/pid \\/opt\\/penpot\\/frontend\\/nginx.pid;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
-      sed -i "s/user www-data;/user _daemon_;/g" $CRAFT_PART_INSTALL/etc/nginx/nginx.conf.template
 
     override-stage: |
       chown -R 584792:584792 $CRAFT_PART_INSTALL/etc/nginx/
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/tmp/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/var/www/app/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/var/lib/nginx/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/frontend/
@@ -112,13 +97,13 @@ parts:
     source: https://github.com/penpot/penpot.git
     source-tag: *penpot-version
     build-packages:
-      - openjdk-21-jdk
+      - libnode109
+      - openjdk-25-jdk
       - rlwrap
-      - npm
       - rsync
     stage-packages:
       - curl
-      - openjdk-21-jdk
+      - openjdk-25-jdk
       - imagemagick
       - webp
       - rlwrap
@@ -134,8 +119,8 @@ parts:
       craftctl default
 
       # install clojure
-      curl -L https://github.com/clojure/brew-install/releases/download/1.11.3.1463/linux-install.sh -o install-clojure
-      echo "0c41063a2fefb53a31bc1bc236899955f759c5103dc0495489cdd74bf8f114bb  install-clojure" | shasum -c
+      curl -L https://github.com/clojure/brew-install/releases/download/1.12.4.1618/linux-install.sh -o install-clojure
+      echo "8a49ab11a639ce1d49e5459a7bfa8fcc74684ad3bc9acd181e3adc7a662918cf  install-clojure" | shasum -c
       chmod +x install-clojure
       ./install-clojure
 
@@ -184,12 +169,11 @@ parts:
     source: https://github.com/penpot/penpot.git
     source-tag: *penpot-version
     build-packages:
-      - openjdk-21-jdk
+      - openjdk-25-jdk
       - rlwrap
-      - npm
-      - rsync
+    build-snaps:
+      - *node-snap
     stage-packages:
-      - nodejs
       - libasound2t64
       - libatk-bridge2.0-0t64
       - libatk1.0-0t64
@@ -213,44 +197,52 @@ parts:
       - libxrandr2
     build-environment:
       - VERSION: *penpot-version
+      - NODE_VERSION: 22.22.0
     override-build: |
       craftctl default
 
       # install clojure
-      curl -L https://github.com/clojure/brew-install/releases/download/1.11.3.1463/linux-install.sh -o install-clojure
-      echo "0c41063a2fefb53a31bc1bc236899955f759c5103dc0495489cdd74bf8f114bb  install-clojure" | shasum -c
+      curl -L https://github.com/clojure/brew-install/releases/download/1.12.4.1618/linux-install.sh -o install-clojure
+      echo "8a49ab11a639ce1d49e5459a7bfa8fcc74684ad3bc9acd181e3adc7a662918cf  install-clojure" | shasum -c
       chmod +x install-clojure
       ./install-clojure
-      
+
       cd exporter
-      
-      # install yarn
-      npm install --global corepack
-      corepack enable
-      corepack prepare yarn@4.2.2
+
+      export PATH="/snap/node/current/bin:$PATH"
+
+      # Install a self-contained Node 22 binary into the image for exporter runtime.
+      npm install --global "node@${NODE_VERSION}"
+      NODE_BIN="$(npm prefix -g)/lib/node_modules/node/bin/node"
+      "$NODE_BIN" --version
 
       export NODE_ENV=production
-      yarn install
+      npx --yes corepack@0.31.0 pnpm install --frozen-lockfile
       clojure -J-Xms100M -J-Xmx1000M -J-XX:+UseSerialGC -M:dev:shadow-cljs release main
+      rm -rf target
+      npx --yes corepack@0.31.0 pnpm run build
       mkdir -p target
-      rm -rf target/app
-      cp ../.yarnrc.yml target/
-      cp yarn.lock target/
+      cp ../pnpm-lock.yaml target/
       cp package.json target/
+      touch target/pnpm-workspace.yaml
       sed -i -re "s/\%version\%/$VERSION/g" ./target/app.js
       
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/
       cp -r target/ $CRAFT_PART_INSTALL/opt/penpot/exporter
+
+      mkdir -p $CRAFT_PART_INSTALL/opt/node/bin
+      cp "$NODE_BIN" $CRAFT_PART_INSTALL/opt/node/bin/node
       
       cd $CRAFT_PART_INSTALL/opt/penpot/exporter
-      yarn install
+      npx --yes corepack@0.31.0 pnpm install
       
       mkdir -p $CRAFT_PART_INSTALL/opt/penpot/exporter/browsers
       
       export PLAYWRIGHT_BROWSERS_PATH=$CRAFT_PART_INSTALL/opt/penpot/exporter/browsers
-      yarn run playwright install chromium
+      npx --yes corepack@0.31.0 pnpm exec playwright install chromium
 
     override-stage: |
+      chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/node/
       chown -R 584792:584792 $CRAFT_PART_INSTALL/opt/penpot/exporter/
       
       craftctl default
