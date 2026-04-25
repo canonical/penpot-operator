@@ -19,7 +19,7 @@ dependencies = [
   "jsonschema==4.26.0",
   "ops==3.7.0",
   "pydantic==2.13.3",
-  "requests==2.33.0",
+  "requests==2.33.1",
 ]
 
 [dependency-groups]
