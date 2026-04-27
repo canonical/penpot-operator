@@ -208,7 +208,7 @@ class PenpotCharm(ops.CharmBase):
                     "override": "replace",
                     "working-dir": "/opt/penpot/backend/",
                     "environment": {
-                        "JAVA_HOME": "/usr/lib/jvm/java-21-openjdk-amd64",
+                        "JAVA_HOME": "/usr/lib/jvm/java-25-openjdk-amd64",
                         "PENPOT_TELEMETRY_ENABLED": "false",
                         "PENPOT_PUBLIC_URI": typing.cast(str, self._get_public_uri()),
                         "PENPOT_FLAGS": " ".join(self._get_penpot_backend_options()),
@@ -221,13 +221,14 @@ class PenpotCharm(ops.CharmBase):
                     },
                 },
                 "exporter": {
-                    "command": "node app.js",
+                    "command": "/opt/node/bin/node app.js",
                     "working-dir": "/opt/penpot/exporter/",
                     "override": "replace",
                     "after": ["backend", "frontend"],
                     "environment": {
                         "PENPOT_PUBLIC_URI": "http://127.0.0.1:8080",
                         "PLAYWRIGHT_BROWSERS_PATH": "/opt/penpot/exporter/browsers",
+                        **self._get_penpot_secret_key(),
                         **self._get_redis_credentials(),
                     },
                 },
@@ -511,7 +512,7 @@ class PenpotCharm(ops.CharmBase):
         if not public_uri:
             return None
         return ClientConfig(
-            urllib.parse.urljoin(public_uri, "/api/auth/oauth/oidc/callback"),
+            urllib.parse.urljoin(public_uri, "/api/auth/oidc/callback"),
             scope="openid profile email",
             grant_types=["authorization_code"],
             # this is not a secret
