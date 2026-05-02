@@ -1,0 +1,11 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"
+    arrange: deploy the Penpot charm with OAuth identity stack.
+    act: integrate penpot with hydra and log in using Kratos native credentials.
+    assert: the login flow completes successfully and the user is directed to the validate registration page.
+    ","229811","test_oauth_login[chromium]","tests.integration","2026-05-02","passed","2026-05-02","","test_charm","",""
+"
+    arrange: deploy the Penpot charm.
+    act: create a Penpot account using the 'create-profile' charm action.
+    assert: the account created can be used to log in to Penpot.
+    ","178213","test_create_profile","tests.integration","2026-05-02","passed","2026-05-02","","test_charm","",""
