@@ -17,7 +17,7 @@ dependencies = [
   "cosl==1.9.1",
   "dnspython==2.8.0",
   "jsonschema==4.26.0",
-  "ops==3.7.0",
+  "ops==3.7.1",
   "pydantic[email]==2.13.4",
   "requests==2.34.2",
 ]
@@ -31,7 +31,7 @@ lint = [
   "codespell",
   "jubilant~=1.0",
   "mypy",
-  "ops[testing]==3.7.0",
+  "ops[testing]==3.7.1",
   "pep8-naming",
   "pytest",
   "pytest-asyncio",
@@ -43,7 +43,7 @@ lint = [
 ]
 unit = [
   "coverage[toml]",
-  "ops[testing]==3.7.0",
+  "ops[testing]==3.7.1",
   "pytest",
 ]
 coverage-report = [
