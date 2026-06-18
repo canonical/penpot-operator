@@ -8,6 +8,9 @@ on:
 jobs:
   unit-tests:
     uses: canonical/operator-workflows/.github/workflows/test.yaml@main
+    permissions:
+      contents: read
+      pull-requests: write
     secrets: inherit
     with:
       charmcraft-channel: latest/edge
@@ -16,6 +19,9 @@ jobs:
   integration-tests:
     uses:
       canonical/operator-workflows/.github/workflows/integration_test.yaml@main
+    permissions:
+      contents: read
+      packages: write
     secrets: inherit
     with:
       provider: k8s
@@ -33,3 +39,5 @@ jobs:
     needs:
     - integration-tests
     uses: canonical/operator-workflows/.github/workflows/allure_report.yaml@main
+    permissions:
+      contents: write
