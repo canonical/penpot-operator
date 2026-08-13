@@ -1,0 +1,41 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+project: penpot-operator
+path: /home/ubuntu/proj
+kill-timeout: 90m
+warn-timeout: 5m
+
+backends:
+  integration-test:
+    type: integration-test
+    systems:
+      - ubuntu-24.04
+    environment:
+      CONCIERGE: concierge.yaml
+  integration-test-juju4:
+    type: integration-test
+    systems:
+      - ubuntu-24.04
+    environment:
+      CONCIERGE: concierge-juju4.yaml
+
+environment:
+  CONCIERGE: '$(HOST: echo "${CONCIERGE:-concierge.yaml}")'
+  OPCLI_GIT_REF: '$(HOST: echo "${OPCLI_GIT_REF:-main}")'
+
+exclude:
+  - .git
+  - .tox
+  - .venv
+  - .*_cache
+
+integration-suites:
+  tests/integration/:
+    summary: Penpot integration tests
+    working-dir: ./
+    backends:
+      - integration-test
+      - integration-test-juju4
+    prepare: |
+      runuser -l ubuntu -c "cd '${SPREAD_PATH}' && tox -e playwright-install"

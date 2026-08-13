@@ -43,18 +43,16 @@ def browser_context_args(browser_context_args: dict) -> dict:
 
 
 @pytest.fixture(name="charm_file", scope="module")
-def charm_file_fixture(pytestconfig: pytest.Config) -> str:
-    """Return the required charm file path for integration tests."""
-    charm = pytestconfig.getoption("--charm-file")
-    assert charm, "--charm-file is required"
-    return charm
+def charm_file_fixture(charm_path: str) -> str:
+    """Return the charm file path built by opcli."""
+    return charm_path
 
 
 @pytest.fixture(name="penpot_image", scope="module")
-def penpot_image_fixture(pytestconfig: pytest.Config) -> str:
-    """Return the required penpot image for integration tests."""
-    image = pytestconfig.getoption("--penpot-image")
-    assert image, "--penpot-image is required"
+def penpot_image_fixture(resource_images: dict[str, str]) -> str:
+    """Return the penpot OCI image built by opcli."""
+    image = resource_images.get("penpot-image", "")
+    assert image, "penpot-image resource not found in artifacts.build.yaml"
     return image
 
 
@@ -218,7 +216,7 @@ def deployment_fixture(
         trust=True,
     )
     juju.deploy(
-        f"./{charm_file}",
+        charm_file,
         app="penpot",
         resources={"penpot-image": penpot_image},
         num_units=2,
