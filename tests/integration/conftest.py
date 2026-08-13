@@ -16,7 +16,7 @@ import jubilant
 import kubernetes
 import pytest
 
-MINIO_REVISION = 383
+MINIO_REVISION = 637
 POSTGRESQL_REVISION = 774
 REDIS_REVISION = 42
 S3_INTEGRATOR_REVISION = 330
@@ -70,10 +70,13 @@ def load_kube_config_fixture(pytestconfig: pytest.Config):
 
 
 @pytest.fixture(name="juju", scope="module")
-def juju_fixture(keep_models: bool) -> Iterator[jubilant.Juju]:
+def juju_fixture(request: pytest.FixtureRequest, keep_models: bool) -> Iterator[jubilant.Juju]:
     """Provide a Jubilant Juju client with a temporary model."""
     with jubilant.temp_model(keep=keep_models) as juju_model:
         yield juju_model
+        # The model is destroyed on teardown, so dump the logs while it still exists.
+        if request.session.testsfailed:
+            logger.info("juju debug-log:\n%s", juju_model.debug_log(limit=1000))
 
 
 @pytest.fixture(name="get_unit_ips", scope="module")
@@ -108,7 +111,7 @@ def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju) -> S3Cred
     key = "minioadmin"
     juju.deploy(
         "minio",
-        channel="ckf-1.9/stable",
+        channel="1.10/stable",
         revision=MINIO_REVISION,
         config={"access-key": key, "secret-key": key},
     )
