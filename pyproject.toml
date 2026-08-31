@@ -30,12 +30,11 @@ lint = [
   "boto3",
   "codespell",
   "jubilant~=1.0",
+  "kubernetes",
   "mypy",
   "ops[testing]==3.7.0",
   "pep8-naming",
   "pytest",
-  "pytest-asyncio",
-  "pytest-operator",
   "pytest-playwright",
   "ruff",
   "types-pyyaml",
@@ -54,14 +53,11 @@ static = [
   "bandit[toml]",
 ]
 integration = [
-  "allure-pytest>=2.8.18",
-  "allure-pytest-collection-report @ git+https://github.com/canonical/data-platform-workflows@v24.0.0#subdirectory=python/pytest_plugins/allure_pytest_collection_report",
   "boto3",
   "jubilant==1.9.0",
-  "juju==3.6.1.3",
+  "kubernetes",
+  "opcli @ git+https://github.com/canonical/charm-ci.git",
   "pytest",
-  "pytest-asyncio",
-  "pytest-operator",
   "pytest-playwright",
 ]
 
