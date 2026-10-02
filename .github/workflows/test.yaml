@@ -17,27 +17,15 @@ jobs:
       vale-style-check: false
       with-uv: true
   integration-tests:
-    uses:
-      canonical/operator-workflows/.github/workflows/integration_test.yaml@main
+    uses: canonical/charm-ci/.github/workflows/integration-test.yml@main
     permissions:
       contents: read
       packages: write
+      actions: read
     secrets: inherit
     with:
-      provider: k8s
-      extra-arguments: |
-        --kube-config=~/.kube/config
-      channel: 1.32-classic/stable
+      working-directory: .
       charmcraft-channel: latest/edge
-      juju-channel: 3/stable
-      use-canonical-k8s: true
-      pre-run-script: tests/integration/prepare.sh
-      with-uv: true
-      self-hosted-runner: false
-  allure-report:
-    if: ${{ !cancelled() && github.event_name == 'schedule' }}
-    needs:
-    - integration-tests
-    permissions:
-      contents: write
-    uses: canonical/operator-workflows/.github/workflows/allure_report.yaml@main
+      # The penpot rock builds the frontend/backend from source.
+      build-timeout-minutes: 180
+      test-timeout-minutes: 120
