@@ -38,4 +38,5 @@ integration-suites:
       - integration-test
       - integration-test-juju4
     prepare: |
+      "${SPREAD_PATH}/tests/integration/s3-installation.sh"
       runuser -l ubuntu -c "cd '${SPREAD_PATH}' && tox -e playwright-install"

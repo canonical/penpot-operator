@@ -7,6 +7,7 @@
 
 import collections
 import logging
+import socket
 import time
 from collections.abc import Iterator
 
@@ -16,10 +17,12 @@ import jubilant
 import kubernetes
 import pytest
 
-MINIO_REVISION = 637
 POSTGRESQL_REVISION = 774
 REDIS_REVISION = 42
 S3_INTEGRATOR_REVISION = 330
+S3_ACCESS_KEY = "penpot-test-access-key"
+S3_SECRET_KEY = "penpot-test-secret-key"  # nosec B105
+S3_PORT = 7480
 SELF_SIGNED_CERTIFICATES_REVISION = 264
 SMTP_INTEGRATOR_REVISION = 93
 TRAEFIK_PUBLIC_REVISION = 277
@@ -105,32 +108,31 @@ def get_unit_ips_fixture(juju: jubilant.Juju):
 S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_key secret_key")
 
 
-@pytest.fixture(name="minio", scope="module")
-def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju) -> S3Credential:
-    """Deploy test minio service."""
-    key = "minioadmin"
-    juju.deploy(
-        "minio",
-        channel="1.10/stable",
-        revision=MINIO_REVISION,
-        config={"access-key": key, "secret-key": key},
-    )
-    juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=300)
-    ip = get_unit_ips("minio")[0]
+def _host_ip() -> str:
+    """Get the host's primary IP address, which is reachable from Kubernetes pods."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.connect(("8.8.8.8", 80))
+        return sock.getsockname()[0]
+
+
+@pytest.fixture(name="s3", scope="module")
+def s3_fixture() -> S3Credential:
+    """Create a test bucket in the MicroCeph S3 gateway installed by s3-installation.sh."""
+    endpoint = f"http://{_host_ip()}:{S3_PORT}"
     s3 = boto3.client(
         "s3",
-        endpoint_url=f"http://{ip}:9000",
-        aws_access_key_id=key,
-        aws_secret_access_key=key,
+        endpoint_url=endpoint,
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_KEY,
         config=botocore.client.Config(signature_version="s3v4"),
     )
     bucket = "penpot"
     s3.create_bucket(Bucket=bucket)
     return S3Credential(
-        endpoint=f"http://minio-endpoints.{juju.model}.svc.cluster.local:9000",
+        endpoint=endpoint,
         bucket=bucket,
-        access_key=key,
-        secret_key=key,
+        access_key=S3_ACCESS_KEY,
+        secret_key=S3_SECRET_KEY,
     )
 
 
@@ -202,7 +204,7 @@ def deployment_fixture(
     juju: jubilant.Juju,
     charm_file: str,
     penpot_image: str,
-    minio: S3Credential,
+    s3: S3Credential,
     mailcatcher: SmtpCredential,
     get_unit_ips,
 ) -> set[str]:
@@ -232,7 +234,12 @@ def deployment_fixture(
         resources={"penpot-image": penpot_image},
         num_units=2,
     )
-    juju.deploy("redis-k8s", channel="edge", revision=REDIS_REVISION)
+    juju.deploy(
+        "redis-k8s",
+        channel="edge",
+        revision=REDIS_REVISION,
+        resources={"redis-image": "ghcr.io/canonical/charmed-redis:7.2.5-22.04-edge"},
+    )
     juju.deploy(
         "smtp-integrator",
         channel="latest/stable",
@@ -248,7 +255,7 @@ def deployment_fixture(
         "s3-integrator",
         channel="1/stable",
         revision=S3_INTEGRATOR_REVISION,
-        config={"bucket": minio.bucket, "endpoint": minio.endpoint},
+        config={"bucket": s3.bucket, "endpoint": s3.endpoint},
     )
     juju.deploy(
         "traefik-k8s",
@@ -278,8 +285,8 @@ def deployment_fixture(
         "s3-integrator/0",
         "sync-s3-credentials",
         {
-            "access-key": minio.access_key,
-            "secret-key": minio.secret_key,
+            "access-key": s3.access_key,
+            "secret-key": s3.secret_key,
         },
     )
 
