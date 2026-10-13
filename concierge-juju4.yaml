@@ -5,9 +5,7 @@
 # Used by the `integration-test-juju4` spread backend.
 
 juju:
-  channel: 4/stable
-  # The default 20-minute bootstrap timeout is too short for the controller
-  # pod to expose its API on slow CI runners.
+  channel: 4.0/edge
   extra-bootstrap-args: --config bootstrap-timeout=1800
   model-defaults:
     test-mode: "true"

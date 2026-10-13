@@ -234,12 +234,7 @@ def deployment_fixture(
         resources={"penpot-image": penpot_image},
         num_units=2,
     )
-    juju.deploy(
-        "redis-k8s",
-        channel="edge",
-        revision=REDIS_REVISION,
-        resources={"redis-image": "ghcr.io/canonical/charmed-redis:7.2.5-22.04-edge"},
-    )
+    juju.deploy("redis-k8s", channel="edge", revision=REDIS_REVISION)
     juju.deploy(
         "smtp-integrator",
         channel="latest/stable",
