@@ -205,13 +205,14 @@ def deployment_fixture(
     minio: S3Credential,
     mailcatcher: SmtpCredential,
     get_unit_ips,
-    force_deploy: bool,
 ) -> set[str]:
     """Deploy base Penpot stack used by integration tests.
 
     Returns:
         A set of deployed application names.
     """
+    # Every published postgresql-k8s revision declares `assumes: juju < 4`;
+    # Juju only skips a failed assumes check when --force is given.
     juju.deploy(
         "postgresql-k8s",
         channel="14/stable",
