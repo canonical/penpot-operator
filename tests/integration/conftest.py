@@ -205,13 +205,20 @@ def deployment_fixture(
     minio: S3Credential,
     mailcatcher: SmtpCredential,
     get_unit_ips,
+    force_deploy: bool,
 ) -> set[str]:
     """Deploy base Penpot stack used by integration tests.
 
     Returns:
         A set of deployed application names.
     """
-    juju.deploy("postgresql-k8s", channel="14/stable", revision=POSTGRESQL_REVISION, trust=True)
+    juju.deploy(
+        "postgresql-k8s",
+        channel="14/stable",
+        revision=POSTGRESQL_REVISION,
+        trust=True,
+        force=juju.version().major >= 4,
+    )
     juju.deploy(
         "self-signed-certificates",
         channel="latest/stable",
