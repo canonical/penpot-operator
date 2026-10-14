@@ -5,7 +5,7 @@
 # Used by the `integration-test-juju4` spread backend.
 
 juju:
-  channel: 4.0/edge
+  channel: 4/stable
   extra-bootstrap-args: --config bootstrap-timeout=1800
   model-defaults:
     test-mode: "true"
