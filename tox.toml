@@ -8,7 +8,16 @@ requires = [ "tox>=4.21" ]
 no_package = true
 
 [env_run_base]
-passenv = [ "PYTHONPATH", "CHARM_BUILD_DIR", "MODEL_SETTINGS" ]
+passenv = [
+  "PYTHONPATH",
+  "CHARM_BUILD_DIR",
+  "MODEL_SETTINGS",
+  "HOME",
+  "JUJU_*",
+  "KUBECONFIG",
+  "OPCLI_ARTIFACTS_BUILD_YAML",
+  "SPREAD_JOB",
+]
 runner = "uv-venv-lock-runner"
 
 [env_run_base.setenv]
@@ -110,7 +119,7 @@ commands = [ [ "bandit", "-c", "{toxinidir}/pyproject.toml", "-r", "{[vars]src_p
 dependency_groups = [ "static" ]
 
 [env.playwright-install]
-description = "Run static analysis tests"
+description = "Install the Playwright browsers used by integration tests"
 commands = [ [ "playwright", "install", "--with-deps", "chromium" ] ]
 dependency_groups = [ "integration" ]
 
