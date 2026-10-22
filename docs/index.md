@@ -6,7 +6,7 @@ that bridges the gap between designers and developers.
 
 Find guidance for deploying, configuring, and operating the Penpot charm.
 
-| Area | Documentation |
+| | |
 | --- | --- |
 | **Get started** | [Deploy the Penpot charm](tutorial/getting-started.md) |
 | **Deployment** | [Configure S3](how-to/configure-s3.md) \| [Configure SMTP](how-to/configure-smtp.md) \| [Configure Single Sign-On (SSO)](how-to/configure-sso.md) |
