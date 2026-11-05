@@ -26,8 +26,8 @@ run "external_integrations" {
     postgresql_integration = {
       offer_url = "admin/database.postgresql"
     }
-    redis_integration = {
-      name = "redis"
+    valkey_integration = {
+      name = "valkey"
     }
     s3_integration = {
       offer_url = "admin/storage.s3"
@@ -44,8 +44,8 @@ run "external_integrations" {
   }
 
   assert {
-    condition     = length(juju_application.redis_k8s) == 0 && length(juju_application.s3_integrator) == 0
-    error_message = "the bundled redis-k8s and s3-integrator should not be deployed when their integrations are set"
+    condition     = length(juju_application.valkey) == 0 && length(juju_application.s3_integrator) == 0
+    error_message = "the bundled valkey and s3-integrator should not be deployed when their integrations are set"
   }
 
   assert {
@@ -67,13 +67,13 @@ run "basic_deploy" {
       # renovate: depName="postgresql"
       revision = 1236
     }
-    redis_k8s = {
-      # renovate: depName="redis-k8s"
-      revision = 42
-    }
     s3_integrator = {
       # renovate: depName="s3-integrator"
       revision = 637
+    }
+    valkey = {
+      # renovate: depName="valkey"
+      revision = 156
     }
   }
 
@@ -83,8 +83,8 @@ run "basic_deploy" {
   }
 
   assert {
-    condition     = keys(output.models.penpot.components) == ["penpot", "redis_k8s", "s3_integrator"]
-    error_message = "the penpot model should contain penpot, redis-k8s and s3-integrator"
+    condition     = keys(output.models.penpot.components) == ["penpot", "s3_integrator", "valkey"]
+    error_message = "the penpot model should contain penpot, s3-integrator and valkey"
   }
 
   assert {

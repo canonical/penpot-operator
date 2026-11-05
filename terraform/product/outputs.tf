@@ -19,8 +19,8 @@ output "models" {
         model_uuid = var.model_uuid
         components = merge(
           { penpot = module.penpot.application },
-          { for app in juju_application.redis_k8s : "redis_k8s" => app },
           { for app in juju_application.s3_integrator : "s3_integrator" => app },
+          { for app in juju_application.valkey : "valkey" => app },
         )
       }
     },
