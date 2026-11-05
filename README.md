@@ -31,7 +31,7 @@ From inside the virtual machine, deploy Penpot charm's dependencies using the `j
 ```bash
 juju deploy minio --config access-key=minioadmin --config secret-key=minioadmin
 juju deploy postgresql-k8s --channel 14/stable --trust
-juju deploy redis-k8s --channel latest/edge
+juju deploy valkey --channel 9/edge --trust
 juju deploy s3-integrator --config "endpoint=http://minio-endpoints.penpot-test.svc.cluster.local:9000" --config bucket=penpot
 juju deploy nginx-ingress-integrator --trust --config service-hostname=penpot.local --config path-routes=/
 juju deploy self-signed-certificates
@@ -53,7 +53,7 @@ Deploy the Penpot charm and integrate the Penpot charm with all its dependencies
 ```bash
 juju deploy penpot --channel latest/edge
 juju integrate penpot postgresql-k8s
-juju integrate penpot redis-k8s
+juju integrate penpot:valkey valkey:valkey-client
 juju integrate penpot s3-integrator
 juju integrate penpot nginx-ingress-integrator
 ```
