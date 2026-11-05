@@ -48,8 +48,8 @@ requires:
   postgresql:
     interface: postgresql_client
     limit: 1
-  redis:
-    interface: redis
+  valkey:
+    interface: valkey_client
     limit: 1
   s3:
     interface: s3
