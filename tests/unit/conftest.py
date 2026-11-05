@@ -99,13 +99,15 @@ def valkey_secrets(*, password: str = VALKEY_PASSWORD, tls: bool = False) -> set
     }
 
 
-def valkey_relation(*, with_credentials: bool = True) -> Relation:
+def valkey_relation(
+    *, with_credentials: bool = True, endpoints: str = VALKEY_ENDPOINT
+) -> Relation:
     """Valkey integration as written by the valkey charm (data-interfaces v1)."""
     response = {
         "resource": "*",
         "request-id": "penpot-valkey-request",
         "salt": "penpot-valkey-salt",
-        "endpoints": VALKEY_ENDPOINT,
+        "endpoints": endpoints,
         "secret-user": VALKEY_USER_SECRET_ID if with_credentials else None,
         "secret-tls": VALKEY_TLS_SECRET_ID,
         "mode": "sentinel",

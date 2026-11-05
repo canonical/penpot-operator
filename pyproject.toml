@@ -123,6 +123,9 @@ ignore-words-list = "edn"
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
+filterwarnings = [
+    "ignore::pydantic.warnings.UnsupportedFieldAttributeWarning",
+]
 
 [tool.coverage.run]
 branch = true

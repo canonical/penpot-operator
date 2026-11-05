@@ -3,6 +3,7 @@
 
 """Unit tests."""
 
+import json
 from secrets import token_hex
 
 import pytest
@@ -18,6 +19,7 @@ from tests.unit.conftest import (
     SMTP_TEST_PASSWORD,
     SMTP_TEST_USER,
     VALKEY_ENDPOINT,
+    VALKEY_PASSWORD,
     VALKEY_REDIS_URI,
     VALKEY_USER_SECRET_ID,
     VALKEY_USERNAME,
@@ -106,6 +108,48 @@ def test_valkey_password_is_url_quoted(
     assert backend_env["PENPOT_REDIS_URI"] == (
         f"redis://{VALKEY_USERNAME}:p%40ss%2Fw%3Ard@{VALKEY_ENDPOINT}/0"
     )
+
+
+def test_valkey_multiple_endpoints(
+    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
+):
+    """
+    arrange: valkey shares several comma-separated endpoints with a space after the comma.
+    act: run reconcile via config-changed.
+    assert: the first endpoint is used in the URI without whitespace.
+    """
+    monkeypatch.setattr(PenpotCharm, "_check_penpot_backend_ready", lambda self: True)
+    relation = valkey_relation(
+        endpoints="valkey-1.valkey-endpoints:6379, valkey-0.valkey-endpoints:6379"
+    )
+    state = _valkey_ready_state(relation, valkey_secrets())
+    out = context.run(context.on.config_changed(), state)
+    backend_env = out.get_container("penpot").plan.services["backend"].environment
+    assert backend_env["PENPOT_REDIS_URI"] == (
+        f"redis://{VALKEY_USERNAME}:{VALKEY_PASSWORD}@valkey-1.valkey-endpoints:6379/0"
+    )
+
+
+def test_valkey_invalid_relation_data(context: testing.Context[PenpotCharm]):
+    """
+    arrange: valkey relation data holds a secret ID that is not a valid secret URI.
+    act: run reconcile via config-changed.
+    assert: the charm doesn't crash and the unit is blocked waiting for valkey.
+    """
+    request = {
+        "resource": "*",
+        "request-id": "id",
+        "salt": "salt",
+        "secret-user": "not-a-secret-uri",
+    }
+    relation = Relation(
+        endpoint="valkey",
+        remote_app_name="valkey",
+        remote_app_data={"version": "v1", "requests": json.dumps([request])},
+    )
+    state = _valkey_ready_state(relation, valkey_secrets())
+    out = context.run(context.on.config_changed(), state)
+    assert out.unit_status == testing.BlockedStatus("waiting for valkey")
 
 
 def test_valkey_waiting_for_credentials(context: testing.Context[PenpotCharm]):

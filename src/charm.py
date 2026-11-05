@@ -375,7 +375,7 @@ class PenpotCharm(ops.CharmBase):
             return {}
         username = urllib.parse.quote(response.username, safe="")
         password = urllib.parse.quote(response.password, safe="")
-        endpoint = response.endpoints.split(",")[0]
+        endpoint = response.endpoints.split(",")[0].strip()
         return {"PENPOT_REDIS_URI": f"redis://{username}:{password}@{endpoint}/0"}
 
     def _get_smtp_credentials(self) -> dict[str, str]:

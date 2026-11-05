@@ -21,7 +21,9 @@ through the `valkey` integration instead of the `redis` integration. Penpot only
 transient data (job queues, rate limits and messages) in it, so no data migration is needed.
 
 Juju refuses to refresh a charm that would remove an endpoint in use, so remove the Redis
-integration first:
+integration first. Penpot is unavailable (the unit is blocked waiting for valkey) between
+removing the Redis integration and integrating with Valkey. The `juju refresh` command must
+target a revision that provides the `valkey` endpoint:
 
 ```bash
 juju deploy valkey --channel 9/edge --trust
