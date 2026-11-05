@@ -5,11 +5,11 @@
 This folder contains the [Terraform][Terraform] product module for Penpot. It deploys a
 ready-to-use Penpot solution with the [Terraform Juju provider][Terraform Juju provider]:
 
-- `penpot`, `valkey` and `s3-integrator` in the Kubernetes model given by `model_uuid`.
+- `penpot`, `redis-k8s` and `s3-integrator` in the Kubernetes model given by `model_uuid`.
 - `postgresql` in the machine model given by `database_model_uuid`. The module offers its
   `database` endpoint and integrates Penpot with it across models.
 
-Each bundled dependency is optional. Set `postgresql_integration`, `valkey_integration` or
+Each bundled dependency is optional. Set `postgresql_integration`, `redis_integration` or
 `s3_integration` to an existing application `name` in the Kubernetes model or to an `offer_url`,
 and the module integrates Penpot with it instead of deploying its own.
 
@@ -17,8 +17,9 @@ The module doesn't deploy an ingress. Set `ingress_integration` to integrate Pen
 existing `ingress` provider, such as `traefik-k8s`, and optionally `smtp_integration` and
 `logging_integration` for the optional integrations.
 
-`risk` sets the channel risk of every bundled charm whose `channel` is left unset. Penpot is
-published on `edge` only, so set `risk = "edge"` until it is released to `stable`.
+`risk` sets the channel risk of every bundled charm whose `channel` is left unset. Penpot and
+`redis-k8s` are published on `edge` only, so set `risk = "edge"` until they are released to
+`stable`.
 
 The bundled `s3-integrator` needs its credentials set after deployment with the
 `sync-s3-credentials` action.

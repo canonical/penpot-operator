@@ -45,6 +45,11 @@ output "requires" {
       name     = juju_application.penpot.name
       endpoint = "postgresql"
     }
+    redis = {
+      kind     = "endpoint"
+      name     = juju_application.penpot.name
+      endpoint = "redis"
+    }
     s3 = {
       kind     = "endpoint"
       name     = juju_application.penpot.name
@@ -54,11 +59,6 @@ output "requires" {
       kind     = "endpoint"
       name     = juju_application.penpot.name
       endpoint = "smtp"
-    }
-    valkey = {
-      kind     = "endpoint"
-      name     = juju_application.penpot.name
-      endpoint = "valkey"
     }
   }
 }

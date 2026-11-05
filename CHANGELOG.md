@@ -12,4 +12,4 @@ Each revision is versioned by the date of the revision.
 
 - Replaced the `redis` integration with the `valkey` integration (`valkey_client` interface,
   [Charmed Valkey](https://charmhub.io/valkey) `9/edge`). See the upgrade guide for the
-  migration steps. The Terraform charm and product modules move to major version 2.
+  migration steps.
