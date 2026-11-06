@@ -10,7 +10,6 @@ import urllib.parse
 
 import jubilant
 import requests
-import yaml
 from tenacity import (
     RetryError,
     Retrying,
@@ -104,52 +103,6 @@ def wait_for_active_with_migrations(juju: jubilant.Juju, apps: set[str], timeout
         check()
     except RetryError as error:
         raise TimeoutError(f"timed out after {timeout}s\n{juju.status()}") from error
-
-
-def _frontend_flags(juju: jubilant.Juju, unit: str) -> str:
-    """Return the PENPOT_FLAGS of the frontend service in the unit's Pebble plan."""
-    try:
-        plan = yaml.safe_load(juju.ssh(unit, "pebble", "plan", container="penpot")) or {}
-    except jubilant.CLIError as exc:
-        logger.info("cannot read the pebble plan of %s: %s", unit, exc.stderr.strip())
-        return ""
-    frontend = (plan.get("services") or {}).get("frontend") or {}
-    return (frontend.get("environment") or {}).get("PENPOT_FLAGS", "")
-
-
-def wait_for_oidc_login(juju: jubilant.Juju, units: list[str], timeout: int = 600):
-    """Wait until every penpot unit serves the OIDC login and penpot and hydra are active.
-
-    Right after integrating penpot:oauth the apps are still active from before, so wait for the
-    frontend flags to change instead of relying on the application status alone.
-    """
-
-    @retry(
-        stop=stop_after_delay(timeout),
-        wait=wait_fixed(5),
-        retry=retry_if_result(lambda ready: not ready),
-    )
-    def check() -> bool:
-        if not all("enable-login-with-oidc" in _frontend_flags(juju, unit) for unit in units):
-            return False
-        return jubilant.all_active(juju.status(), "penpot", "hydra")
-
-    try:
-        check()
-    except RetryError as error:
-        status = juju.status()
-        units_status = status.apps["penpot"].units
-        details = {
-            unit: {
-                "status": str(units_status[unit].workload_status) if unit in units_status else "",
-                "frontend_flags": _frontend_flags(juju, unit),
-            }
-            for unit in units
-        }
-        raise TimeoutError(
-            f"penpot did not enable OIDC login within {timeout}s: {details}\n"
-            f"hydra: {status.apps['hydra'].app_status}"
-        ) from error
 
 
 def wait_for_endpoint(url: str, timeout: int = 120, headers: dict[str, str] | None = None):
