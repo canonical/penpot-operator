@@ -42,27 +42,39 @@ def _migration_state(status: jubilant.Status, app: str) -> str | None:
     return state
 
 
+class _NotActiveError(Exception):
+    """Raised while the awaited applications are not all active yet."""
+
+
+def _run_migration(juju: jubilant.Juju, app: str, attempt: int) -> None:
+    """Run the run-migration action on the app leader, logging which charm it ran for."""
+    logger.info("running run-migration on %s/leader (attempt %d)", app, attempt)
+    try:
+        juju.run(
+            f"{app}/leader",
+            "run-migration",
+            {"timeout": MIGRATION_ACTION_TIMEOUT},
+            wait=MIGRATION_ACTION_TIMEOUT + 60,
+        )
+    except (jubilant.TaskError, TimeoutError) as exc:
+        logger.warning("run-migration on %s failed: %s", app, exc)
+    else:
+        logger.info("run-migration on %s completed", app)
+
+
 def wait_for_active_with_migrations(juju: jubilant.Juju, apps: set[str], timeout: int = 900):
     """Wait for all apps to be active, running hydra/kratos migrations if they get stuck.
 
     Hydra and kratos only auto-migrate a fresh database; if that fails on a slow runner
     they wait for the run-migration action.
     """
-    deadline = time.monotonic() + timeout
     attempts = dict.fromkeys(MIGRATION_APPS, 0)
     waiting_since: dict[str, float] = {}
-    while True:
-        remaining = deadline - time.monotonic()
-        try:
-            juju.wait(
-                lambda status: jubilant.all_active(status, *apps),
-                timeout=min(30, max(remaining, 1)),
-            )
-            return
-        except TimeoutError:
-            if remaining <= 30:
-                raise
+
+    def check() -> None:
         status = juju.status()
+        if jubilant.all_active(status, *apps):
+            return
         now = time.monotonic()
         for app in MIGRATION_APPS:
             if app not in apps or attempts[app] >= MIGRATION_MAX_ATTEMPTS:
@@ -75,16 +87,19 @@ def wait_for_active_with_migrations(juju: jubilant.Juju, apps: set[str], timeout
             if state == "requested" or stuck_for >= MIGRATION_STUCK_GRACE:
                 attempts[app] += 1
                 waiting_since.pop(app, None)
-                logger.info("running run-migration on %s (attempt %d)", app, attempts[app])
-                try:
-                    juju.run(
-                        f"{app}/leader",
-                        "run-migration",
-                        {"timeout": MIGRATION_ACTION_TIMEOUT},
-                        wait=MIGRATION_ACTION_TIMEOUT + 60,
-                    )
-                except (jubilant.TaskError, TimeoutError) as exc:
-                    logger.warning("run-migration on %s failed: %s", app, exc)
+                _run_migration(juju, app, attempts[app])
+        raise _NotActiveError(f"waiting for {', '.join(sorted(apps))} to be active")
+
+    try:
+        for attempt in Retrying(
+            stop=stop_after_delay(timeout),
+            wait=wait_fixed(10),
+            retry=retry_if_exception_type(_NotActiveError),
+        ):
+            with attempt:
+                check()
+    except RetryError as error:
+        raise TimeoutError(f"timed out after {timeout}s\n{juju.status()}") from error
 
 
 def wait_for_endpoint(url: str, timeout: int = 120, headers: dict[str, str] | None = None):
