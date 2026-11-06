@@ -9,19 +9,17 @@ import collections
 import logging
 import socket
 import time
-import zipfile
 from collections.abc import Iterator
-from pathlib import Path
 
 import boto3
 import botocore.client
 import jubilant
 import kubernetes
 import pytest
-import yaml
 
 POSTGRESQL_REVISION = 774
-REDIS_REVISION = 42
+VALKEY_CHANNEL = "9/edge"
+VALKEY_REVISION = 156
 S3_INTEGRATOR_REVISION = 330
 S3_ACCESS_KEY = "penpot-test-access-key"
 S3_SECRET_KEY = "penpot-test-secret-key"  # nosec B105
@@ -202,41 +200,6 @@ def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential
     )
 
 
-def _deploy_redis(juju: jubilant.Juju, workdir: Path) -> None:
-    """Deploy redis-k8s.
-
-    Juju 4.0 gives every resource of a charm the type of whichever of the charm's resources
-    was recorded first, so the redis-image resource randomly gets stored as a file and the
-    unit never starts (juju/juju#23558). On Juju 4, deploy a copy of the charm with only its
-    image resource.
-    """
-    if juju.version().major < 4:
-        juju.deploy("redis-k8s", channel="edge", revision=REDIS_REVISION)
-        return
-    # Juju is a strictly confined snap, so the charm can't be put in /tmp.
-    downloaded = workdir / "redis-k8s.charm"
-    juju.cli(
-        "download",
-        "redis-k8s",
-        "--revision",
-        str(REDIS_REVISION),
-        "--filepath",
-        str(downloaded),
-        include_model=False,
-    )
-    trimmed = workdir / "redis-k8s-image-only.charm"
-    with zipfile.ZipFile(downloaded) as src, zipfile.ZipFile(trimmed, "w") as dst:
-        for item in src.infolist():
-            data = src.read(item)
-            if item.filename == "metadata.yaml":
-                metadata = yaml.safe_load(data)
-                image = metadata["resources"]["redis-image"]
-                metadata["resources"] = {"redis-image": image}
-                data = yaml.safe_dump(metadata).encode()
-            dst.writestr(item, data)
-    juju.deploy(trimmed, "redis-k8s", resources={"redis-image": image["upstream"]})
-
-
 @pytest.fixture(name="deployment", scope="module")
 def deployment_fixture(
     juju: jubilant.Juju,
@@ -272,7 +235,7 @@ def deployment_fixture(
         resources={"penpot-image": penpot_image},
         num_units=2,
     )
-    _deploy_redis(juju, Path(charm_file).parent)
+    juju.deploy("valkey", channel=VALKEY_CHANNEL, revision=VALKEY_REVISION, trust=True)
     juju.deploy(
         "smtp-integrator",
         channel="latest/stable",
@@ -325,7 +288,7 @@ def deployment_fixture(
 
     juju.integrate("self-signed-certificates:certificates", "traefik-public:certificates")
     juju.integrate("penpot:postgresql", "postgresql-k8s:database")
-    juju.integrate("penpot:redis", "redis-k8s")
+    juju.integrate("penpot:valkey", "valkey:valkey-client")
     juju.integrate("penpot:s3", "s3-integrator:s3-credentials")
     juju.integrate("penpot:smtp", "smtp-integrator:smtp")
     juju.integrate("penpot:ingress", "traefik-public:ingress")
@@ -334,7 +297,7 @@ def deployment_fixture(
         "postgresql-k8s",
         "self-signed-certificates",
         "penpot",
-        "redis-k8s",
+        "valkey",
         "s3-integrator",
         "smtp-integrator",
         "traefik-public",

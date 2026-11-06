@@ -6,7 +6,7 @@
 
 This tutorial will walk you through deploying the penpot charm; you will:
 
-1. Deploy and configure the Penpot charm's dependencies (PostgreSQL, Redis, s3, and so on)
+1. Deploy and configure the Penpot charm's dependencies (PostgreSQL, Valkey, s3, and so on)
 2. Deploy Penpot and integrate it with its dependencies
 3. Create a user
 4. Login to the web interface for your deployed Penpot instance
@@ -32,7 +32,7 @@ juju add-model penpot-test
 ```bash
 juju deploy minio --config access-key=minioadmin --config secret-key=minioadmin
 juju deploy postgresql-k8s --channel 14/stable --trust
-juju deploy redis-k8s --channel latest/edge
+juju deploy valkey --channel 9/edge --trust
 juju deploy s3-integrator --config "endpoint=http://minio-endpoints.penpot-test.svc.cluster.local:9000" --config bucket=penpot
 juju deploy nginx-ingress-integrator --trust --config service-hostname=penpot.local --config path-routes=/
 juju deploy self-signed-certificates
@@ -65,7 +65,7 @@ juju run s3-integrator/0 sync-s3-credentials --string-args access-key=minioadmin
 juju deploy penpot --channel latest/edge
 
 juju integrate penpot postgresql-k8s
-juju integrate penpot redis-k8s
+juju integrate penpot:valkey valkey:valkey-client
 juju integrate penpot s3-integrator
 juju integrate penpot nginx-ingress-integrator
 ```
@@ -83,18 +83,18 @@ minio                     res:oci-image@1755999  active      1  minio           
 nginx-ingress-integrator  24.2.0                 active      1  nginx-ingress-integrator  latest/stable  101  10.152.183.77   no       Ingress IP(s): 127.0.0.1
 penpot                                           active      1  penpot                    latest/edge      3  10.152.183.24   no
 postgresql-k8s            14.11                  active      1  postgresql-k8s            14/stable      281  10.152.183.22   no
-redis-k8s                 7.2.5                  active      1  redis-k8s                 latest/edge     34  10.152.183.82   no
 s3-integrator                                    active      1  s3-integrator             latest/stable   24  10.152.183.78   no
 self-signed-certificates                         active      1  self-signed-certificates  latest/stable  155  10.152.183.89   no
+valkey                    9.0.4                  active      1  valkey                    9/edge         156  10.152.183.23   no
 
 Unit                         Workload  Agent  Address       Ports          Message
 minio/0*                     active    idle   10.1.129.147  9000-9001/TCP
 nginx-ingress-integrator/0*  active    idle   10.1.129.140                 Ingress IP(s): 127.0.0.1
 penpot/0*                    active    idle   10.1.129.139
 postgresql-k8s/0*            active    idle   10.1.129.142                 Primary
-redis-k8s/0*                 active    idle   10.1.129.144
 s3-integrator/0*             active    idle   10.1.129.148
 self-signed-certificates/0*  active    idle   10.1.129.149
+valkey/0*                    active    idle   10.1.129.144
 ```
 
 ## Create a user to login with
