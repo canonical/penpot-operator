@@ -24,6 +24,7 @@ from tests.integration.helpers import (
     get_public_url,
     wait_for_active_with_migrations,
     wait_for_endpoint,
+    wait_for_oidc_login,
 )
 
 logger = logging.getLogger(__name__)
@@ -160,7 +161,7 @@ def test_oauth_login(
     inject_root_certs(juju, penpot_units, ca_cert)
     juju.integrate("penpot:oauth", "hydra")
 
-    juju.wait(lambda status: jubilant.all_active(status, "penpot", "hydra"), timeout=600)
+    wait_for_oidc_login(juju, penpot_units, timeout=600)
 
     test_email = secrets.token_hex(8) + "@example.com"
     test_password = secrets.token_hex(16)
