@@ -16,13 +16,18 @@ from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from tenacity import (
     Retrying,
+    retry,
+    retry_if_result,
     stop_after_attempt,
+    stop_after_delay,
     wait_fixed,
 )
 
 from tests.integration.helpers import (
     get_public_url,
+    wait_for_active_with_migrations,
     wait_for_endpoint,
+    wait_for_oidc_login,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,34 +43,97 @@ def _admin_identity_exists(juju: jubilant.Juju, email: str) -> bool:
         return False
 
 
-def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str):
-    """Inject CA certificate to penpot Java certificate store."""
-    for unit_name in penpot_units:
-        logger.info("copying oauth ca cert into %s", unit_name)
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=True) as temp_file:
-            temp_file.write(ca_cert)
-            temp_file.flush()
-            juju.scp(temp_file.name, f"{unit_name}:/oauth.crt", container="penpot")
-        stdout = juju.ssh(unit_name, "cat", "/oauth.crt", container="penpot")
-        logger.info("copying oauth ca cert into %s result: %s", unit_name, stdout)
-        logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
-        stdout = juju.ssh(
+JAVA_HOME = "/usr/lib/jvm/java-25-openjdk-amd64"
+OAUTH_CA_ALIAS = "penpot-test-oauth-ca"
+
+
+def _has_root_cert(juju: jubilant.Juju, unit_name: str) -> bool:
+    """Return whether the unit's Java trust store contains the injected OAuth CA."""
+    try:
+        juju.ssh(
             unit_name,
-            "/usr/lib/jvm/java-25-openjdk-amd64/bin/keytool",
-            "-import",
-            "-trustcacerts",
-            "-file",
-            "/oauth.crt",
+            f"{JAVA_HOME}/bin/keytool",
+            "-list",
+            "-alias",
+            OAUTH_CA_ALIAS,
             "-keystore",
-            "/usr/lib/jvm/java-25-openjdk-amd64/lib/security/cacerts",
+            f"{JAVA_HOME}/lib/security/cacerts",
             "-storepass",
             "changeit",
-            "-noprompt",
             container="penpot",
         )
-        logger.info("keytool import output: %s", stdout)
-        logger.info("restart penpot backend in penpot/%s", unit_name)
-        juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
+    except jubilant.CLIError:
+        return False
+    return True
+
+
+def _backend_ready(juju: jubilant.Juju, unit_name: str) -> bool:
+    """Return whether the penpot backend of the unit answers its readiness endpoint."""
+    try:
+        juju.ssh(unit_name, "curl", "-sf", "-m", "5", "localhost:6060/readyz", container="penpot")
+    except jubilant.CLIError:
+        return False
+    return True
+
+
+def inject_root_cert(juju: jubilant.Juju, unit_name: str, ca_cert: str):
+    """Inject the CA certificate into the unit's Java trust store and restart the backend."""
+    logger.info("copying oauth ca cert into %s", unit_name)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=True) as temp_file:
+        temp_file.write(ca_cert)
+        temp_file.flush()
+        juju.scp(temp_file.name, f"{unit_name}:/oauth.crt", container="penpot")
+    logger.info("installing oauth ca cert into %s java trust", unit_name)
+    stdout = juju.ssh(
+        unit_name,
+        f"{JAVA_HOME}/bin/keytool",
+        "-import",
+        "-trustcacerts",
+        "-alias",
+        OAUTH_CA_ALIAS,
+        "-file",
+        "/oauth.crt",
+        "-keystore",
+        f"{JAVA_HOME}/lib/security/cacerts",
+        "-storepass",
+        "changeit",
+        "-noprompt",
+        container="penpot",
+    )
+    logger.info("keytool import output: %s", stdout)
+    logger.info("restart penpot backend in %s", unit_name)
+    juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
+
+
+def ensure_root_certs(
+    juju: jubilant.Juju, penpot_units: list[str], ca_cert: str, timeout: int = 900
+):
+    """Make every penpot unit trust the CA, with its backend ready.
+
+    A slow backend restart can fail the alive-level pebble check, and Kubernetes then
+    recreates the container with a fresh trust store, so re-inject until it sticks.
+    """
+
+    @retry(
+        stop=stop_after_delay(timeout),
+        wait=wait_fixed(30),
+        retry=retry_if_result(lambda ready: not ready),
+    )
+    def converge() -> bool:
+        missing = [unit for unit in penpot_units if not _has_root_cert(juju, unit)]
+        for unit in missing:
+            try:
+                inject_root_cert(juju, unit, ca_cert)
+            except jubilant.CLIError as exc:
+                logger.info("injecting the oauth ca into %s failed: %s", unit, exc.stderr)
+        if missing:
+            return False
+        not_ready = [unit for unit in penpot_units if not _backend_ready(juju, unit)]
+        if not_ready:
+            logger.info("waiting for penpot backend in %s", ", ".join(not_ready))
+        return not not_ready
+
+    converge()
 
 
 def test_create_profile(juju: jubilant.Juju, deployment: list[str]):
@@ -146,9 +214,7 @@ def test_oauth_login(
     act: integrate penpot with hydra and log in using Kratos native credentials.
     assert: the login flow completes successfully and the user is directed to the validate registration page.
     """
-    juju.wait(
-        lambda status: jubilant.all_active(status, *deployment_with_identity_bundle), timeout=900
-    )
+    wait_for_active_with_migrations(juju, deployment_with_identity_bundle, timeout=900)
     public_url = get_public_url(juju)
 
     ca_cert = juju.run("self-signed-certificates/0", "get-ca-certificate").results[
@@ -158,10 +224,12 @@ def test_oauth_login(
         juju.status().apps["penpot"].units.keys(),
         key=lambda unit_name: int(unit_name.split("/")[-1]),
     )
-    inject_root_certs(juju, penpot_units, ca_cert)
     juju.integrate("penpot:oauth", "hydra")
 
-    juju.wait(lambda status: jubilant.all_active(status, "penpot", "hydra"), timeout=600)
+    wait_for_oidc_login(juju, penpot_units, timeout=600)
+    # Inject the CA only once OIDC is enabled: enabling it restarts the backend, which can
+    # recreate the container and drop a CA injected earlier.
+    ensure_root_certs(juju, penpot_units, ca_cert)
 
     test_email = secrets.token_hex(8) + "@example.com"
     test_password = secrets.token_hex(16)

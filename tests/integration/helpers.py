@@ -4,11 +4,152 @@
 """Framework-agnostic helpers for integration tests."""
 
 import json
+import logging
+import time
 import urllib.parse
 
 import jubilant
 import requests
-from tenacity import RetryError, Retrying, retry_if_exception_type, stop_after_delay, wait_fixed
+import yaml
+from tenacity import (
+    RetryError,
+    Retrying,
+    retry,
+    retry_if_exception_type,
+    retry_if_result,
+    stop_after_delay,
+    wait_fixed,
+)
+
+logger = logging.getLogger(__name__)
+
+MIGRATION_APPS = ("hydra", "kratos")
+MIGRATION_ACTION_TIMEOUT = 300
+MIGRATION_MAX_ATTEMPTS = 2
+# "Waiting for database migration" is also shown while the automatic migration is still
+# running, so only act on it once it has persisted for this long.
+MIGRATION_STUCK_GRACE = 300
+
+
+def _migration_state(status: jubilant.Status, app: str) -> str | None:
+    """Return "requested", "waiting" or None depending on the app's migration status."""
+    app_status = status.apps.get(app)
+    if app_status is None:
+        return None
+    statuses = [
+        app_status.app_status,
+        *(unit.workload_status for unit in app_status.units.values()),
+    ]
+    state = None
+    for item in statuses:
+        if item.current not in ("waiting", "blocked"):
+            continue
+        if "run-migration" in item.message:
+            return "requested"
+        if "database migration" in item.message.lower():
+            state = "waiting"
+    return state
+
+
+def _run_migration(juju: jubilant.Juju, app: str, attempt: int) -> None:
+    """Run the run-migration action on the app leader, logging which charm it ran for."""
+    logger.info("running run-migration on %s/leader (attempt %d)", app, attempt)
+    try:
+        juju.run(
+            f"{app}/leader",
+            "run-migration",
+            {"timeout": MIGRATION_ACTION_TIMEOUT},
+            wait=MIGRATION_ACTION_TIMEOUT + 60,
+        )
+    except (jubilant.TaskError, TimeoutError) as exc:
+        logger.warning("run-migration on %s failed: %s", app, exc)
+    else:
+        logger.info("run-migration on %s completed", app)
+
+
+def wait_for_active_with_migrations(juju: jubilant.Juju, apps: set[str], timeout: int = 900):
+    """Wait for all apps to be active, running hydra/kratos migrations if they get stuck.
+
+    Hydra and kratos only auto-migrate a fresh database; if that fails on a slow runner
+    they wait for the run-migration action.
+    """
+    attempts = dict.fromkeys(MIGRATION_APPS, 0)
+    waiting_since: dict[str, float] = {}
+
+    @retry(
+        stop=stop_after_delay(timeout),
+        wait=wait_fixed(10),
+        retry=retry_if_result(lambda active: not active),
+    )
+    def check() -> bool:
+        status = juju.status()
+        if jubilant.all_active(status, *apps):
+            return True
+        now = time.monotonic()
+        for app in MIGRATION_APPS:
+            if app not in apps or attempts[app] >= MIGRATION_MAX_ATTEMPTS:
+                continue
+            state = _migration_state(status, app)
+            if state is None:
+                waiting_since.pop(app, None)
+                continue
+            stuck_for = now - waiting_since.setdefault(app, now)
+            if state == "requested" or stuck_for >= MIGRATION_STUCK_GRACE:
+                attempts[app] += 1
+                waiting_since.pop(app, None)
+                _run_migration(juju, app, attempts[app])
+        return False
+
+    try:
+        check()
+    except RetryError as error:
+        raise TimeoutError(f"timed out after {timeout}s\n{juju.status()}") from error
+
+
+def _frontend_flags(juju: jubilant.Juju, unit: str) -> str:
+    """Return the PENPOT_FLAGS of the frontend service in the unit's Pebble plan."""
+    try:
+        plan = yaml.safe_load(juju.ssh(unit, "pebble", "plan", container="penpot")) or {}
+    except jubilant.CLIError as exc:
+        logger.info("cannot read the pebble plan of %s: %s", unit, exc.stderr.strip())
+        return ""
+    frontend = (plan.get("services") or {}).get("frontend") or {}
+    return (frontend.get("environment") or {}).get("PENPOT_FLAGS", "")
+
+
+def wait_for_oidc_login(juju: jubilant.Juju, units: list[str], timeout: int = 600):
+    """Wait until every penpot unit serves the OIDC login and penpot and hydra are active.
+
+    Right after integrating penpot:oauth the apps are still active from before, so wait for the
+    frontend flags to change instead of relying on the application status alone.
+    """
+
+    @retry(
+        stop=stop_after_delay(timeout),
+        wait=wait_fixed(5),
+        retry=retry_if_result(lambda ready: not ready),
+    )
+    def check() -> bool:
+        if not all("enable-login-with-oidc" in _frontend_flags(juju, unit) for unit in units):
+            return False
+        return jubilant.all_active(juju.status(), "penpot", "hydra")
+
+    try:
+        check()
+    except RetryError as error:
+        status = juju.status()
+        units_status = status.apps["penpot"].units
+        details = {
+            unit: {
+                "status": str(units_status[unit].workload_status) if unit in units_status else "",
+                "frontend_flags": _frontend_flags(juju, unit),
+            }
+            for unit in units
+        }
+        raise TimeoutError(
+            f"penpot did not enable OIDC login within {timeout}s: {details}\n"
+            f"hydra: {status.apps['hydra'].app_status}"
+        ) from error
 
 
 def wait_for_endpoint(url: str, timeout: int = 120, headers: dict[str, str] | None = None):

@@ -300,7 +300,7 @@ def deployment_fixture(
 
     juju.wait(
         lambda status: jubilant.all_agents_idle(status, "traefik-public", "s3-integrator"),
-        timeout=300,
+        timeout=900,
     )
 
     # Use host-based routing so apps are exposed at URL root (required by Penpot SPA).
