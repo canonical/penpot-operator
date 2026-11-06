@@ -22,6 +22,7 @@ from tenacity import (
 
 from tests.integration.helpers import (
     get_public_url,
+    wait_for_active_with_migrations,
     wait_for_endpoint,
 )
 
@@ -146,9 +147,7 @@ def test_oauth_login(
     act: integrate penpot with hydra and log in using Kratos native credentials.
     assert: the login flow completes successfully and the user is directed to the validate registration page.
     """
-    juju.wait(
-        lambda status: jubilant.all_active(status, *deployment_with_identity_bundle), timeout=900
-    )
+    wait_for_active_with_migrations(juju, deployment_with_identity_bundle, timeout=900)
     public_url = get_public_url(juju)
 
     ca_cert = juju.run("self-signed-certificates/0", "get-ca-certificate").results[
