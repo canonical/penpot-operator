@@ -26,9 +26,11 @@ S3_PORT = 7480
 SELF_SIGNED_CERTIFICATES_CHANNEL = "1/stable"
 SMTP_INTEGRATOR_CHANNEL = "latest/stable"
 TRAEFIK_PUBLIC_CHANNEL = "latest/stable"
-HYDRA_CHANNEL = "latest/stable"
-KRATOS_CHANNEL = "latest/stable"
-IDENTITY_PLATFORM_LOGIN_UI_CHANNEL = "latest/stable"
+# kratos on latest/stable cannot recover when its first migration is interrupted
+# (run-migration requires a running service); use the identity charms from edge together.
+HYDRA_CHANNEL = "latest/edge"
+KRATOS_CHANNEL = "latest/edge"
+IDENTITY_PLATFORM_LOGIN_UI_CHANNEL = "latest/edge"
 
 logger = logging.getLogger(__name__)
 
