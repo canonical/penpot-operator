@@ -222,8 +222,13 @@ def test_oauth_login(
     ).first
     password_input = page.locator('input[name="password"], input[type="password"]').first
     email_input.wait_for(state="visible", timeout=30_000)
-    password_input.wait_for(state="visible", timeout=30_000)
     email_input.fill(test_email)
+
+    # Kratos with the identifier_first login style asks for the password on a second step.
+    if not password_input.is_visible():
+        continue_button = page.get_by_role("button", name=re.compile("continue", re.I)).first
+        continue_button.click(timeout=15_000)
+    password_input.wait_for(state="visible", timeout=30_000)
     password_input.fill(test_password)
 
     submit_button = page.get_by_role(
