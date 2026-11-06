@@ -110,8 +110,9 @@ def ensure_root_certs(
 ):
     """Make every penpot unit trust the CA, with its backend ready.
 
-    A slow backend restart can fail the alive-level pebble check, and Kubernetes then
-    recreates the container with a fresh trust store, so re-inject until it sticks.
+    Units are handled one at a time so only one backend restarts at once. A slow backend
+    restart can fail the alive-level pebble check, and Kubernetes then restarts the container
+    with a fresh trust store, so every unit is re-checked and re-injected until it sticks.
     """
 
     @retry(
@@ -120,18 +121,17 @@ def ensure_root_certs(
         retry=retry_if_result(lambda ready: not ready),
     )
     def converge() -> bool:
-        missing = [unit for unit in penpot_units if not _has_root_cert(juju, unit)]
-        for unit in missing:
-            try:
-                inject_root_cert(juju, unit, ca_cert)
-            except jubilant.CLIError as exc:
-                logger.info("injecting the oauth ca into %s failed: %s", unit, exc.stderr)
-        if missing:
-            return False
-        not_ready = [unit for unit in penpot_units if not _backend_ready(juju, unit)]
-        if not_ready:
-            logger.info("waiting for penpot backend in %s", ", ".join(not_ready))
-        return not not_ready
+        for unit in penpot_units:
+            if not _has_root_cert(juju, unit):
+                try:
+                    inject_root_cert(juju, unit, ca_cert)
+                except jubilant.CLIError as exc:
+                    logger.info("injecting the oauth ca into %s failed: %s", unit, exc.stderr)
+                return False
+            if not _backend_ready(juju, unit):
+                logger.info("waiting for penpot backend in %s", unit)
+                return False
+        return True
 
     converge()
 
@@ -228,7 +228,7 @@ def test_oauth_login(
 
     wait_for_oidc_login(juju, penpot_units, timeout=600)
     # Inject the CA only once OIDC is enabled: enabling it restarts the backend, which can
-    # recreate the container and drop a CA injected earlier.
+    # restart the container and drop a CA injected earlier.
     ensure_root_certs(juju, penpot_units, ca_cert)
 
     test_email = secrets.token_hex(8) + "@example.com"

@@ -237,6 +237,18 @@ def _deploy_redis(juju: jubilant.Juju, workdir: Path) -> None:
     juju.deploy(trimmed, "redis-k8s", resources={"redis-image": image["upstream"]})
 
 
+def _wait_for_settled(juju: jubilant.Juju, app: str, timeout: int = 900) -> None:
+    """Wait until the app has units and all their agents are idle.
+
+    Deploying the apps one at a time keeps the load on small CI runners down, so slow
+    starts don't time out database migrations or Pebble checks.
+    """
+    juju.wait(
+        lambda status: bool(status.get_units(app)) and jubilant.all_agents_idle(status, app),
+        timeout=timeout,
+    )
+
+
 @pytest.fixture(name="deployment", scope="module")
 def deployment_fixture(
     juju: jubilant.Juju,
@@ -260,19 +272,16 @@ def deployment_fixture(
         trust=True,
         force=juju.version().major >= 4,
     )
+    _wait_for_settled(juju, "postgresql-k8s")
     juju.deploy(
         "self-signed-certificates",
         channel="latest/stable",
         revision=SELF_SIGNED_CERTIFICATES_REVISION,
         trust=True,
     )
-    juju.deploy(
-        charm_file,
-        app="penpot",
-        resources={"penpot-image": penpot_image},
-        num_units=2,
-    )
+    _wait_for_settled(juju, "self-signed-certificates")
     _deploy_redis(juju, Path(charm_file).parent)
+    _wait_for_settled(juju, "redis-k8s")
     juju.deploy(
         "smtp-integrator",
         channel="latest/stable",
@@ -284,12 +293,14 @@ def deployment_fixture(
             "port": mailcatcher.port,
         },
     )
+    _wait_for_settled(juju, "smtp-integrator")
     juju.deploy(
         "s3-integrator",
         channel="1/stable",
         revision=S3_INTEGRATOR_REVISION,
         config={"bucket": s3.bucket, "endpoint": s3.endpoint},
     )
+    _wait_for_settled(juju, "s3-integrator")
     juju.deploy(
         "traefik-k8s",
         app="traefik-public",
@@ -297,11 +308,14 @@ def deployment_fixture(
         revision=TRAEFIK_PUBLIC_REVISION,
         trust=True,
     )
-
-    juju.wait(
-        lambda status: jubilant.all_agents_idle(status, "traefik-public", "s3-integrator"),
-        timeout=900,
+    _wait_for_settled(juju, "traefik-public")
+    juju.deploy(
+        charm_file,
+        app="penpot",
+        resources={"penpot-image": penpot_image},
+        num_units=2,
     )
+    _wait_for_settled(juju, "penpot")
 
     # Use host-based routing so apps are exposed at URL root (required by Penpot SPA).
     # sslip.io maps this hostname back to the Traefik service IP without extra DNS setup.
@@ -351,16 +365,19 @@ def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set
     wired to the traefik-public and postgresql-k8s instances from the base deployment.
     """
     juju.deploy("hydra", channel="latest/edge", revision=HYDRA_REVISION, trust=True)
+    juju.integrate("postgresql-k8s:database", "hydra:pg-database")
+    _wait_for_settled(juju, "hydra")
     juju.deploy("kratos", channel="latest/edge", revision=KRATOS_REVISION, trust=True)
+    juju.integrate("postgresql-k8s:database", "kratos:pg-database")
+    _wait_for_settled(juju, "kratos")
     juju.deploy(
         "identity-platform-login-ui-operator",
         channel="latest/edge",
         revision=IDENTITY_PLATFORM_LOGIN_UI_REVISION,
         trust=True,
     )
+    _wait_for_settled(juju, "identity-platform-login-ui-operator")
 
-    juju.integrate("postgresql-k8s:database", "hydra:pg-database")
-    juju.integrate("postgresql-k8s:database", "kratos:pg-database")
     juju.integrate("hydra:hydra-endpoint-info", "kratos:hydra-endpoint-info")
     juju.integrate(
         "hydra:hydra-endpoint-info",
