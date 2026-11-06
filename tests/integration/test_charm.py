@@ -22,9 +22,7 @@ from tenacity import (
 
 from tests.integration.helpers import (
     get_public_url,
-    wait_for_active_with_migrations,
     wait_for_endpoint,
-    wait_for_oidc_login,
 )
 
 logger = logging.getLogger(__name__)
@@ -148,7 +146,9 @@ def test_oauth_login(
     act: integrate penpot with hydra and log in using Kratos native credentials.
     assert: the login flow completes successfully and the user is directed to the validate registration page.
     """
-    wait_for_active_with_migrations(juju, deployment_with_identity_bundle, timeout=900)
+    juju.wait(
+        lambda status: jubilant.all_active(status, *deployment_with_identity_bundle), timeout=900
+    )
     public_url = get_public_url(juju)
 
     ca_cert = juju.run("self-signed-certificates/0", "get-ca-certificate").results[
@@ -161,7 +161,7 @@ def test_oauth_login(
     inject_root_certs(juju, penpot_units, ca_cert)
     juju.integrate("penpot:oauth", "hydra")
 
-    wait_for_oidc_login(juju, penpot_units, timeout=600)
+    juju.wait(lambda status: jubilant.all_active(status, "penpot", "hydra"), timeout=600)
 
     test_email = secrets.token_hex(8) + "@example.com"
     test_password = secrets.token_hex(16)
@@ -222,13 +222,8 @@ def test_oauth_login(
     ).first
     password_input = page.locator('input[name="password"], input[type="password"]').first
     email_input.wait_for(state="visible", timeout=30_000)
-    email_input.fill(test_email)
-
-    # Kratos with the identifier_first login style asks for the password on a second step.
-    if not password_input.is_visible():
-        continue_button = page.get_by_role("button", name=re.compile("continue", re.I)).first
-        continue_button.click(timeout=15_000)
     password_input.wait_for(state="visible", timeout=30_000)
+    email_input.fill(test_email)
     password_input.fill(test_password)
 
     submit_button = page.get_by_role(

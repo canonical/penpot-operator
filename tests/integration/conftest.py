@@ -17,20 +17,19 @@ import jubilant
 import kubernetes
 import pytest
 
-POSTGRESQL_CHANNEL = "16/stable"
+POSTGRESQL_REVISION = 774
 VALKEY_CHANNEL = "9/edge"
-S3_INTEGRATOR_CHANNEL = "2/stable"
+VALKEY_REVISION = 156
+S3_INTEGRATOR_REVISION = 330
 S3_ACCESS_KEY = "penpot-test-access-key"
 S3_SECRET_KEY = "penpot-test-secret-key"  # nosec B105
 S3_PORT = 7480
-SELF_SIGNED_CERTIFICATES_CHANNEL = "1/stable"
-SMTP_INTEGRATOR_CHANNEL = "latest/stable"
-TRAEFIK_PUBLIC_CHANNEL = "latest/stable"
-# kratos on latest/stable cannot recover when its first migration is interrupted
-# (run-migration requires a running service); use the identity charms from edge together.
-HYDRA_CHANNEL = "latest/edge"
-KRATOS_CHANNEL = "latest/edge"
-IDENTITY_PLATFORM_LOGIN_UI_CHANNEL = "latest/edge"
+SELF_SIGNED_CERTIFICATES_REVISION = 264
+SMTP_INTEGRATOR_REVISION = 93
+TRAEFIK_PUBLIC_REVISION = 277
+HYDRA_REVISION = 399
+KRATOS_REVISION = 567
+IDENTITY_PLATFORM_LOGIN_UI_REVISION = 200
 
 logger = logging.getLogger(__name__)
 
@@ -219,13 +218,15 @@ def deployment_fixture(
     # Juju only skips a failed assumes check when --force is given.
     juju.deploy(
         "postgresql-k8s",
-        channel=POSTGRESQL_CHANNEL,
+        channel="14/stable",
+        revision=POSTGRESQL_REVISION,
         trust=True,
         force=juju.version().major >= 4,
     )
     juju.deploy(
         "self-signed-certificates",
-        channel=SELF_SIGNED_CERTIFICATES_CHANNEL,
+        channel="latest/stable",
+        revision=SELF_SIGNED_CERTIFICATES_REVISION,
         trust=True,
     )
     juju.deploy(
@@ -234,10 +235,11 @@ def deployment_fixture(
         resources={"penpot-image": penpot_image},
         num_units=2,
     )
-    juju.deploy("valkey", channel=VALKEY_CHANNEL, trust=True)
+    juju.deploy("valkey", channel=VALKEY_CHANNEL, revision=VALKEY_REVISION, trust=True)
     juju.deploy(
         "smtp-integrator",
-        channel=SMTP_INTEGRATOR_CHANNEL,
+        channel="latest/stable",
+        revision=SMTP_INTEGRATOR_REVISION,
         config={
             "auth_type": "none",
             "domain": "example.com",
@@ -247,19 +249,21 @@ def deployment_fixture(
     )
     juju.deploy(
         "s3-integrator",
-        channel=S3_INTEGRATOR_CHANNEL,
+        channel="1/stable",
+        revision=S3_INTEGRATOR_REVISION,
         config={"bucket": s3.bucket, "endpoint": s3.endpoint},
     )
     juju.deploy(
         "traefik-k8s",
         app="traefik-public",
-        channel=TRAEFIK_PUBLIC_CHANNEL,
+        channel="latest/edge",
+        revision=TRAEFIK_PUBLIC_REVISION,
         trust=True,
     )
 
     juju.wait(
         lambda status: jubilant.all_agents_idle(status, "traefik-public", "s3-integrator"),
-        timeout=900,
+        timeout=300,
     )
 
     # Use host-based routing so apps are exposed at URL root (required by Penpot SPA).
@@ -273,12 +277,14 @@ def deployment_fixture(
             "external_hostname": traefik_hostname,
         },
     )
-    # s3-integrator 2 reads its credentials from a granted Juju secret.
-    credentials = juju.add_secret(
-        "s3-credentials", {"access-key": s3.access_key, "secret-key": s3.secret_key}
+    juju.run(
+        "s3-integrator/0",
+        "sync-s3-credentials",
+        {
+            "access-key": s3.access_key,
+            "secret-key": s3.secret_key,
+        },
     )
-    juju.cli("grant-secret", "s3-credentials", "s3-integrator")
-    juju.config("s3-integrator", {"credentials": credentials})
 
     juju.integrate("self-signed-certificates:certificates", "traefik-public:certificates")
     juju.integrate("penpot:postgresql", "postgresql-k8s:database")
@@ -307,11 +313,12 @@ def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set
     Deploys hydra, kratos, identity-platform-login-ui-operator and traefik-admin,
     wired to the traefik-public and postgresql-k8s instances from the base deployment.
     """
-    juju.deploy("hydra", channel=HYDRA_CHANNEL, trust=True)
-    juju.deploy("kratos", channel=KRATOS_CHANNEL, trust=True)
+    juju.deploy("hydra", channel="latest/edge", revision=HYDRA_REVISION, trust=True)
+    juju.deploy("kratos", channel="latest/edge", revision=KRATOS_REVISION, trust=True)
     juju.deploy(
         "identity-platform-login-ui-operator",
-        channel=IDENTITY_PLATFORM_LOGIN_UI_CHANNEL,
+        channel="latest/edge",
+        revision=IDENTITY_PLATFORM_LOGIN_UI_REVISION,
         trust=True,
     )
 
