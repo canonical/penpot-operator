@@ -26,7 +26,6 @@ S3_PORT = 7480
 SELF_SIGNED_CERTIFICATES_CHANNEL = "1/stable"
 SMTP_INTEGRATOR_CHANNEL = "latest/stable"
 TRAEFIK_PUBLIC_CHANNEL = "latest/stable"
-TRAEFIK_PUBLIC_BASE = "ubuntu@26.04"
 HYDRA_CHANNEL = "latest/stable"
 KRATOS_CHANNEL = "latest/stable"
 IDENTITY_PLATFORM_LOGIN_UI_CHANNEL = "latest/stable"
@@ -253,7 +252,6 @@ def deployment_fixture(
         "traefik-k8s",
         app="traefik-public",
         channel=TRAEFIK_PUBLIC_CHANNEL,
-        base=TRAEFIK_PUBLIC_BASE,
         trust=True,
     )
 
