@@ -17,19 +17,19 @@ import jubilant
 import kubernetes
 import pytest
 
-POSTGRESQL_REVISION = 957
+POSTGRESQL_CHANNEL = "16/stable"
 VALKEY_CHANNEL = "9/edge"
-VALKEY_REVISION = 156
-S3_INTEGRATOR_REVISION = 544
+S3_INTEGRATOR_CHANNEL = "2/stable"
 S3_ACCESS_KEY = "penpot-test-access-key"
 S3_SECRET_KEY = "penpot-test-secret-key"  # nosec B105
 S3_PORT = 7480
-SELF_SIGNED_CERTIFICATES_REVISION = 710
-SMTP_INTEGRATOR_REVISION = 121
-TRAEFIK_PUBLIC_REVISION = 503
-HYDRA_REVISION = 396
-KRATOS_REVISION = 565
-IDENTITY_PLATFORM_LOGIN_UI_REVISION = 197
+SELF_SIGNED_CERTIFICATES_CHANNEL = "1/stable"
+SMTP_INTEGRATOR_CHANNEL = "latest/stable"
+TRAEFIK_PUBLIC_CHANNEL = "latest/stable"
+TRAEFIK_PUBLIC_BASE = "ubuntu@26.04"
+HYDRA_CHANNEL = "latest/stable"
+KRATOS_CHANNEL = "latest/stable"
+IDENTITY_PLATFORM_LOGIN_UI_CHANNEL = "latest/stable"
 
 logger = logging.getLogger(__name__)
 
@@ -218,15 +218,13 @@ def deployment_fixture(
     # Juju only skips a failed assumes check when --force is given.
     juju.deploy(
         "postgresql-k8s",
-        channel="16/stable",
-        revision=POSTGRESQL_REVISION,
+        channel=POSTGRESQL_CHANNEL,
         trust=True,
         force=juju.version().major >= 4,
     )
     juju.deploy(
         "self-signed-certificates",
-        channel="1/stable",
-        revision=SELF_SIGNED_CERTIFICATES_REVISION,
+        channel=SELF_SIGNED_CERTIFICATES_CHANNEL,
         trust=True,
     )
     juju.deploy(
@@ -235,11 +233,10 @@ def deployment_fixture(
         resources={"penpot-image": penpot_image},
         num_units=2,
     )
-    juju.deploy("valkey", channel=VALKEY_CHANNEL, revision=VALKEY_REVISION, trust=True)
+    juju.deploy("valkey", channel=VALKEY_CHANNEL, trust=True)
     juju.deploy(
         "smtp-integrator",
-        channel="latest/stable",
-        revision=SMTP_INTEGRATOR_REVISION,
+        channel=SMTP_INTEGRATOR_CHANNEL,
         config={
             "auth_type": "none",
             "domain": "example.com",
@@ -249,16 +246,14 @@ def deployment_fixture(
     )
     juju.deploy(
         "s3-integrator",
-        channel="2/stable",
-        revision=S3_INTEGRATOR_REVISION,
+        channel=S3_INTEGRATOR_CHANNEL,
         config={"bucket": s3.bucket, "endpoint": s3.endpoint},
     )
     juju.deploy(
         "traefik-k8s",
         app="traefik-public",
-        channel="latest/stable",
-        revision=TRAEFIK_PUBLIC_REVISION,
-        base="ubuntu@26.04",
+        channel=TRAEFIK_PUBLIC_CHANNEL,
+        base=TRAEFIK_PUBLIC_BASE,
         trust=True,
     )
 
@@ -312,12 +307,11 @@ def deployment_with_identity_bundle_fixture(juju: jubilant.Juju, deployment: set
     Deploys hydra, kratos, identity-platform-login-ui-operator and traefik-admin,
     wired to the traefik-public and postgresql-k8s instances from the base deployment.
     """
-    juju.deploy("hydra", channel="latest/stable", revision=HYDRA_REVISION, trust=True)
-    juju.deploy("kratos", channel="latest/stable", revision=KRATOS_REVISION, trust=True)
+    juju.deploy("hydra", channel=HYDRA_CHANNEL, trust=True)
+    juju.deploy("kratos", channel=KRATOS_CHANNEL, trust=True)
     juju.deploy(
         "identity-platform-login-ui-operator",
-        channel="latest/stable",
-        revision=IDENTITY_PLATFORM_LOGIN_UI_REVISION,
+        channel=IDENTITY_PLATFORM_LOGIN_UI_CHANNEL,
         trust=True,
     )
 

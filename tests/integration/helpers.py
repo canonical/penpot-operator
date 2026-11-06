@@ -10,7 +10,15 @@ import urllib.parse
 
 import jubilant
 import requests
-from tenacity import RetryError, Retrying, retry_if_exception_type, stop_after_delay, wait_fixed
+from tenacity import (
+    RetryError,
+    Retrying,
+    retry,
+    retry_if_exception_type,
+    retry_if_result,
+    stop_after_delay,
+    wait_fixed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +50,6 @@ def _migration_state(status: jubilant.Status, app: str) -> str | None:
     return state
 
 
-class _NotActiveError(Exception):
-    """Raised while the awaited applications are not all active yet."""
-
-
 def _run_migration(juju: jubilant.Juju, app: str, attempt: int) -> None:
     """Run the run-migration action on the app leader, logging which charm it ran for."""
     logger.info("running run-migration on %s/leader (attempt %d)", app, attempt)
@@ -71,10 +75,15 @@ def wait_for_active_with_migrations(juju: jubilant.Juju, apps: set[str], timeout
     attempts = dict.fromkeys(MIGRATION_APPS, 0)
     waiting_since: dict[str, float] = {}
 
-    def check() -> None:
+    @retry(
+        stop=stop_after_delay(timeout),
+        wait=wait_fixed(10),
+        retry=retry_if_result(lambda active: not active),
+    )
+    def check() -> bool:
         status = juju.status()
         if jubilant.all_active(status, *apps):
-            return
+            return True
         now = time.monotonic()
         for app in MIGRATION_APPS:
             if app not in apps or attempts[app] >= MIGRATION_MAX_ATTEMPTS:
@@ -88,16 +97,10 @@ def wait_for_active_with_migrations(juju: jubilant.Juju, apps: set[str], timeout
                 attempts[app] += 1
                 waiting_since.pop(app, None)
                 _run_migration(juju, app, attempts[app])
-        raise _NotActiveError(f"waiting for {', '.join(sorted(apps))} to be active")
+        return False
 
     try:
-        for attempt in Retrying(
-            stop=stop_after_delay(timeout),
-            wait=wait_fixed(10),
-            retry=retry_if_exception_type(_NotActiveError),
-        ):
-            with attempt:
-                check()
+        check()
     except RetryError as error:
         raise TimeoutError(f"timed out after {timeout}s\n{juju.status()}") from error
 
