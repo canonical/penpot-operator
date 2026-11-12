@@ -19,6 +19,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from tenacity import (
     Retrying,
     stop_after_attempt,
+    stop_after_delay,
     wait_fixed,
 )
 
@@ -68,50 +69,95 @@ def _truststore_has_ca(juju: jubilant.Juju, unit_name: str) -> bool:
     return True
 
 
-def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str):
-    """Inject CA certificate to penpot Java certificate store.
+def _install_root_cert(juju: jubilant.Juju, unit_name: str, ca_cert: str) -> None:
+    """Copy the CA into one unit's truststore and restart its backend."""
+    logger.info("copying oauth ca cert into %s", unit_name)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=True) as temp_file:
+        temp_file.write(ca_cert)
+        temp_file.flush()
+        juju.scp(temp_file.name, f"{unit_name}:/oauth.crt", container="penpot")
+    logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
+    stdout = juju.ssh(
+        unit_name,
+        KEYTOOL,
+        "-import",
+        "-trustcacerts",
+        "-file",
+        "/oauth.crt",
+        "-keystore",
+        TRUSTSTORE,
+        "-storepass",
+        TRUSTSTORE_PASSWORD,
+        "-alias",
+        CA_ALIAS,
+        "-noprompt",
+        container="penpot",
+    )
+    logger.info("keytool import output: %s", stdout)
+    logger.info("restart penpot backend in penpot/%s", unit_name)
+    juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
+    if not _truststore_has_ca(juju, unit_name):
+        raise AssertionError(
+            f"CA certificate is missing from the Java truststore of {unit_name} "
+            "after restarting the backend"
+        )
 
-    The import is idempotent and verified: a unit that does not end up with the
-    CA in its truststore fails with a clear error instead of a confusing OIDC
-    login timeout later.
+
+def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str) -> bool:
+    """Ensure the CA is in every penpot unit's Java truststore.
+
+    Idempotent: units that already trust the CA are left alone. Returns True if
+    any unit needed (re)importing, which also restarts that unit's backend.
     """
+    changed = False
     for unit_name in penpot_units:
-        logger.info("copying oauth ca cert into %s", unit_name)
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=True) as temp_file:
-            temp_file.write(ca_cert)
-            temp_file.flush()
-            juju.scp(temp_file.name, f"{unit_name}:/oauth.crt", container="penpot")
         if _truststore_has_ca(juju, unit_name):
             logger.info("oauth ca cert already in penpot/%s java trust", unit_name)
-        else:
-            logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
-            stdout = juju.ssh(
-                unit_name,
-                KEYTOOL,
-                "-import",
-                "-trustcacerts",
-                "-file",
-                "/oauth.crt",
-                "-keystore",
-                TRUSTSTORE,
-                "-storepass",
-                TRUSTSTORE_PASSWORD,
-                "-alias",
-                CA_ALIAS,
-                "-noprompt",
-                container="penpot",
-            )
-            logger.info("keytool import output: %s", stdout)
-        logger.info("restart penpot backend in penpot/%s", unit_name)
-        juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
-        if not _truststore_has_ca(juju, unit_name):
-            raise AssertionError(
-                f"CA certificate is missing from the Java truststore of {unit_name} "
-                "after restarting the backend"
-            )
+            continue
+        _install_root_cert(juju, unit_name, ca_cert)
+        changed = True
+    return changed
 
 
-def _log_unit_diagnostics(juju: jubilant.Juju, unit_name: str, hydra_url: str) -> None:
+def wait_for_backend_ready(
+    juju: jubilant.Juju, penpot_units: list[str], timeout: int = 300
+) -> None:
+    """Wait until every penpot backend reports ready after a truststore restart."""
+    for unit_name in penpot_units:
+        for attempt in Retrying(
+            stop=stop_after_delay(timeout),
+            wait=wait_fixed(5),
+            reraise=True,
+        ):
+            with attempt:
+                output = juju.ssh(
+                    unit_name,
+                    "curl",
+                    "-fsS",
+                    "-m",
+                    "5",
+                    "http://localhost:6060/readyz",
+                    container="penpot",
+                )
+                if output.strip() != "OK":
+                    raise RuntimeError(f"backend not ready on {unit_name}: {output!r}")
+
+
+def _ensure_trust_and_config(
+    juju: jubilant.Juju,
+    penpot_units: list[str],
+    ca_cert: str,
+    public_url: str,
+) -> None:
+    """Re-inject the CA if a container restart dropped it, then wait for readiness."""
+    if not inject_root_certs(juju, penpot_units, ca_cert):
+        return
+    wait_for_backend_ready(juju, penpot_units)
+    wait_for_endpoint(f"{public_url}/#/auth/login", timeout=300)
+    wait_for_config_flags(f"{public_url}/js/config.js", ["enable-login-with-oidc"], timeout=120)
+
+
+def _log_unit_diagnostics(juju: jubilant.Juju, unit_name: str, public_url: str) -> None:
     """Log the frontend config, truststore and served certificate of one unit."""
     try:
         config = juju.ssh(unit_name, "cat", "/var/www/app/js/config.js", container="penpot")
@@ -134,8 +180,11 @@ def _log_unit_diagnostics(juju: jubilant.Juju, unit_name: str, hydra_url: str) -
         logger.info("penpot %s truststore entry %s: %s", unit_name, CA_ALIAS, truststore[:1000])
     except Exception:
         logger.exception("penpot %s has no %s entry in its truststore", unit_name, CA_ALIAS)
+    host = urllib.parse.urlsplit(public_url).hostname
+    if not host:
+        logger.info("skipping served certificate check for %s: no public host", unit_name)
+        return
     try:
-        host = urllib.parse.urlsplit(hydra_url).hostname
         served = juju.ssh(
             unit_name,
             KEYTOOL,
@@ -148,7 +197,7 @@ def _log_unit_diagnostics(juju: jubilant.Juju, unit_name: str, hydra_url: str) -
             "penpot %s served certificate chain for %s:\n%s", unit_name, host, served[:4000]
         )
     except Exception:
-        logger.exception("could not inspect the certificate served by %s", hydra_url)
+        logger.exception("could not inspect the certificate served by %s", public_url)
 
 
 def _log_pod_restart_counts(kube_client: kubernetes.client.CoreV1Api, namespace: str) -> None:
@@ -171,6 +220,7 @@ def _log_pod_restart_counts(kube_client: kubernetes.client.CoreV1Api, namespace:
 
 def _log_auth_diagnostics(
     juju: jubilant.Juju,
+    public_url: str,
     penpot_units: list[str],
     kube_client: kubernetes.client.CoreV1Api,
 ) -> None:
@@ -179,13 +229,8 @@ def _log_auth_diagnostics(
         logger.info("juju status:\n%s", juju.status())
     except Exception:
         logger.exception("could not read juju status")
-    try:
-        hydra_url = get_public_url(juju, "hydra")
-    except Exception:
-        logger.exception("could not get the hydra public URL")
-        hydra_url = ""
     for unit_name in penpot_units:
-        _log_unit_diagnostics(juju, unit_name, hydra_url)
+        _log_unit_diagnostics(juju, unit_name, public_url)
     _log_pod_restart_counts(kube_client, juju.model or "")
 
 
@@ -208,12 +253,12 @@ def _wait_for_login_result(
     try:
         page.wait_for_url(login_result_url, timeout=120_000)
     except PlaywrightTimeoutError as err:
-        _log_auth_diagnostics(juju, penpot_units, kube_client)
+        _log_auth_diagnostics(juju, public_url, penpot_units, kube_client)
         raise AssertionError(
             f"OIDC login did not complete; final URL: {urllib.parse.unquote(page.url)}"
         ) from err
     if auth_error_url.match(page.url):
-        _log_auth_diagnostics(juju, penpot_units, kube_client)
+        _log_auth_diagnostics(juju, public_url, penpot_units, kube_client)
         raise AssertionError(f"OIDC login failed: {urllib.parse.unquote(page.url)}")
 
 
@@ -339,10 +384,15 @@ def test_oauth_login(
     # relying on the 30s button timeout, which is what produced the flaky
     # "OIDC button did not become visible" failures.
     wait_for_config_flags(f"{public_url}/js/config.js", ["enable-login-with-oidc"], timeout=120)
+    # A container restart between the initial injection and the login drops the
+    # writable-layer truststore, so re-check and re-inject before driving the
+    # browser (and again on every retry, in case the container restarts later).
+    _ensure_trust_and_config(juju, penpot_units, ca_cert, public_url)
 
     idp_url = re.compile(r".*/(oauth2/auth|ui/login)\?.*")
     for attempt in Retrying(stop=stop_after_attempt(4), wait=wait_fixed(10), reraise=True):
         with attempt:
+            _ensure_trust_and_config(juju, penpot_units, ca_cert, public_url)
             page.goto(f"{public_url}/#/auth/login", wait_until="domcontentloaded")
             logger.info("Navigated to penpot login. Current URL: %s", page.url)
             logger.info("Penpot login page content (first 1200): %s", page.content()[:1200])
@@ -356,14 +406,14 @@ def test_oauth_login(
             try:
                 oidc_button.wait_for(state="visible", timeout=30_000)
             except PlaywrightTimeoutError as err:
-                _log_auth_diagnostics(juju, penpot_units, kube_client)
+                _log_auth_diagnostics(juju, public_url, penpot_units, kube_client)
                 raise AssertionError("OIDC button did not become visible") from err
 
             oidc_button.click()
             try:
                 page.wait_for_url(idp_url, timeout=30_000)
             except PlaywrightTimeoutError as err:
-                _log_auth_diagnostics(juju, penpot_units, kube_client)
+                _log_auth_diagnostics(juju, public_url, penpot_units, kube_client)
                 raise AssertionError(
                     "OIDC click did not redirect to the identity provider"
                 ) from err
