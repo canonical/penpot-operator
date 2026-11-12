@@ -121,13 +121,13 @@ def wait_for_endpoint(url: str, timeout: int = 120, headers: dict[str, str] | No
         raise TimeoutError(f"timed out waiting for endpoint: {url}") from error
 
 
-def get_public_url(juju: jubilant.Juju, app: str = "penpot") -> str:
-    """Get the public URL of an app from traefik-public proxied endpoints."""
+def get_public_url(juju: jubilant.Juju) -> str:
+    """Get the Penpot public URL from traefik-public proxied endpoints."""
     result = juju.run("traefik-public/0", "show-proxied-endpoints")
     endpoints = json.loads(result.results["proxied-endpoints"])
-    url = endpoints.get(app, {}).get("url", "")
+    url = endpoints.get("penpot", {}).get("url", "")
     if not url:
-        raise RuntimeError(f"could not get {app} URL from traefik-public proxied endpoints")
+        raise RuntimeError("could not get Penpot URL from traefik-public proxied endpoints")
     url = url.rstrip("/")
     parsed = urllib.parse.urlsplit(url)
     # In Traefik subdomain routing mode, this action can report a root
@@ -136,7 +136,7 @@ def get_public_url(juju: jubilant.Juju, app: str = "penpot") -> str:
         traefik_url = endpoints.get("traefik-public", {}).get("url", "")
         traefik_parsed = urllib.parse.urlsplit(traefik_url)
         if traefik_parsed.hostname:
-            return f"{parsed.scheme}://{juju.model}-{app}.{traefik_parsed.hostname}"
+            return f"{parsed.scheme}://{juju.model}-penpot.{traefik_parsed.hostname}"
     return url
 
 

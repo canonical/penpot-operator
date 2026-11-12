@@ -9,7 +9,6 @@ import logging
 import re
 import secrets
 import tempfile
-import urllib.parse
 
 import jubilant
 import requests
@@ -30,12 +29,6 @@ from tests.integration.helpers import (
 
 logger = logging.getLogger(__name__)
 
-KEYTOOL = "/usr/lib/jvm/java-25-openjdk-amd64/bin/keytool"
-TRUSTSTORE = "/usr/lib/jvm/java-25-openjdk-amd64/lib/security/cacerts"
-# The JDK's default keystore password, not a secret.
-TRUSTSTORE_PASSWORD = "changeit"  # nosec B105
-CA_ALIAS = "penpot-test-ca"
-
 
 def _admin_identity_exists(juju: jubilant.Juju, email: str) -> bool:
     """Return whether a Kratos identity already exists for the given email."""
@@ -47,151 +40,34 @@ def _admin_identity_exists(juju: jubilant.Juju, email: str) -> bool:
         return False
 
 
-def _truststore_has_ca(juju: jubilant.Juju, unit_name: str) -> bool:
-    """Return whether the injected CA is present in the unit's Java truststore."""
-    try:
-        juju.ssh(
-            unit_name,
-            KEYTOOL,
-            "-list",
-            "-keystore",
-            TRUSTSTORE,
-            "-storepass",
-            TRUSTSTORE_PASSWORD,
-            "-alias",
-            CA_ALIAS,
-            container="penpot",
-        )
-    except jubilant.CLIError:
-        return False
-    return True
-
-
 def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str):
-    """Inject CA certificate to penpot Java certificate store.
-
-    The import is idempotent and verified: a unit that does not end up with the
-    CA in its truststore fails with a clear error instead of a confusing OIDC
-    login timeout later.
-    """
+    """Inject CA certificate to penpot Java certificate store."""
     for unit_name in penpot_units:
         logger.info("copying oauth ca cert into %s", unit_name)
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=True) as temp_file:
             temp_file.write(ca_cert)
             temp_file.flush()
             juju.scp(temp_file.name, f"{unit_name}:/oauth.crt", container="penpot")
-        if _truststore_has_ca(juju, unit_name):
-            logger.info("oauth ca cert already in penpot/%s java trust", unit_name)
-        else:
-            logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
-            stdout = juju.ssh(
-                unit_name,
-                KEYTOOL,
-                "-import",
-                "-trustcacerts",
-                "-file",
-                "/oauth.crt",
-                "-keystore",
-                TRUSTSTORE,
-                "-storepass",
-                TRUSTSTORE_PASSWORD,
-                "-alias",
-                CA_ALIAS,
-                "-noprompt",
-                container="penpot",
-            )
-            logger.info("keytool import output: %s", stdout)
+        stdout = juju.ssh(unit_name, "cat", "/oauth.crt", container="penpot")
+        logger.info("copying oauth ca cert into %s result: %s", unit_name, stdout)
+        logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
+        stdout = juju.ssh(
+            unit_name,
+            "/usr/lib/jvm/java-25-openjdk-amd64/bin/keytool",
+            "-import",
+            "-trustcacerts",
+            "-file",
+            "/oauth.crt",
+            "-keystore",
+            "/usr/lib/jvm/java-25-openjdk-amd64/lib/security/cacerts",
+            "-storepass",
+            "changeit",
+            "-noprompt",
+            container="penpot",
+        )
+        logger.info("keytool import output: %s", stdout)
         logger.info("restart penpot backend in penpot/%s", unit_name)
         juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
-        if not _truststore_has_ca(juju, unit_name):
-            raise AssertionError(
-                f"CA certificate is missing from the Java truststore of {unit_name} "
-                "after restarting the backend"
-            )
-
-
-def _log_unit_diagnostics(juju: jubilant.Juju, unit_name: str, public_url: str) -> None:
-    """Log the frontend config, truststore and served certificate of one unit."""
-    try:
-        config = juju.ssh(unit_name, "cat", "/var/www/app/js/config.js", container="penpot")
-        logger.info("penpot %s config.js: %s", unit_name, config[:2000])
-    except Exception:
-        logger.exception("could not read config.js from %s", unit_name)
-    try:
-        truststore = juju.ssh(
-            unit_name,
-            KEYTOOL,
-            "-list",
-            "-keystore",
-            TRUSTSTORE,
-            "-storepass",
-            TRUSTSTORE_PASSWORD,
-            "-alias",
-            CA_ALIAS,
-            container="penpot",
-        )
-        logger.info("penpot %s truststore entry %s: %s", unit_name, CA_ALIAS, truststore[:1000])
-    except Exception:
-        logger.exception("penpot %s has no %s entry in its truststore", unit_name, CA_ALIAS)
-    host = urllib.parse.urlsplit(public_url).hostname
-    if not host:
-        logger.info("skipping served certificate check for %s: no public host", unit_name)
-        return
-    try:
-        served = juju.ssh(
-            unit_name,
-            KEYTOOL,
-            "-printcert",
-            "-sslserver",
-            f"{host}:443",
-            container="penpot",
-        )
-        logger.info(
-            "penpot %s served certificate chain for %s:\n%s", unit_name, host, served[:4000]
-        )
-    except Exception:
-        logger.exception("could not inspect the certificate served by %s", public_url)
-
-
-def _log_auth_diagnostics(
-    juju: jubilant.Juju,
-    public_url: str,
-    penpot_units: list[str],
-) -> None:
-    """Log best-effort diagnostics for a failed OIDC login."""
-    try:
-        logger.info("juju status:\n%s", juju.status())
-    except Exception:
-        logger.exception("could not read juju status")
-    for unit_name in penpot_units:
-        _log_unit_diagnostics(juju, unit_name, public_url)
-
-
-def _wait_for_login_result(
-    juju: jubilant.Juju,
-    page: Page,
-    public_url: str,
-    penpot_units: list[str],
-) -> None:
-    """Wait for the OIDC login to land on the registration page or an error.
-
-    Waiting for the error URL too turns a 2 minute timeout into a fast,
-    actionable failure that carries the PKIX hint from the URL.
-    """
-    login_result_url = re.compile(
-        rf"^{re.escape(public_url)}/#/auth/(?:register/validate|login\?error=).*"
-    )
-    auth_error_url = re.compile(rf"^{re.escape(public_url)}/#/auth/login\?error=")
-    try:
-        page.wait_for_url(login_result_url, timeout=120_000)
-    except PlaywrightTimeoutError as err:
-        _log_auth_diagnostics(juju, public_url, penpot_units)
-        raise AssertionError(
-            f"OIDC login did not complete; final URL: {urllib.parse.unquote(page.url)}"
-        ) from err
-    if auth_error_url.match(page.url):
-        _log_auth_diagnostics(juju, public_url, penpot_units)
-        raise AssertionError(f"OIDC login failed: {urllib.parse.unquote(page.url)}")
 
 
 def test_create_profile(juju: jubilant.Juju, deployment: list[str]):
@@ -332,14 +208,12 @@ def test_oauth_login(
             try:
                 oidc_button.wait_for(state="visible", timeout=30_000)
             except PlaywrightTimeoutError as err:
-                _log_auth_diagnostics(juju, public_url, penpot_units)
                 raise AssertionError("OIDC button did not become visible") from err
 
             oidc_button.click()
             try:
                 page.wait_for_url(idp_url, timeout=30_000)
             except PlaywrightTimeoutError as err:
-                _log_auth_diagnostics(juju, public_url, penpot_units)
                 raise AssertionError(
                     "OIDC click did not redirect to the identity provider"
                 ) from err
@@ -381,4 +255,5 @@ def test_oauth_login(
 
     logger.info("final url: %s", page.url)
     logger.info("Final page content (first 1200): %s", page.content()[:1200])
-    _wait_for_login_result(juju, page, public_url, penpot_units)
+    validate_url = re.compile(rf"^{re.escape(public_url)}/#/auth/register/validate.*")
+    page.wait_for_url(validate_url, timeout=120_000)
