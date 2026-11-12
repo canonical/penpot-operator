@@ -12,7 +12,6 @@ import tempfile
 import urllib.parse
 
 import jubilant
-import kubernetes
 import requests
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -154,29 +153,10 @@ def _log_unit_diagnostics(juju: jubilant.Juju, unit_name: str, public_url: str) 
         logger.exception("could not inspect the certificate served by %s", public_url)
 
 
-def _log_pod_restart_counts(kube_client: kubernetes.client.CoreV1Api, namespace: str) -> None:
-    """Log container restart counts for the penpot pods."""
-    try:
-        pods = kube_client.list_namespaced_pod(
-            namespace=namespace, label_selector="app.kubernetes.io/name=penpot"
-        )
-        for pod in pods.items:
-            for container in pod.status.container_statuses or []:
-                logger.info(
-                    "pod %s container %s restarts=%d",
-                    pod.metadata.name,
-                    container.name,
-                    container.restart_count,
-                )
-    except Exception:
-        logger.exception("could not read pod restart counts")
-
-
 def _log_auth_diagnostics(
     juju: jubilant.Juju,
     public_url: str,
     penpot_units: list[str],
-    kube_client: kubernetes.client.CoreV1Api,
 ) -> None:
     """Log best-effort diagnostics for a failed OIDC login."""
     try:
@@ -185,7 +165,6 @@ def _log_auth_diagnostics(
         logger.exception("could not read juju status")
     for unit_name in penpot_units:
         _log_unit_diagnostics(juju, unit_name, public_url)
-    _log_pod_restart_counts(kube_client, juju.model or "")
 
 
 def _wait_for_login_result(
@@ -193,7 +172,6 @@ def _wait_for_login_result(
     page: Page,
     public_url: str,
     penpot_units: list[str],
-    kube_client: kubernetes.client.CoreV1Api,
 ) -> None:
     """Wait for the OIDC login to land on the registration page or an error.
 
@@ -207,12 +185,12 @@ def _wait_for_login_result(
     try:
         page.wait_for_url(login_result_url, timeout=120_000)
     except PlaywrightTimeoutError as err:
-        _log_auth_diagnostics(juju, public_url, penpot_units, kube_client)
+        _log_auth_diagnostics(juju, public_url, penpot_units)
         raise AssertionError(
             f"OIDC login did not complete; final URL: {urllib.parse.unquote(page.url)}"
         ) from err
     if auth_error_url.match(page.url):
-        _log_auth_diagnostics(juju, public_url, penpot_units, kube_client)
+        _log_auth_diagnostics(juju, public_url, penpot_units)
         raise AssertionError(f"OIDC login failed: {urllib.parse.unquote(page.url)}")
 
 
@@ -288,7 +266,6 @@ def test_oauth_login(
     juju: jubilant.Juju,
     deployment_with_identity_bundle: set[str],
     page: Page,
-    kube_client: kubernetes.client.CoreV1Api,
 ):
     """
     arrange: deploy the Penpot charm with OAuth identity stack.
@@ -355,14 +332,14 @@ def test_oauth_login(
             try:
                 oidc_button.wait_for(state="visible", timeout=30_000)
             except PlaywrightTimeoutError as err:
-                _log_auth_diagnostics(juju, public_url, penpot_units, kube_client)
+                _log_auth_diagnostics(juju, public_url, penpot_units)
                 raise AssertionError("OIDC button did not become visible") from err
 
             oidc_button.click()
             try:
                 page.wait_for_url(idp_url, timeout=30_000)
             except PlaywrightTimeoutError as err:
-                _log_auth_diagnostics(juju, public_url, penpot_units, kube_client)
+                _log_auth_diagnostics(juju, public_url, penpot_units)
                 raise AssertionError(
                     "OIDC click did not redirect to the identity provider"
                 ) from err
@@ -404,4 +381,4 @@ def test_oauth_login(
 
     logger.info("final url: %s", page.url)
     logger.info("Final page content (first 1200): %s", page.content()[:1200])
-    _wait_for_login_result(juju, page, public_url, penpot_units, kube_client)
+    _wait_for_login_result(juju, page, public_url, penpot_units)

@@ -75,12 +75,6 @@ def load_kube_config_fixture(pytestconfig: pytest.Config):
     kubernetes.config.load_kube_config(config_file=kube_config)
 
 
-@pytest.fixture(name="kube_client", scope="module")
-def kube_client_fixture(load_kube_config) -> kubernetes.client.CoreV1Api:
-    """Return a Kubernetes client for the test cluster."""
-    return kubernetes.client.CoreV1Api()
-
-
 @pytest.fixture(name="juju", scope="module")
 def juju_fixture(request: pytest.FixtureRequest, keep_models: bool) -> Iterator[jubilant.Juju]:
     """Provide a Jubilant Juju client with a temporary model."""
