@@ -9,8 +9,10 @@ import logging
 import re
 import secrets
 import tempfile
+import urllib.parse
 
 import jubilant
+import kubernetes
 import requests
 from playwright.sync_api import Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -23,10 +25,16 @@ from tenacity import (
 from tests.integration.helpers import (
     get_public_url,
     wait_for_active_with_migrations,
+    wait_for_config_flags,
     wait_for_endpoint,
 )
 
 logger = logging.getLogger(__name__)
+
+KEYTOOL = "/usr/lib/jvm/java-25-openjdk-amd64/bin/keytool"
+TRUSTSTORE = "/usr/lib/jvm/java-25-openjdk-amd64/lib/security/cacerts"
+TRUSTSTORE_PASSWORD = "changeit"
+CA_ALIAS = "penpot-test-ca"
 
 
 def _admin_identity_exists(juju: jubilant.Juju, email: str) -> bool:
@@ -39,34 +47,173 @@ def _admin_identity_exists(juju: jubilant.Juju, email: str) -> bool:
         return False
 
 
+def _truststore_has_ca(juju: jubilant.Juju, unit_name: str) -> bool:
+    """Return whether the injected CA is present in the unit's Java truststore."""
+    try:
+        juju.ssh(
+            unit_name,
+            KEYTOOL,
+            "-list",
+            "-keystore",
+            TRUSTSTORE,
+            "-storepass",
+            TRUSTSTORE_PASSWORD,
+            "-alias",
+            CA_ALIAS,
+            container="penpot",
+        )
+    except jubilant.CLIError:
+        return False
+    return True
+
+
 def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str):
-    """Inject CA certificate to penpot Java certificate store."""
+    """Inject CA certificate to penpot Java certificate store.
+
+    The import is idempotent and verified: a unit that does not end up with the
+    CA in its truststore fails with a clear error instead of a confusing OIDC
+    login timeout later.
+    """
     for unit_name in penpot_units:
         logger.info("copying oauth ca cert into %s", unit_name)
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=True) as temp_file:
             temp_file.write(ca_cert)
             temp_file.flush()
             juju.scp(temp_file.name, f"{unit_name}:/oauth.crt", container="penpot")
-        stdout = juju.ssh(unit_name, "cat", "/oauth.crt", container="penpot")
-        logger.info("copying oauth ca cert into %s result: %s", unit_name, stdout)
-        logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
-        stdout = juju.ssh(
-            unit_name,
-            "/usr/lib/jvm/java-25-openjdk-amd64/bin/keytool",
-            "-import",
-            "-trustcacerts",
-            "-file",
-            "/oauth.crt",
-            "-keystore",
-            "/usr/lib/jvm/java-25-openjdk-amd64/lib/security/cacerts",
-            "-storepass",
-            "changeit",
-            "-noprompt",
-            container="penpot",
-        )
-        logger.info("keytool import output: %s", stdout)
+        if _truststore_has_ca(juju, unit_name):
+            logger.info("oauth ca cert already in penpot/%s java trust", unit_name)
+        else:
+            logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
+            stdout = juju.ssh(
+                unit_name,
+                KEYTOOL,
+                "-import",
+                "-trustcacerts",
+                "-file",
+                "/oauth.crt",
+                "-keystore",
+                TRUSTSTORE,
+                "-storepass",
+                TRUSTSTORE_PASSWORD,
+                "-alias",
+                CA_ALIAS,
+                "-noprompt",
+                container="penpot",
+            )
+            logger.info("keytool import output: %s", stdout)
         logger.info("restart penpot backend in penpot/%s", unit_name)
         juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
+        if not _truststore_has_ca(juju, unit_name):
+            raise AssertionError(
+                f"CA certificate is missing from the Java truststore of {unit_name} "
+                "after restarting the backend"
+            )
+
+
+def _log_unit_diagnostics(juju: jubilant.Juju, unit_name: str, hydra_url: str) -> None:
+    """Log the frontend config, truststore and served certificate of one unit."""
+    try:
+        config = juju.ssh(unit_name, "cat", "/var/www/app/js/config.js", container="penpot")
+        logger.info("penpot %s config.js: %s", unit_name, config[:2000])
+    except Exception:
+        logger.exception("could not read config.js from %s", unit_name)
+    try:
+        truststore = juju.ssh(
+            unit_name,
+            KEYTOOL,
+            "-list",
+            "-keystore",
+            TRUSTSTORE,
+            "-storepass",
+            TRUSTSTORE_PASSWORD,
+            "-alias",
+            CA_ALIAS,
+            container="penpot",
+        )
+        logger.info("penpot %s truststore entry %s: %s", unit_name, CA_ALIAS, truststore[:1000])
+    except Exception:
+        logger.exception("penpot %s has no %s entry in its truststore", unit_name, CA_ALIAS)
+    try:
+        host = urllib.parse.urlsplit(hydra_url).hostname
+        served = juju.ssh(
+            unit_name,
+            KEYTOOL,
+            "-printcert",
+            "-sslserver",
+            f"{host}:443",
+            container="penpot",
+        )
+        logger.info(
+            "penpot %s served certificate chain for %s:\n%s", unit_name, host, served[:4000]
+        )
+    except Exception:
+        logger.exception("could not inspect the certificate served by %s", hydra_url)
+
+
+def _log_pod_restart_counts(kube_client: kubernetes.client.CoreV1Api, namespace: str) -> None:
+    """Log container restart counts for the penpot pods."""
+    try:
+        pods = kube_client.list_namespaced_pod(
+            namespace=namespace, label_selector="app.kubernetes.io/name=penpot"
+        )
+        for pod in pods.items:
+            for container in pod.status.container_statuses or []:
+                logger.info(
+                    "pod %s container %s restarts=%d",
+                    pod.metadata.name,
+                    container.name,
+                    container.restart_count,
+                )
+    except Exception:
+        logger.exception("could not read pod restart counts")
+
+
+def _log_auth_diagnostics(
+    juju: jubilant.Juju,
+    penpot_units: list[str],
+    kube_client: kubernetes.client.CoreV1Api,
+) -> None:
+    """Log best-effort diagnostics for a failed OIDC login."""
+    try:
+        logger.info("juju status:\n%s", juju.status())
+    except Exception:
+        logger.exception("could not read juju status")
+    try:
+        hydra_url = get_public_url(juju, "hydra")
+    except Exception:
+        logger.exception("could not get the hydra public URL")
+        hydra_url = ""
+    for unit_name in penpot_units:
+        _log_unit_diagnostics(juju, unit_name, hydra_url)
+    _log_pod_restart_counts(kube_client, juju.model or "")
+
+
+def _wait_for_login_result(
+    juju: jubilant.Juju,
+    page: Page,
+    public_url: str,
+    penpot_units: list[str],
+    kube_client: kubernetes.client.CoreV1Api,
+) -> None:
+    """Wait for the OIDC login to land on the registration page or an error.
+
+    Waiting for the error URL too turns a 2 minute timeout into a fast,
+    actionable failure that carries the PKIX hint from the URL.
+    """
+    login_result_url = re.compile(
+        rf"^{re.escape(public_url)}/#/auth/(?:register/validate|login\?error=).*"
+    )
+    auth_error_url = re.compile(rf"^{re.escape(public_url)}/#/auth/login\?error=")
+    try:
+        page.wait_for_url(login_result_url, timeout=120_000)
+    except PlaywrightTimeoutError as err:
+        _log_auth_diagnostics(juju, penpot_units, kube_client)
+        raise AssertionError(
+            f"OIDC login did not complete; final URL: {urllib.parse.unquote(page.url)}"
+        ) from err
+    if auth_error_url.match(page.url):
+        _log_auth_diagnostics(juju, penpot_units, kube_client)
+        raise AssertionError(f"OIDC login failed: {urllib.parse.unquote(page.url)}")
 
 
 def test_create_profile(juju: jubilant.Juju, deployment: list[str]):
@@ -141,6 +288,7 @@ def test_oauth_login(
     juju: jubilant.Juju,
     deployment_with_identity_bundle: set[str],
     page: Page,
+    kube_client: kubernetes.client.CoreV1Api,
 ):
     """
     arrange: deploy the Penpot charm with OAuth identity stack.
@@ -185,6 +333,11 @@ def test_oauth_login(
         raise AssertionError(f"reset-password failed: {reset_task.results}")
 
     wait_for_endpoint(f"{public_url}/#/auth/login", timeout=300)
+    # The OIDC button only renders once the frontend config has been rewritten
+    # with the flags from the oauth relation. Wait for that config instead of
+    # relying on the 30s button timeout, which is what produced the flaky
+    # "OIDC button did not become visible" failures.
+    wait_for_config_flags(f"{public_url}/js/config.js", ["enable-login-with-oidc"], timeout=120)
 
     idp_url = re.compile(r".*/(oauth2/auth|ui/login)\?.*")
     for attempt in Retrying(stop=stop_after_attempt(4), wait=wait_fixed(10), reraise=True):
@@ -202,12 +355,14 @@ def test_oauth_login(
             try:
                 oidc_button.wait_for(state="visible", timeout=30_000)
             except PlaywrightTimeoutError as err:
+                _log_auth_diagnostics(juju, penpot_units, kube_client)
                 raise AssertionError("OIDC button did not become visible") from err
 
             oidc_button.click()
             try:
                 page.wait_for_url(idp_url, timeout=30_000)
             except PlaywrightTimeoutError as err:
+                _log_auth_diagnostics(juju, penpot_units, kube_client)
                 raise AssertionError(
                     "OIDC click did not redirect to the identity provider"
                 ) from err
@@ -249,5 +404,4 @@ def test_oauth_login(
 
     logger.info("final url: %s", page.url)
     logger.info("Final page content (first 1200): %s", page.content()[:1200])
-    validate_url = re.compile(rf"^{re.escape(public_url)}/#/auth/register/validate.*")
-    page.wait_for_url(validate_url, timeout=120_000)
+    _wait_for_login_result(juju, page, public_url, penpot_units, kube_client)

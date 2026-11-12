@@ -121,13 +121,13 @@ def wait_for_endpoint(url: str, timeout: int = 120, headers: dict[str, str] | No
         raise TimeoutError(f"timed out waiting for endpoint: {url}") from error
 
 
-def get_public_url(juju: jubilant.Juju) -> str:
-    """Get the Penpot public URL from traefik-public proxied endpoints."""
+def get_public_url(juju: jubilant.Juju, app: str = "penpot") -> str:
+    """Get the public URL of an app from traefik-public proxied endpoints."""
     result = juju.run("traefik-public/0", "show-proxied-endpoints")
     endpoints = json.loads(result.results["proxied-endpoints"])
-    url = endpoints.get("penpot", {}).get("url", "")
+    url = endpoints.get(app, {}).get("url", "")
     if not url:
-        raise RuntimeError("could not get Penpot URL from traefik-public proxied endpoints")
+        raise RuntimeError(f"could not get {app} URL from traefik-public proxied endpoints")
     url = url.rstrip("/")
     parsed = urllib.parse.urlsplit(url)
     # In Traefik subdomain routing mode, this action can report a root
@@ -136,5 +136,30 @@ def get_public_url(juju: jubilant.Juju) -> str:
         traefik_url = endpoints.get("traefik-public", {}).get("url", "")
         traefik_parsed = urllib.parse.urlsplit(traefik_url)
         if traefik_parsed.hostname:
-            return f"{parsed.scheme}://{juju.model}-penpot.{traefik_parsed.hostname}"
+            return f"{parsed.scheme}://{juju.model}-{app}.{traefik_parsed.hostname}"
     return url
+
+
+def wait_for_config_flags(url: str, flags: list[str], timeout: int = 120) -> None:
+    """Wait until the Penpot frontend config.js exposes the given flags.
+
+    The OIDC login button only renders when the frontend has been reconfigured
+    with ``enable-login-with-oidc``. Waiting for the flag here avoids a
+    confusing 30s "button not visible" timeout when the frontend is still
+    serving its previous config.
+    """
+    try:
+        for attempt in Retrying(
+            stop=stop_after_delay(timeout),
+            wait=wait_fixed(5),
+            retry=retry_if_exception_type((requests.RequestException, RuntimeError)),
+        ):
+            with attempt:
+                response = requests.get(url, timeout=10, verify=False)  # nosec: B501
+                if response.status_code >= 500:
+                    raise RuntimeError(f"endpoint not ready: {response.status_code}")
+                missing = [flag for flag in flags if flag not in response.text]
+                if missing:
+                    raise RuntimeError(f"config.js is missing flags: {missing}")
+    except RetryError as error:
+        raise TimeoutError(f"timed out waiting for config flags: {url}") from error
