@@ -33,7 +33,8 @@ logger = logging.getLogger(__name__)
 
 KEYTOOL = "/usr/lib/jvm/java-25-openjdk-amd64/bin/keytool"
 TRUSTSTORE = "/usr/lib/jvm/java-25-openjdk-amd64/lib/security/cacerts"
-TRUSTSTORE_PASSWORD = "changeit"
+# The JDK's default keystore password, not a secret.
+TRUSTSTORE_PASSWORD = "changeit"  # nosec B105
 CA_ALIAS = "penpot-test-ca"
 
 
