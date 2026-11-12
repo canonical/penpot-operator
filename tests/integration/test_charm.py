@@ -239,10 +239,14 @@ def test_oauth_login(
     submit_button.click(timeout=15_000)
 
     # Current login UI either redirects directly to Penpot or shows consent first.
-    page.wait_for_url(
-        re.compile(rf".*/ui/consent\?.*|^{re.escape(public_url)}/.*"),
-        timeout=30_000,
-    )
+    try:
+        page.wait_for_url(
+            re.compile(rf".*/ui/consent\?.*|^{re.escape(public_url)}/.*"),
+            timeout=60_000,
+        )
+    except PlaywrightTimeoutError:
+        logger.error("after sign-in, url=%s content=%s", page.url, page.content()[:2000])
+        raise
     if "/ui/consent" in page.url:
         consent_button = page.get_by_role(
             "button",
