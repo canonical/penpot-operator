@@ -19,7 +19,6 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from tenacity import (
     Retrying,
     stop_after_attempt,
-    stop_after_delay,
     wait_fixed,
 )
 
@@ -69,92 +68,47 @@ def _truststore_has_ca(juju: jubilant.Juju, unit_name: str) -> bool:
     return True
 
 
-def _install_root_cert(juju: jubilant.Juju, unit_name: str, ca_cert: str) -> None:
-    """Copy the CA into one unit's truststore and restart its backend."""
-    logger.info("copying oauth ca cert into %s", unit_name)
-    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=True) as temp_file:
-        temp_file.write(ca_cert)
-        temp_file.flush()
-        juju.scp(temp_file.name, f"{unit_name}:/oauth.crt", container="penpot")
-    logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
-    stdout = juju.ssh(
-        unit_name,
-        KEYTOOL,
-        "-import",
-        "-trustcacerts",
-        "-file",
-        "/oauth.crt",
-        "-keystore",
-        TRUSTSTORE,
-        "-storepass",
-        TRUSTSTORE_PASSWORD,
-        "-alias",
-        CA_ALIAS,
-        "-noprompt",
-        container="penpot",
-    )
-    logger.info("keytool import output: %s", stdout)
-    logger.info("restart penpot backend in penpot/%s", unit_name)
-    juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
-    if not _truststore_has_ca(juju, unit_name):
-        raise AssertionError(
-            f"CA certificate is missing from the Java truststore of {unit_name} "
-            "after restarting the backend"
-        )
+def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str):
+    """Inject CA certificate to penpot Java certificate store.
 
-
-def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str) -> bool:
-    """Ensure the CA is in every penpot unit's Java truststore.
-
-    Idempotent: units that already trust the CA are left alone. Returns True if
-    any unit needed (re)importing, which also restarts that unit's backend.
+    The import is idempotent and verified: a unit that does not end up with the
+    CA in its truststore fails with a clear error instead of a confusing OIDC
+    login timeout later.
     """
-    changed = False
     for unit_name in penpot_units:
+        logger.info("copying oauth ca cert into %s", unit_name)
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=True) as temp_file:
+            temp_file.write(ca_cert)
+            temp_file.flush()
+            juju.scp(temp_file.name, f"{unit_name}:/oauth.crt", container="penpot")
         if _truststore_has_ca(juju, unit_name):
             logger.info("oauth ca cert already in penpot/%s java trust", unit_name)
-            continue
-        _install_root_cert(juju, unit_name, ca_cert)
-        changed = True
-    return changed
-
-
-def wait_for_backend_ready(
-    juju: jubilant.Juju, penpot_units: list[str], timeout: int = 300
-) -> None:
-    """Wait until every penpot backend reports ready after a truststore restart."""
-    for unit_name in penpot_units:
-        for attempt in Retrying(
-            stop=stop_after_delay(timeout),
-            wait=wait_fixed(5),
-            reraise=True,
-        ):
-            with attempt:
-                output = juju.ssh(
-                    unit_name,
-                    "curl",
-                    "-fsS",
-                    "-m",
-                    "5",
-                    "http://localhost:6060/readyz",
-                    container="penpot",
-                )
-                if output.strip() != "OK":
-                    raise RuntimeError(f"backend not ready on {unit_name}: {output!r}")
-
-
-def _ensure_trust_and_config(
-    juju: jubilant.Juju,
-    penpot_units: list[str],
-    ca_cert: str,
-    public_url: str,
-) -> None:
-    """Re-inject the CA if a container restart dropped it, then wait for readiness."""
-    if not inject_root_certs(juju, penpot_units, ca_cert):
-        return
-    wait_for_backend_ready(juju, penpot_units)
-    wait_for_endpoint(f"{public_url}/#/auth/login", timeout=300)
-    wait_for_config_flags(f"{public_url}/js/config.js", ["enable-login-with-oidc"], timeout=120)
+        else:
+            logger.info("installing oauth ca cert into penpot/%s java trust", unit_name)
+            stdout = juju.ssh(
+                unit_name,
+                KEYTOOL,
+                "-import",
+                "-trustcacerts",
+                "-file",
+                "/oauth.crt",
+                "-keystore",
+                TRUSTSTORE,
+                "-storepass",
+                TRUSTSTORE_PASSWORD,
+                "-alias",
+                CA_ALIAS,
+                "-noprompt",
+                container="penpot",
+            )
+            logger.info("keytool import output: %s", stdout)
+        logger.info("restart penpot backend in penpot/%s", unit_name)
+        juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
+        if not _truststore_has_ca(juju, unit_name):
+            raise AssertionError(
+                f"CA certificate is missing from the Java truststore of {unit_name} "
+                "after restarting the backend"
+            )
 
 
 def _log_unit_diagnostics(juju: jubilant.Juju, unit_name: str, public_url: str) -> None:
@@ -384,15 +338,10 @@ def test_oauth_login(
     # relying on the 30s button timeout, which is what produced the flaky
     # "OIDC button did not become visible" failures.
     wait_for_config_flags(f"{public_url}/js/config.js", ["enable-login-with-oidc"], timeout=120)
-    # A container restart between the initial injection and the login drops the
-    # writable-layer truststore, so re-check and re-inject before driving the
-    # browser (and again on every retry, in case the container restarts later).
-    _ensure_trust_and_config(juju, penpot_units, ca_cert, public_url)
 
     idp_url = re.compile(r".*/(oauth2/auth|ui/login)\?.*")
     for attempt in Retrying(stop=stop_after_attempt(4), wait=wait_fixed(10), reraise=True):
         with attempt:
-            _ensure_trust_and_config(juju, penpot_units, ca_cert, public_url)
             page.goto(f"{public_url}/#/auth/login", wait_until="domcontentloaded")
             logger.info("Navigated to penpot login. Current URL: %s", page.url)
             logger.info("Penpot login page content (first 1200): %s", page.content()[:1200])
