@@ -164,6 +164,31 @@ def wait_for_endpoint(url: str, timeout: int = 120, headers: dict[str, str] | No
         raise TimeoutError(f"timed out waiting for endpoint: {url}") from error
 
 
+def wait_for_backend_ready(juju: jubilant.Juju, units: list[str], timeout: int = 300) -> None:
+    """Wait until every Penpot unit's backend reports ready on /readyz."""
+    for unit_name in units:
+        try:
+            for attempt in Retrying(
+                stop=stop_after_delay(timeout),
+                wait=wait_fixed(5),
+                retry=retry_if_exception_type((jubilant.CLIError, RuntimeError)),
+            ):
+                with attempt:
+                    output = juju.ssh(
+                        unit_name,
+                        "curl",
+                        "-fsS",
+                        "-m",
+                        "5",
+                        "http://localhost:6060/readyz",
+                        container="penpot",
+                    )
+                    if output.strip() != "OK":
+                        raise RuntimeError(f"{unit_name} backend not ready: {output!r}")
+        except RetryError as error:
+            raise TimeoutError(f"timed out waiting for the backend on {unit_name}") from error
+
+
 def get_public_url(juju: jubilant.Juju) -> str:
     """Get the Penpot public URL from traefik-public proxied endpoints."""
     result = juju.run("traefik-public/0", "show-proxied-endpoints")

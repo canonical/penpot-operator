@@ -24,6 +24,7 @@ from tests.integration.helpers import (
     get_public_url,
     wait_for_active,
     wait_for_active_with_migrations,
+    wait_for_backend_ready,
     wait_for_config_flags,
     wait_for_endpoint,
 )
@@ -212,6 +213,10 @@ def test_oauth_login(
     # relying on the 30s button timeout, which is what produced the flaky
     # "OIDC button did not become visible" failures.
     wait_for_config_flags(juju, penpot_units, ["enable-login-with-oidc"], timeout=120)
+    # The frontend can serve its SPA while the backend is restarting, which shows
+    # the "Bad Gateway" page and no OIDC button. Make sure every backend is ready
+    # before driving the browser.
+    wait_for_backend_ready(juju, penpot_units, timeout=300)
 
     idp_url = re.compile(r".*/(oauth2/auth|ui/login)\?.*")
     for attempt in Retrying(stop=stop_after_attempt(4), wait=wait_fixed(10), reraise=True):
