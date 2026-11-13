@@ -234,9 +234,9 @@ def test_oauth_login(
                     page.url,
                     page.inner_text("body")[:2000],
                     page.evaluate("window.penpotFlags"),
-                    requests.get(
-                        f"{public_url}/js/config.js", timeout=10, verify=False
-                    ).text[:500],
+                    requests.get(f"{public_url}/js/config.js", timeout=10, verify=False).text[
+                        :500
+                    ],
                 )
                 raise AssertionError("OIDC button did not become visible") from err
 
