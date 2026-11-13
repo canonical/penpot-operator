@@ -138,6 +138,27 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str]):
             raise AssertionError(f"login status {response.status_code}")
 
 
+def _submit_idp_login(page: Page, email: str, password: str) -> None:
+    """Fill and submit the identity provider login form.
+
+    Newer login UIs use an "identifier first" flow: the password field is only
+    rendered after the identifier has been submitted.
+    """
+    email_input = page.locator(
+        'input[name="identifier"], input[name="email"], input[type="email"]'
+    ).first
+    password_input = page.locator('input[name="password"], input[type="password"]').first
+    email_input.wait_for(state="visible", timeout=30_000)
+    email_input.fill(email)
+    if not password_input.is_visible():
+        page.get_by_role("button", name="Sign in").first.click(timeout=15_000)
+    password_input.wait_for(state="visible", timeout=30_000)
+    password_input.fill(password)
+    submit_button = page.get_by_role("button", name="Sign in").first
+    submit_button.wait_for(state="visible", timeout=15_000)
+    submit_button.click(timeout=15_000)
+
+
 def test_oauth_login(
     juju: jubilant.Juju,
     deployment_with_identity_bundle: set[str],
@@ -222,21 +243,7 @@ def test_oauth_login(
     logger.info("after OIDC click, url: %s", page.url)
     logger.info("IdP login page content (first 1200): %s", page.content()[:1200])
 
-    email_input = page.locator(
-        'input[name="identifier"], input[name="email"], input[type="email"]'
-    ).first
-    password_input = page.locator('input[name="password"], input[type="password"]').first
-    email_input.wait_for(state="visible", timeout=30_000)
-    password_input.wait_for(state="visible", timeout=30_000)
-    email_input.fill(test_email)
-    password_input.fill(test_password)
-
-    submit_button = page.get_by_role(
-        "button",
-        name="Sign in",
-    ).first
-    submit_button.wait_for(state="visible", timeout=15_000)
-    submit_button.click(timeout=15_000)
+    _submit_idp_login(page, test_email, test_password)
 
     # Current login UI either redirects directly to Penpot or shows consent first.
     try:
