@@ -3,11 +3,12 @@
 
 """Unit tests."""
 
+import json
 from secrets import token_hex
 
 import pytest
 from ops import testing
-from ops.testing import Exec, Secret
+from ops.testing import Exec, Relation, Secret
 
 from src.charm import PenpotCharm
 from tests.unit.conftest import (
@@ -17,13 +18,19 @@ from tests.unit.conftest import (
     SMTP_SECRET_ID,
     SMTP_TEST_PASSWORD,
     SMTP_TEST_USER,
+    VALKEY_ENDPOINT,
+    VALKEY_PASSWORD,
+    VALKEY_REDIS_URI,
+    VALKEY_USER_SECRET_ID,
+    VALKEY_USERNAME,
     ingress_relation,
     peer_relation,
     penpot_container,
     postgresql_relation,
-    redis_relation,
     s3_relation,
     smtp_relation,
+    valkey_relation,
+    valkey_secrets,
 )
 
 
@@ -39,11 +46,11 @@ def test_postgresql_config(monkeypatch: pytest.MonkeyPatch, context: testing.Con
         relations={
             peer_relation(secret_id=peer_secret.id),
             postgresql_relation(),
-            redis_relation(),
+            valkey_relation(),
             s3_relation(),
             ingress_relation(),
         },
-        secrets={peer_secret},
+        secrets={peer_secret, *valkey_secrets()},
         containers={penpot_container()},
     )
     out = context.run(context.on.config_changed(), state)
@@ -54,29 +61,136 @@ def test_postgresql_config(monkeypatch: pytest.MonkeyPatch, context: testing.Con
     assert backend_env["PENPOT_DATABASE_USERNAME"] == "postgresql-username"
 
 
-def test_redis_config(monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]):
-    """
-    arrange: initialize the testing context with required integrations.
-    act: run reconcile via config-changed and retrieve the output state.
-    assert: ensure redis variables are present in the backend container env.
-    """
-    monkeypatch.setattr(PenpotCharm, "_check_penpot_backend_ready", lambda self: True)
+def _valkey_ready_state(valkey: Relation, valkey_secret_set: set[Secret]) -> testing.State:
+    """State with every requirement fulfilled except for the given valkey integration."""
     peer_secret = Secret(tracked_content={"penpot-secret-key": token_hex(16)}, id=PEER_SECRET_ID)
-    state = testing.State(
+    return testing.State(
         relations={
             peer_relation(secret_id=peer_secret.id),
             postgresql_relation(),
-            redis_relation(),
+            valkey,
             s3_relation(),
             ingress_relation(),
         },
-        secrets={peer_secret},
+        secrets={peer_secret, *valkey_secret_set},
         containers={penpot_container()},
     )
+
+
+def test_valkey_config(monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]):
+    """
+    arrange: initialize the testing context with required integrations.
+    act: run reconcile via config-changed and retrieve the output state.
+    assert: the valkey URI is set in the backend and exporter environments.
+    """
+    monkeypatch.setattr(PenpotCharm, "_check_penpot_backend_ready", lambda self: True)
+    state = _valkey_ready_state(valkey_relation(), valkey_secrets())
     out = context.run(context.on.config_changed(), state)
     assert out.unit_status == testing.ActiveStatus()
+    services = out.get_container("penpot").plan.services
+    assert services["backend"].environment["PENPOT_REDIS_URI"] == VALKEY_REDIS_URI
+    assert services["exporter"].environment["PENPOT_REDIS_URI"] == VALKEY_REDIS_URI
+
+
+def test_valkey_password_is_url_quoted(
+    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
+):
+    """
+    arrange: valkey shares a password containing URI reserved characters.
+    act: run reconcile via config-changed.
+    assert: the password is percent-encoded in the URI.
+    """
+    monkeypatch.setattr(PenpotCharm, "_check_penpot_backend_ready", lambda self: True)
+    password = "p@ss/w:rd"  # nosec B105
+    state = _valkey_ready_state(valkey_relation(), valkey_secrets(password=password))
+    out = context.run(context.on.config_changed(), state)
     backend_env = out.get_container("penpot").plan.services["backend"].environment
-    assert backend_env["PENPOT_REDIS_URI"] == "redis://redis-hostname:6379"
+    assert backend_env["PENPOT_REDIS_URI"] == (
+        f"redis://{VALKEY_USERNAME}:p%40ss%2Fw%3Ard@{VALKEY_ENDPOINT}/0"
+    )
+
+
+def test_valkey_multiple_endpoints(
+    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
+):
+    """
+    arrange: valkey shares several comma-separated endpoints with a space after the comma.
+    act: run reconcile via config-changed.
+    assert: the first endpoint is used in the URI without whitespace.
+    """
+    monkeypatch.setattr(PenpotCharm, "_check_penpot_backend_ready", lambda self: True)
+    relation = valkey_relation(
+        endpoints="valkey-1.valkey-endpoints:6379, valkey-0.valkey-endpoints:6379"
+    )
+    state = _valkey_ready_state(relation, valkey_secrets())
+    out = context.run(context.on.config_changed(), state)
+    backend_env = out.get_container("penpot").plan.services["backend"].environment
+    assert backend_env["PENPOT_REDIS_URI"] == (
+        f"redis://{VALKEY_USERNAME}:{VALKEY_PASSWORD}@valkey-1.valkey-endpoints:6379/0"
+    )
+
+
+def test_valkey_invalid_relation_data(context: testing.Context[PenpotCharm]):
+    """
+    arrange: valkey relation data holds a secret ID that is not a valid secret URI.
+    act: run reconcile via config-changed.
+    assert: the charm doesn't crash and the unit is blocked waiting for valkey.
+    """
+    request = {
+        "resource": "*",
+        "request-id": "id",
+        "salt": "salt",
+        "secret-user": "not-a-secret-uri",
+    }
+    relation = Relation(
+        endpoint="valkey",
+        remote_app_name="valkey",
+        remote_app_data={"version": "v1", "requests": json.dumps([request])},
+    )
+    state = _valkey_ready_state(relation, valkey_secrets())
+    out = context.run(context.on.config_changed(), state)
+    assert out.unit_status == testing.BlockedStatus("waiting for valkey")
+
+
+def test_valkey_waiting_for_credentials(context: testing.Context[PenpotCharm]):
+    """
+    arrange: valkey integration exists but credentials were not shared yet.
+    act: run reconcile via config-changed.
+    assert: the unit is blocked waiting for valkey.
+    """
+    state = _valkey_ready_state(valkey_relation(with_credentials=False), valkey_secrets())
+    out = context.run(context.on.config_changed(), state)
+    assert out.unit_status == testing.BlockedStatus("waiting for valkey")
+
+
+def test_valkey_tls_not_supported(context: testing.Context[PenpotCharm]):
+    """
+    arrange: valkey reports client TLS as enabled.
+    act: run reconcile via config-changed.
+    assert: the unit is blocked because valkey client TLS is not supported.
+    """
+    state = _valkey_ready_state(valkey_relation(), valkey_secrets(tls=True))
+    out = context.run(context.on.config_changed(), state)
+    assert out.unit_status == testing.BlockedStatus("valkey client TLS is not supported")
+
+
+def test_valkey_credentials_rotation(
+    monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]
+):
+    """
+    arrange: valkey rotated the password stored in the user secret.
+    act: run the secret-changed event for the user secret.
+    assert: the URI is updated with the new password.
+    """
+    monkeypatch.setattr(PenpotCharm, "_check_penpot_backend_ready", lambda self: True)
+    new_password = token_hex(16)
+    state = _valkey_ready_state(valkey_relation(), valkey_secrets(password=new_password))
+    user_secret = next(s for s in state.secrets if s.id == VALKEY_USER_SECRET_ID)
+    out = context.run(context.on.secret_changed(user_secret), state)
+    backend_env = out.get_container("penpot").plan.services["backend"].environment
+    assert backend_env["PENPOT_REDIS_URI"] == (
+        f"redis://{VALKEY_USERNAME}:{new_password}@{VALKEY_ENDPOINT}/0"
+    )
 
 
 def test_s3_config(monkeypatch: pytest.MonkeyPatch, context: testing.Context[PenpotCharm]):
@@ -91,11 +205,11 @@ def test_s3_config(monkeypatch: pytest.MonkeyPatch, context: testing.Context[Pen
         relations={
             peer_relation(secret_id=peer_secret.id),
             postgresql_relation(),
-            redis_relation(),
+            valkey_relation(),
             s3_relation(),
             ingress_relation(),
         },
-        secrets={peer_secret},
+        secrets={peer_secret, *valkey_secrets()},
         containers={penpot_container()},
     )
     out = context.run(context.on.config_changed(), state)
@@ -121,12 +235,12 @@ def test_smtp_config(monkeypatch: pytest.MonkeyPatch, context: testing.Context[P
         relations={
             peer_relation(secret_id=peer_secret.id),
             postgresql_relation(),
-            redis_relation(),
+            valkey_relation(),
             s3_relation(),
             smtp_relation(),
             ingress_relation(),
         },
-        secrets={peer_secret},
+        secrets={peer_secret, *valkey_secrets()},
         containers={penpot_container()},
     )
     out = context.run(context.on.config_changed(), state)
@@ -155,12 +269,12 @@ def test_smtp_config_with_password(
         relations={
             peer_relation(secret_id=peer_secret.id),
             postgresql_relation(),
-            redis_relation(),
+            valkey_relation(),
             s3_relation(),
             smtp_relation(use_password=True, password_id=smtp_secret.id),
             ingress_relation(),
         },
-        secrets={peer_secret, smtp_secret},
+        secrets={peer_secret, smtp_secret, *valkey_secrets()},
         containers={penpot_container()},
     )
     out = context.run(context.on.config_changed(), state)
@@ -191,12 +305,12 @@ def test_smtp_config_override_from_address(
         relations={
             peer_relation(secret_id=peer_secret.id),
             postgresql_relation(),
-            redis_relation(),
+            valkey_relation(),
             s3_relation(),
             smtp_relation(use_password=True, password_id=smtp_secret.id),
             ingress_relation(),
         },
-        secrets={peer_secret, smtp_secret},
+        secrets={peer_secret, smtp_secret, *valkey_secrets()},
         containers={penpot_container()},
         config={"smtp-from-address": "test@test.com"},
     )
@@ -300,12 +414,12 @@ def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
         relations={
             peer_relation(secret_id=peer_secret.id, peers=(1, 2)),
             postgresql_relation(),
-            redis_relation(),
+            valkey_relation(),
             s3_relation(),
             smtp_relation(),
             ingress_relation(),
         },
-        secrets={peer_secret},
+        secrets={peer_secret, *valkey_secrets()},
         containers={penpot_container()},
         leader=True,
         model=testing.Model(name="test"),
@@ -352,7 +466,7 @@ def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
                         "enable-smtp"
                     ),
                     "PENPOT_PUBLIC_URI": "https://penpot.local/",
-                    "PENPOT_REDIS_URI": "redis://redis-hostname:6379",
+                    "PENPOT_REDIS_URI": VALKEY_REDIS_URI,
                     "PENPOT_SMTP_DEFAULT_FROM": "no-reply@example.com",
                     "PENPOT_SMTP_DEFAULT_REPLY_TO": "no-reply@example.com",
                     "PENPOT_SMTP_HOST": "smtp-host",
@@ -372,7 +486,7 @@ def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
                 "command": "/opt/node/bin/node app.js",
                 "environment": {
                     "PENPOT_PUBLIC_URI": "http://127.0.0.1:8080",
-                    "PENPOT_REDIS_URI": "redis://redis-hostname:6379",
+                    "PENPOT_REDIS_URI": VALKEY_REDIS_URI,
                     "PLAYWRIGHT_BROWSERS_PATH": "/opt/penpot/exporter/browsers",
                 },
                 "override": "replace",

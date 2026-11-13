@@ -15,6 +15,7 @@ import urllib.parse
 
 import dns.resolver
 import ops
+import pydantic
 import requests
 from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from charms.data_platform_libs.v0.s3 import S3Requirer
@@ -22,19 +23,25 @@ from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.hydra.v0.oauth import ClientConfig, OAuthRequirer
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from charms.redis_k8s.v0.redis import RedisRelationCharmEvents, RedisRequires
 from charms.smtp_integrator.v0.smtp import SmtpRequires, TransportSecurity
 from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
+from dpcharmlibs.interfaces import (
+    RequirerCommonModel,
+    ResourceRequirerEventHandler,
+    ValkeyResponseModel,
+)
 
 logger = logging.getLogger(__name__)
+
+# Valkey scopes both keys and pub/sub channels to this pattern. Penpot keys use the
+# "penpot." prefix but its channels use the tenant prefix ("default."), so request all.
+VALKEY_RESOURCE = "*"
 
 
 # needed for charm libraries
 # pylint: disable=too-many-instance-attributes
 class PenpotCharm(ops.CharmBase):
     """Charm the service."""
-
-    on = RedisRelationCharmEvents()
 
     def __init__(self, *args: typing.Any):
         """Construct.
@@ -47,7 +54,12 @@ class PenpotCharm(ops.CharmBase):
         self.postgresql = DatabaseRequires(
             self, relation_name="postgresql", database_name=self.app.name
         )
-        self.redis = RedisRequires(self, "redis")
+        self.valkey = ResourceRequirerEventHandler(
+            self,
+            relation_name="valkey",
+            requests=[RequirerCommonModel(resource=VALKEY_RESOURCE)],
+            response_model=ValkeyResponseModel,
+        )
         self.smtp = SmtpRequires(self)
         self.s3 = S3Requirer(self, relation_name="s3")
         self.ingress = IngressPerAppRequirer(self, port=8080)
@@ -72,8 +84,11 @@ class PenpotCharm(ops.CharmBase):
         self.framework.observe(self.postgresql.on.database_created, self._reconcile)
         self.framework.observe(self.postgresql.on.endpoints_changed, self._reconcile)
         self.framework.observe(self.on.postgresql_relation_broken, self._reconcile)
-        self.framework.observe(self.redis.charm.on.redis_relation_updated, self._reconcile)
-        self.framework.observe(self.on.redis_relation_broken, self._reconcile)
+        self.framework.observe(self.valkey.on.resource_created, self._reconcile)
+        self.framework.observe(self.valkey.on.endpoints_changed, self._reconcile)
+        self.framework.observe(self.valkey.on.authentication_updated, self._reconcile)
+        self.framework.observe(self.on.valkey_relation_changed, self._reconcile)
+        self.framework.observe(self.on.valkey_relation_broken, self._reconcile)
         self.framework.observe(self.s3.on.credentials_changed, self._reconcile)
         self.framework.observe(self.s3.on.credentials_gone, self._reconcile)
         self.framework.observe(self.smtp.on.smtp_data_available, self._reconcile)
@@ -214,7 +229,7 @@ class PenpotCharm(ops.CharmBase):
                         "PENPOT_FLAGS": " ".join(self._get_penpot_backend_options()),
                         **self._get_penpot_secret_key(),
                         **self._get_postgresql_credentials(),
-                        **self._get_redis_credentials(),
+                        **self._get_valkey_credentials(),
                         **self._get_smtp_credentials(),
                         **self._get_s3_credentials(),
                         **self._get_penpot_oauth_config(),
@@ -229,7 +244,7 @@ class PenpotCharm(ops.CharmBase):
                         "PENPOT_PUBLIC_URI": "http://127.0.0.1:8080",
                         "PLAYWRIGHT_BROWSERS_PATH": "/opt/penpot/exporter/browsers",
                         **self._get_penpot_secret_key(),
-                        **self._get_redis_credentials(),
+                        **self._get_valkey_credentials(),
                     },
                 },
             },
@@ -254,10 +269,14 @@ class PenpotCharm(ops.CharmBase):
             True if penpot is ready to start.
         """
         public_uri = self._get_public_uri()
+        valkey_response = self._get_valkey_response()
+        if valkey_response and valkey_response.tls:
+            self.unit.status = ops.BlockedStatus("valkey client TLS is not supported")
+            return False
         requirements = {
             "peer integration": self._get_penpot_secret_key(),
             "postgresql": self._get_postgresql_credentials(),
-            "redis": self._get_redis_credentials(),
+            "valkey": self._get_valkey_credentials(),
             "s3": self._get_s3_credentials(),
             "ingress": public_uri,
             "penpot container": self.container.can_connect(),
@@ -323,21 +342,41 @@ class PenpotCharm(ops.CharmBase):
             "PENPOT_DATABASE_PASSWORD": password,
         }
 
-    def _get_redis_credentials(self) -> dict[str, str]:
-        """Get penpot redis credentials from the redis integration.
+    def _get_valkey_response(self) -> ValkeyResponseModel | None:
+        """Get the response shared by valkey over the valkey integration.
+
+        Returns:
+            The valkey response, or None if valkey has not responded yet.
+        """
+        relation = self.model.get_relation("valkey")
+        if not relation or not relation.app:
+            return None
+        try:
+            model = self.valkey.interface.build_model(relation.id, component=relation.app)
+        except pydantic.ValidationError:
+            logger.exception("invalid data in the valkey integration")
+            return None
+        return model.requests[0] if model.requests else None
+
+    def _get_valkey_credentials(self) -> dict[str, str]:
+        """Get penpot redis credentials from the valkey integration.
 
         Returns:
             Penpot redis credentials.
         """
-        relation = self.model.get_relation("redis")
-        if not relation or not relation.app:
+        response = self._get_valkey_response()
+        if (
+            not response
+            or response.tls
+            or not response.username
+            or not response.password
+            or not response.endpoints
+        ):
             return {}
-        relation_data = self.redis.relation_data
-        if not relation_data:
-            return {}
-        if url := self.redis.url:
-            return {"PENPOT_REDIS_URI": url}
-        return {}
+        username = urllib.parse.quote(response.username, safe="")
+        password = urllib.parse.quote(response.password, safe="")
+        endpoint = response.endpoints.split(",")[0].strip()
+        return {"PENPOT_REDIS_URI": f"redis://{username}:{password}@{endpoint}/0"}
 
     def _get_smtp_credentials(self) -> dict[str, str]:
         """Get penpot smtp credentials from the smtp integration.

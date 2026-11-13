@@ -16,6 +16,7 @@ classifiers = [
 dependencies = [
   "cosl==1.11.3",
   "dnspython==2.9.2",
+  "dpcharmlibs-interfaces==1.2.2",
   "jsonschema==4.26.0",
   "ops==3.7.0",
   "pydantic[email]==2.14.2",
@@ -122,6 +123,9 @@ ignore-words-list = "edn"
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
+filterwarnings = [
+    "ignore::pydantic.warnings.UnsupportedFieldAttributeWarning",
+]
 
 [tool.coverage.run]
 branch = true

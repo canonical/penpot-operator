@@ -21,8 +21,8 @@ Container_Boundary(postgresql, "PostgreSQL Charm") {
     ComponentDb(penpot-database, "PostgreSQL", "Penpot database", "")
 }
 
-Container_Boundary(redis, "Redis Charm") {
-    ComponentDb(penpot-broker, "Redis", "Penpot broker","")
+Container_Boundary(valkey, "Valkey Charm") {
+    ComponentDb(penpot-broker, "Valkey", "Penpot broker","")
 }
 
 Container_Boundary(s3, "S3 integrator charm") {
@@ -120,9 +120,11 @@ provide the PostgreSQL database required for Penpot to run.
 The [`s3-integrator`](https://charmhub.io/s3-integrator) charm can configure Penpot with S3-compatible storage,
 which is necessary for Penpot to run.
 
-### `redis` integration
+### `valkey` integration
 
-The [`redis-k8s`](https://charmhub.io/redis-k8s) charm can provide the Redis database required for Penpot to run.
+The [`valkey`](https://charmhub.io/valkey) charm provides the Valkey key-value store, a
+Redis-compatible database, required for Penpot to run. Penpot requests access to all keys and
+Pub/Sub channels. Valkey client TLS isn't supported yet; the charm is blocked if it's enabled.
 
 ### `ingress` integration
 

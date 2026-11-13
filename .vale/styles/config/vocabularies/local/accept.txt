@@ -1,3 +1,4 @@
 IPs
 minio
 Penpot
+Valkey
