@@ -151,10 +151,12 @@ def _submit_idp_login(page: Page, email: str, password: str) -> None:
     email_input.wait_for(state="visible", timeout=30_000)
     email_input.fill(email)
     if not password_input.is_visible():
-        page.get_by_role("button", name="Sign in").first.click(timeout=15_000)
+        page.get_by_role("button", name=re.compile(r"continue|next", re.IGNORECASE)).first.click(
+            timeout=15_000
+        )
     password_input.wait_for(state="visible", timeout=30_000)
     password_input.fill(password)
-    submit_button = page.get_by_role("button", name="Sign in").first
+    submit_button = page.get_by_role("button", name="Sign in", exact=True).first
     submit_button.wait_for(state="visible", timeout=15_000)
     submit_button.click(timeout=15_000)
 
