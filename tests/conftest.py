@@ -10,7 +10,5 @@ def pytest_addoption(parser):
     Args:
         parser: Pytest parser.
     """
-    parser.addoption("--charm-file", action="store")
-    parser.addoption("--kube-config", action="store")
-    parser.addoption("--penpot-image", action="store")
-    parser.addoption("--ingress-address", action="store")
+    parser.addoption("--kube-config", action="store", default=None)
+    parser.addoption("--keep-models", action="store_true", default=False)

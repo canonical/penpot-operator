@@ -171,7 +171,7 @@ def test_oauth_login(
         juju.run(
             "kratos/0",
             "create-admin-account",
-            {"email": test_email, "password": test_password, "username": test_username},
+            {"email": test_email, "username": test_username},
         )
 
     secret_name = f"oauth-password-{juju.model}"

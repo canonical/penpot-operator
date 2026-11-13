@@ -7,19 +7,25 @@
 
 import collections
 import logging
+import socket
 import time
+import zipfile
 from collections.abc import Iterator
+from pathlib import Path
 
 import boto3
 import botocore.client
 import jubilant
 import kubernetes
 import pytest
+import yaml
 
-MINIO_REVISION = 383
 POSTGRESQL_REVISION = 774
 REDIS_REVISION = 42
 S3_INTEGRATOR_REVISION = 330
+S3_ACCESS_KEY = "penpot-test-access-key"
+S3_SECRET_KEY = "penpot-test-secret-key"  # nosec B105
+S3_PORT = 7480
 SELF_SIGNED_CERTIFICATES_REVISION = 264
 SMTP_INTEGRATOR_REVISION = 93
 TRAEFIK_PUBLIC_REVISION = 277
@@ -43,18 +49,16 @@ def browser_context_args(browser_context_args: dict) -> dict:
 
 
 @pytest.fixture(name="charm_file", scope="module")
-def charm_file_fixture(pytestconfig: pytest.Config) -> str:
-    """Return the required charm file path for integration tests."""
-    charm = pytestconfig.getoption("--charm-file")
-    assert charm, "--charm-file is required"
-    return charm
+def charm_file_fixture(charm_path: str) -> str:
+    """Return the charm file path built by opcli."""
+    return charm_path
 
 
 @pytest.fixture(name="penpot_image", scope="module")
-def penpot_image_fixture(pytestconfig: pytest.Config) -> str:
-    """Return the required penpot image for integration tests."""
-    image = pytestconfig.getoption("--penpot-image")
-    assert image, "--penpot-image is required"
+def penpot_image_fixture(resource_images: dict[str, str]) -> str:
+    """Return the penpot OCI image built by opcli."""
+    image = resource_images.get("penpot-image", "")
+    assert image, "penpot-image resource not found in artifacts.build.yaml"
     return image
 
 
@@ -72,10 +76,13 @@ def load_kube_config_fixture(pytestconfig: pytest.Config):
 
 
 @pytest.fixture(name="juju", scope="module")
-def juju_fixture(keep_models: bool) -> Iterator[jubilant.Juju]:
+def juju_fixture(request: pytest.FixtureRequest, keep_models: bool) -> Iterator[jubilant.Juju]:
     """Provide a Jubilant Juju client with a temporary model."""
     with jubilant.temp_model(keep=keep_models) as juju_model:
         yield juju_model
+        # The model is destroyed on teardown, so dump the logs while it still exists.
+        if request.session.testsfailed:
+            logger.info("juju debug-log:\n%s", juju_model.debug_log(limit=1000))
 
 
 @pytest.fixture(name="get_unit_ips", scope="module")
@@ -104,32 +111,31 @@ def get_unit_ips_fixture(juju: jubilant.Juju):
 S3Credential = collections.namedtuple("S3Credential", "endpoint bucket access_key secret_key")
 
 
-@pytest.fixture(name="minio", scope="module")
-def minio_fixture(get_unit_ips, load_kube_config, juju: jubilant.Juju) -> S3Credential:
-    """Deploy test minio service."""
-    key = "minioadmin"
-    juju.deploy(
-        "minio",
-        channel="ckf-1.9/stable",
-        revision=MINIO_REVISION,
-        config={"access-key": key, "secret-key": key},
-    )
-    juju.wait(lambda status: jubilant.all_active(status, "minio"), timeout=300)
-    ip = get_unit_ips("minio")[0]
+def _host_ip() -> str:
+    """Get the host's primary IP address, which is reachable from Kubernetes pods."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.connect(("8.8.8.8", 80))
+        return sock.getsockname()[0]
+
+
+@pytest.fixture(name="s3", scope="module")
+def s3_fixture() -> S3Credential:
+    """Create a test bucket in the MicroCeph S3 gateway installed by s3-installation.sh."""
+    endpoint = f"http://{_host_ip()}:{S3_PORT}"
     s3 = boto3.client(
         "s3",
-        endpoint_url=f"http://{ip}:9000",
-        aws_access_key_id=key,
-        aws_secret_access_key=key,
+        endpoint_url=endpoint,
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_KEY,
         config=botocore.client.Config(signature_version="s3v4"),
     )
     bucket = "penpot"
     s3.create_bucket(Bucket=bucket)
     return S3Credential(
-        endpoint=f"http://minio-endpoints.{juju.model}.svc.cluster.local:9000",
+        endpoint=endpoint,
         bucket=bucket,
-        access_key=key,
-        secret_key=key,
+        access_key=S3_ACCESS_KEY,
+        secret_key=S3_SECRET_KEY,
     )
 
 
@@ -196,12 +202,47 @@ def mailcatcher_fixture(load_kube_config, juju: jubilant.Juju) -> SmtpCredential
     )
 
 
+def _deploy_redis(juju: jubilant.Juju, workdir: Path) -> None:
+    """Deploy redis-k8s.
+
+    Juju 4.0 gives every resource of a charm the type of whichever of the charm's resources
+    was recorded first, so the redis-image resource randomly gets stored as a file and the
+    unit never starts (juju/juju#23558). On Juju 4, deploy a copy of the charm with only its
+    image resource.
+    """
+    if juju.version().major < 4:
+        juju.deploy("redis-k8s", channel="edge", revision=REDIS_REVISION)
+        return
+    # Juju is a strictly confined snap, so the charm can't be put in /tmp.
+    downloaded = workdir / "redis-k8s.charm"
+    juju.cli(
+        "download",
+        "redis-k8s",
+        "--revision",
+        str(REDIS_REVISION),
+        "--filepath",
+        str(downloaded),
+        include_model=False,
+    )
+    trimmed = workdir / "redis-k8s-image-only.charm"
+    with zipfile.ZipFile(downloaded) as src, zipfile.ZipFile(trimmed, "w") as dst:
+        for item in src.infolist():
+            data = src.read(item)
+            if item.filename == "metadata.yaml":
+                metadata = yaml.safe_load(data)
+                image = metadata["resources"]["redis-image"]
+                metadata["resources"] = {"redis-image": image}
+                data = yaml.safe_dump(metadata).encode()
+            dst.writestr(item, data)
+    juju.deploy(trimmed, "redis-k8s", resources={"redis-image": image["upstream"]})
+
+
 @pytest.fixture(name="deployment", scope="module")
 def deployment_fixture(
     juju: jubilant.Juju,
     charm_file: str,
     penpot_image: str,
-    minio: S3Credential,
+    s3: S3Credential,
     mailcatcher: SmtpCredential,
     get_unit_ips,
 ) -> set[str]:
@@ -210,7 +251,15 @@ def deployment_fixture(
     Returns:
         A set of deployed application names.
     """
-    juju.deploy("postgresql-k8s", channel="14/stable", revision=POSTGRESQL_REVISION, trust=True)
+    # Every published postgresql-k8s revision declares `assumes: juju < 4`;
+    # Juju only skips a failed assumes check when --force is given.
+    juju.deploy(
+        "postgresql-k8s",
+        channel="14/stable",
+        revision=POSTGRESQL_REVISION,
+        trust=True,
+        force=juju.version().major >= 4,
+    )
     juju.deploy(
         "self-signed-certificates",
         channel="latest/stable",
@@ -218,12 +267,12 @@ def deployment_fixture(
         trust=True,
     )
     juju.deploy(
-        f"./{charm_file}",
+        charm_file,
         app="penpot",
         resources={"penpot-image": penpot_image},
         num_units=2,
     )
-    juju.deploy("redis-k8s", channel="edge", revision=REDIS_REVISION)
+    _deploy_redis(juju, Path(charm_file).parent)
     juju.deploy(
         "smtp-integrator",
         channel="latest/stable",
@@ -239,7 +288,7 @@ def deployment_fixture(
         "s3-integrator",
         channel="1/stable",
         revision=S3_INTEGRATOR_REVISION,
-        config={"bucket": minio.bucket, "endpoint": minio.endpoint},
+        config={"bucket": s3.bucket, "endpoint": s3.endpoint},
     )
     juju.deploy(
         "traefik-k8s",
@@ -269,8 +318,8 @@ def deployment_fixture(
         "s3-integrator/0",
         "sync-s3-credentials",
         {
-            "access-key": minio.access_key,
-            "secret-key": minio.secret_key,
+            "access-key": s3.access_key,
+            "secret-key": s3.secret_key,
         },
     )
 
