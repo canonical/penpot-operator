@@ -234,11 +234,6 @@ def test_oauth_login(
             try:
                 oidc_button.wait_for(state="visible", timeout=30_000)
             except PlaywrightTimeoutError as err:
-                logger.error(
-                    "OIDC button missing, url=%s text=%s",
-                    page.url,
-                    page.inner_text("body")[:2000],
-                )
                 raise AssertionError("OIDC button did not become visible") from err
 
             oidc_button.click()
@@ -256,14 +251,10 @@ def test_oauth_login(
     _submit_idp_login(page, test_email, test_password)
 
     # Current login UI either redirects directly to Penpot or shows consent first.
-    try:
-        page.wait_for_url(
-            re.compile(rf".*/ui/consent\?.*|^{re.escape(public_url)}/.*"),
-            timeout=60_000,
-        )
-    except PlaywrightTimeoutError:
-        logger.error("after sign-in, url=%s text=%s", page.url, page.inner_text("body")[:2000])
-        raise
+    page.wait_for_url(
+        re.compile(rf".*/ui/consent\?.*|^{re.escape(public_url)}/.*"),
+        timeout=60_000,
+    )
     if "/ui/consent" in page.url:
         consent_button = page.get_by_role(
             "button",
