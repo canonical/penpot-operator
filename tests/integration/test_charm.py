@@ -211,7 +211,7 @@ def test_oauth_login(
     # with the flags from the oauth relation. Wait for that config instead of
     # relying on the 30s button timeout, which is what produced the flaky
     # "OIDC button did not become visible" failures.
-    wait_for_config_flags(f"{public_url}/js/config.js", ["enable-login-with-oidc"], timeout=120)
+    wait_for_config_flags(juju, penpot_units, ["enable-login-with-oidc"], timeout=120)
 
     idp_url = re.compile(r".*/(oauth2/auth|ui/login)\?.*")
     for attempt in Retrying(stop=stop_after_attempt(4), wait=wait_fixed(10), reraise=True):

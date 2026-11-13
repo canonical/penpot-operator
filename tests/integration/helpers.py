@@ -183,26 +183,30 @@ def get_public_url(juju: jubilant.Juju) -> str:
     return url
 
 
-def wait_for_config_flags(url: str, flags: list[str], timeout: int = 120) -> None:
-    """Wait until the Penpot frontend config.js exposes the given flags.
+def wait_for_config_flags(
+    juju: jubilant.Juju, units: list[str], flags: list[str], timeout: int = 120
+) -> None:
+    """Wait until every Penpot unit's config.js exposes the given flags.
 
-    The OIDC login button only renders when the frontend has been reconfigured
-    with ``enable-login-with-oidc``. Waiting for the flag here avoids a
-    confusing 30s "button not visible" timeout when the frontend is still
-    serving its previous config.
+    Checking each unit matters: with more than one unit the ingress can route
+    the browser to a unit whose frontend has not been reconfigured yet, which
+    shows up as "OIDC button did not become visible".
     """
-    try:
-        for attempt in Retrying(
-            stop=stop_after_delay(timeout),
-            wait=wait_fixed(5),
-            retry=retry_if_exception_type((requests.RequestException, RuntimeError)),
-        ):
-            with attempt:
-                response = requests.get(url, timeout=10, verify=False)  # nosec: B501
-                if response.status_code >= 500:
-                    raise RuntimeError(f"endpoint not ready: {response.status_code}")
-                missing = [flag for flag in flags if flag not in response.text]
-                if missing:
-                    raise RuntimeError(f"config.js is missing flags: {missing}")
-    except RetryError as error:
-        raise TimeoutError(f"timed out waiting for config flags: {url}") from error
+    for unit_name in units:
+        try:
+            for attempt in Retrying(
+                stop=stop_after_delay(timeout),
+                wait=wait_fixed(5),
+                retry=retry_if_exception_type((jubilant.CLIError, RuntimeError)),
+            ):
+                with attempt:
+                    config = juju.ssh(
+                        unit_name, "cat", "/var/www/app/js/config.js", container="penpot"
+                    )
+                    missing = [flag for flag in flags if flag not in config]
+                    if missing:
+                        raise RuntimeError(f"{unit_name} config.js is missing flags: {missing}")
+        except RetryError as error:
+            raise TimeoutError(
+                f"timed out waiting for config flags on {unit_name}: {flags}"
+            ) from error
