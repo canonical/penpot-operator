@@ -66,6 +66,48 @@ def _run_migration(juju: jubilant.Juju, app: str, attempt: int) -> None:
         logger.info("run-migration on %s completed", app)
 
 
+CRASH_LOOP_MARKER = "crash loop backoff"
+
+
+def _crash_loop_details(status: jubilant.Status) -> list[str]:
+    """Return app/unit status messages that indicate a crash loop."""
+    details = []
+    for app_name, app_status in status.apps.items():
+        messages = [app_status.app_status.message]
+        messages.extend(unit.workload_status.message for unit in app_status.units.values())
+        for message in messages:
+            if message and CRASH_LOOP_MARKER in message.lower():
+                details.append(f"{app_name}: {message}")
+    return details
+
+
+def _raise_on_crash_loop(status: jubilant.Status) -> None:
+    """Raise a clear error if any app or unit is crash-looping."""
+    if details := _crash_loop_details(status):
+        raise RuntimeError(
+            "detected a crash loop while waiting for apps to become active:\n" + "\n".join(details)
+        )
+
+
+def wait_for_active(juju: jubilant.Juju, apps: set[str], timeout: int = 900):
+    """Wait for all apps to be active, failing fast if one is crash-looping."""
+
+    @retry(
+        stop=stop_after_delay(timeout),
+        wait=wait_fixed(10),
+        retry=retry_if_result(lambda active: not active),
+    )
+    def check() -> bool:
+        status = juju.status()
+        _raise_on_crash_loop(status)
+        return jubilant.all_active(status, *apps)
+
+    try:
+        check()
+    except RetryError as error:
+        raise TimeoutError(f"timed out after {timeout}s\n{juju.status()}") from error
+
+
 def wait_for_active_with_migrations(juju: jubilant.Juju, apps: set[str], timeout: int = 900):
     """Wait for all apps to be active, running hydra/kratos migrations if they get stuck.
 
@@ -82,6 +124,7 @@ def wait_for_active_with_migrations(juju: jubilant.Juju, apps: set[str], timeout
     )
     def check() -> bool:
         status = juju.status()
+        _raise_on_crash_loop(status)
         if jubilant.all_active(status, *apps):
             return True
         now = time.monotonic()

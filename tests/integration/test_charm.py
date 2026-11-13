@@ -22,6 +22,7 @@ from tenacity import (
 
 from tests.integration.helpers import (
     get_public_url,
+    wait_for_active,
     wait_for_active_with_migrations,
     wait_for_config_flags,
     wait_for_endpoint,
@@ -70,16 +71,13 @@ def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str
         juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
 
 
-def test_create_profile(juju: jubilant.Juju, deployment: list[str]):
+def test_create_profile(juju: jubilant.Juju, deployment: set[str]):
     """
     arrange: deploy the Penpot charm.
     act: create a Penpot account using the 'create-profile' charm action.
     assert: the account created can be used to log in to Penpot.
     """
-    juju.wait(
-        lambda status: jubilant.all_active(status, *deployment),
-        timeout=900,
-    )
+    wait_for_active(juju, deployment, timeout=900)
     public_url = get_public_url(juju)
 
     email = secrets.token_hex(8) + "@example.com"
@@ -184,7 +182,7 @@ def test_oauth_login(
     inject_root_certs(juju, penpot_units, ca_cert)
     juju.integrate("penpot:oauth", "hydra")
 
-    juju.wait(lambda status: jubilant.all_active(status, "penpot", "hydra"), timeout=600)
+    wait_for_active(juju, {"penpot", "hydra"}, timeout=600)
 
     test_email = secrets.token_hex(8) + "@example.com"
     test_password = secrets.token_hex(16)
