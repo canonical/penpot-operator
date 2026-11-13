@@ -230,9 +230,13 @@ def test_oauth_login(
                 oidc_button.wait_for(state="visible", timeout=30_000)
             except PlaywrightTimeoutError as err:
                 logger.error(
-                    "OIDC button missing, url=%s text=%s",
+                    "OIDC button missing, url=%s text=%s penpotFlags=%r config_js=%s",
                     page.url,
                     page.inner_text("body")[:2000],
+                    page.evaluate("window.penpotFlags"),
+                    requests.get(
+                        f"{public_url}/js/config.js", timeout=10, verify=False
+                    ).text[:500],
                 )
                 raise AssertionError("OIDC button did not become visible") from err
 
