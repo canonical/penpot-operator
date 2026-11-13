@@ -254,7 +254,7 @@ def test_oauth_login(
             timeout=60_000,
         )
     except PlaywrightTimeoutError:
-        logger.error("after sign-in, url=%s content=%s", page.url, page.content()[:2000])
+        logger.error("after sign-in, url=%s text=%s", page.url, page.inner_text("body")[:2000])
         raise
     if "/ui/consent" in page.url:
         consent_button = page.get_by_role(
