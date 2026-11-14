@@ -22,6 +22,10 @@ from tenacity import (
 
 from tests.integration.helpers import (
     get_public_url,
+    wait_for_active,
+    wait_for_active_with_migrations,
+    wait_for_backend_ready,
+    wait_for_config_flags,
     wait_for_endpoint,
 )
 
@@ -68,16 +72,13 @@ def inject_root_certs(juju: jubilant.Juju, penpot_units: list[str], ca_cert: str
         juju.ssh(unit_name, "pebble", "restart", "backend", container="penpot")
 
 
-def test_create_profile(juju: jubilant.Juju, deployment: list[str]):
+def test_create_profile(juju: jubilant.Juju, deployment: set[str]):
     """
     arrange: deploy the Penpot charm.
     act: create a Penpot account using the 'create-profile' charm action.
     assert: the account created can be used to log in to Penpot.
     """
-    juju.wait(
-        lambda status: jubilant.all_active(status, *deployment),
-        timeout=900,
-    )
+    wait_for_active(juju, deployment, timeout=900)
     public_url = get_public_url(juju)
 
     email = secrets.token_hex(8) + "@example.com"
@@ -136,6 +137,78 @@ def test_create_profile(juju: jubilant.Juju, deployment: list[str]):
             raise AssertionError(f"login status {response.status_code}")
 
 
+def _submit_idp_login(page: Page, email: str, password: str) -> None:
+    """Fill and submit the identity provider login form.
+
+    Newer login UIs use an "identifier first" flow: the password field is only
+    rendered after the identifier has been submitted.
+    """
+    email_input = page.locator(
+        'input[name="identifier"], input[name="email"], input[type="email"]'
+    ).first
+    password_input = page.locator('input[name="password"], input[type="password"]').first
+    email_input.wait_for(state="visible", timeout=30_000)
+    email_input.fill(email)
+    if not password_input.is_visible():
+        page.get_by_role("button", name=re.compile(r"continue|next", re.IGNORECASE)).first.click(
+            timeout=15_000
+        )
+    password_input.wait_for(state="visible", timeout=30_000)
+    password_input.fill(password)
+    submit_button = page.get_by_role("button", name="Sign in", exact=True).first
+    submit_button.wait_for(state="visible", timeout=15_000)
+    submit_button.click(timeout=15_000)
+
+
+def _do_oidc_login(page: Page, public_url: str, email: str, password: str) -> None:
+    """Drive the Penpot -> OIDC -> identity provider -> consent flow.
+
+    Ends on Penpot's validate-registration page. Raises on any step that does
+    not complete, so the caller can retry the whole flow.
+    """
+    idp_url = re.compile(r".*/(oauth2/auth|ui/login)\?.*")
+    page.goto(f"{public_url}/#/auth/login", wait_until="domcontentloaded")
+    logger.info("Navigated to penpot login. Current URL: %s", page.url)
+    if not idp_url.match(page.url):
+        oidc_button = page.locator(
+            'a[href*="/api/auth/oauth/oidc"], button:has-text("OpenID"), a:has-text("OpenID")'
+        ).first
+        try:
+            oidc_button.wait_for(state="visible", timeout=30_000)
+        except PlaywrightTimeoutError as err:
+            raise AssertionError("OIDC button did not become visible") from err
+        oidc_button.click()
+        try:
+            page.wait_for_url(idp_url, timeout=30_000)
+        except PlaywrightTimeoutError as err:
+            raise AssertionError("OIDC click did not redirect to the identity provider") from err
+
+    logger.info("after OIDC click, url: %s", page.url)
+    _submit_idp_login(page, email, password)
+
+    # Current login UI either redirects directly to Penpot or shows consent first.
+    try:
+        page.wait_for_url(
+            re.compile(rf".*/ui/consent\?.*|^{re.escape(public_url)}/.*"),
+            timeout=60_000,
+        )
+    except PlaywrightTimeoutError:
+        logger.error("after sign-in, url=%s text=%s", page.url, page.inner_text("body")[:2000])
+        raise
+    if "/ui/consent" in page.url:
+        consent_button = page.get_by_role(
+            "button",
+            name=re.compile(r"accept|allow|authorize|continue", re.IGNORECASE),
+        ).first
+        # In this UI version, consent can auto-forward quickly after challenge validation.
+        if consent_button.is_visible(timeout=5_000):
+            consent_button.click(timeout=15_000)
+        page.wait_for_url(f"{public_url}/**", timeout=30_000)
+
+    validate_url = re.compile(rf"^{re.escape(public_url)}/#/auth/register/validate.*")
+    page.wait_for_url(validate_url, timeout=120_000)
+
+
 def test_oauth_login(
     juju: jubilant.Juju,
     deployment_with_identity_bundle: set[str],
@@ -146,9 +219,7 @@ def test_oauth_login(
     act: integrate penpot with hydra and log in using Kratos native credentials.
     assert: the login flow completes successfully and the user is directed to the validate registration page.
     """
-    juju.wait(
-        lambda status: jubilant.all_active(status, *deployment_with_identity_bundle), timeout=900
-    )
+    wait_for_active_with_migrations(juju, deployment_with_identity_bundle, timeout=900)
     public_url = get_public_url(juju)
 
     ca_cert = juju.run("self-signed-certificates/0", "get-ca-certificate").results[
@@ -161,7 +232,7 @@ def test_oauth_login(
     inject_root_certs(juju, penpot_units, ca_cert)
     juju.integrate("penpot:oauth", "hydra")
 
-    juju.wait(lambda status: jubilant.all_active(status, "penpot", "hydra"), timeout=600)
+    wait_for_active(juju, {"penpot", "hydra"}, timeout=600)
 
     test_email = secrets.token_hex(8) + "@example.com"
     test_password = secrets.token_hex(16)
@@ -186,69 +257,19 @@ def test_oauth_login(
         raise AssertionError(f"reset-password failed: {reset_task.results}")
 
     wait_for_endpoint(f"{public_url}/#/auth/login", timeout=300)
+    # The OIDC button only renders once the frontend config has been rewritten
+    # with the flags from the oauth relation. Wait for that config instead of
+    # relying on the 30s button timeout, which is what produced the flaky
+    # "OIDC button did not become visible" failures.
+    wait_for_config_flags(juju, penpot_units, ["enable-login-with-oidc"], timeout=120)
+    # The frontend can serve its SPA while the backend is restarting, which shows
+    # the "Bad Gateway" page and no OIDC button. Make sure every backend is ready
+    # before driving the browser.
+    wait_for_backend_ready(juju, penpot_units, timeout=300)
 
-    idp_url = re.compile(r".*/(oauth2/auth|ui/login)\?.*")
-    for attempt in Retrying(stop=stop_after_attempt(4), wait=wait_fixed(10), reraise=True):
+    for attempt in Retrying(stop=stop_after_attempt(3), wait=wait_fixed(10), reraise=True):
         with attempt:
-            page.goto(f"{public_url}/#/auth/login", wait_until="domcontentloaded")
-            logger.info("Navigated to penpot login. Current URL: %s", page.url)
-            logger.info("Penpot login page content (first 1200): %s", page.content()[:1200])
-
-            if idp_url.match(page.url):
-                break
-
-            oidc_button = page.locator(
-                'a[href*="/api/auth/oauth/oidc"], button:has-text("OpenID"), a:has-text("OpenID")'
-            ).first
-            try:
-                oidc_button.wait_for(state="visible", timeout=30_000)
-            except PlaywrightTimeoutError as err:
-                raise AssertionError("OIDC button did not become visible") from err
-
-            oidc_button.click()
-            try:
-                page.wait_for_url(idp_url, timeout=30_000)
-            except PlaywrightTimeoutError as err:
-                raise AssertionError(
-                    "OIDC click did not redirect to the identity provider"
-                ) from err
-
-            break
-    logger.info("after OIDC click, url: %s", page.url)
-    logger.info("IdP login page content (first 1200): %s", page.content()[:1200])
-
-    email_input = page.locator(
-        'input[name="identifier"], input[name="email"], input[type="email"]'
-    ).first
-    password_input = page.locator('input[name="password"], input[type="password"]').first
-    email_input.wait_for(state="visible", timeout=30_000)
-    password_input.wait_for(state="visible", timeout=30_000)
-    email_input.fill(test_email)
-    password_input.fill(test_password)
-
-    submit_button = page.get_by_role(
-        "button",
-        name="Sign in",
-    ).first
-    submit_button.wait_for(state="visible", timeout=15_000)
-    submit_button.click(timeout=15_000)
-
-    # Current login UI either redirects directly to Penpot or shows consent first.
-    page.wait_for_url(
-        re.compile(rf".*/ui/consent\?.*|^{re.escape(public_url)}/.*"),
-        timeout=30_000,
-    )
-    if "/ui/consent" in page.url:
-        consent_button = page.get_by_role(
-            "button",
-            name=re.compile(r"accept|allow|authorize|continue", re.IGNORECASE),
-        ).first
-        # In this UI version, consent can auto-forward quickly after challenge validation.
-        if consent_button.is_visible(timeout=5_000):
-            consent_button.click(timeout=15_000)
-        page.wait_for_url(f"{public_url}/**", timeout=30_000)
+            _do_oidc_login(page, public_url, test_email, test_password)
 
     logger.info("final url: %s", page.url)
     logger.info("Final page content (first 1200): %s", page.content()[:1200])
-    validate_url = re.compile(rf"^{re.escape(public_url)}/#/auth/register/validate.*")
-    page.wait_for_url(validate_url, timeout=120_000)
