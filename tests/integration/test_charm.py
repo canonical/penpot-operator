@@ -12,7 +12,7 @@ import tempfile
 
 import jubilant
 import requests
-from playwright.sync_api import Page
+from playwright.sync_api import Browser, Page
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from tenacity import (
     Retrying,
@@ -160,59 +160,79 @@ def _submit_idp_login(page: Page, email: str, password: str) -> None:
     submit_button.click(timeout=15_000)
 
 
-def _do_oidc_login(page: Page, public_url: str, email: str, password: str) -> None:
+def _do_oidc_login(
+    browser: Browser,
+    context_args: dict,
+    public_url: str,
+    email: str,
+    password: str,
+) -> Page:
     """Drive the Penpot -> OIDC -> identity provider -> consent flow.
 
     Ends on Penpot's validate-registration page. Raises on any step that does
     not complete, so the caller can retry the whole flow.
+
+    Each attempt runs in a fresh browser context. Reusing a context would let a
+    session left by a failed attempt skip the Kratos login form, and the retry
+    would then wait for a form that never appears.
     """
-    idp_url = re.compile(r".*/(oauth2/auth|ui/login)\?.*")
-    page.goto(f"{public_url}/#/auth/login", wait_until="domcontentloaded")
-    logger.info("Navigated to penpot login. Current URL: %s", page.url)
-    if not idp_url.match(page.url):
-        oidc_button = page.locator(
-            'a[href*="/api/auth/oauth/oidc"], button:has-text("OpenID"), a:has-text("OpenID")'
-        ).first
-        try:
-            oidc_button.wait_for(state="visible", timeout=30_000)
-        except PlaywrightTimeoutError as err:
-            raise AssertionError("OIDC button did not become visible") from err
-        oidc_button.click()
-        try:
-            page.wait_for_url(idp_url, timeout=30_000)
-        except PlaywrightTimeoutError as err:
-            raise AssertionError("OIDC click did not redirect to the identity provider") from err
-
-    logger.info("after OIDC click, url: %s", page.url)
-    _submit_idp_login(page, email, password)
-
-    # Current login UI either redirects directly to Penpot or shows consent first.
+    context = browser.new_context(**context_args)
+    page = context.new_page()
     try:
-        page.wait_for_url(
-            re.compile(rf".*/ui/consent\?.*|^{re.escape(public_url)}/.*"),
-            timeout=60_000,
-        )
-    except PlaywrightTimeoutError:
-        logger.error("after sign-in, url=%s text=%s", page.url, page.inner_text("body")[:2000])
-        raise
-    if "/ui/consent" in page.url:
-        consent_button = page.get_by_role(
-            "button",
-            name=re.compile(r"accept|allow|authorize|continue", re.IGNORECASE),
-        ).first
-        # In this UI version, consent can auto-forward quickly after challenge validation.
-        if consent_button.is_visible(timeout=5_000):
-            consent_button.click(timeout=15_000)
-        page.wait_for_url(f"{public_url}/**", timeout=30_000)
+        idp_url = re.compile(r".*/(oauth2/auth|ui/login)\?.*")
+        page.goto(f"{public_url}/#/auth/login", wait_until="domcontentloaded")
+        logger.info("Navigated to penpot login. Current URL: %s", page.url)
+        if not idp_url.match(page.url):
+            oidc_button = page.locator(
+                'a[href*="/api/auth/oauth/oidc"], button:has-text("OpenID"), a:has-text("OpenID")'
+            ).first
+            try:
+                oidc_button.wait_for(state="visible", timeout=30_000)
+            except PlaywrightTimeoutError as err:
+                raise AssertionError("OIDC button did not become visible") from err
+            oidc_button.click()
+            try:
+                page.wait_for_url(idp_url, timeout=30_000)
+            except PlaywrightTimeoutError as err:
+                raise AssertionError(
+                    "OIDC click did not redirect to the identity provider"
+                ) from err
 
-    validate_url = re.compile(rf"^{re.escape(public_url)}/#/auth/register/validate.*")
-    page.wait_for_url(validate_url, timeout=120_000)
+        logger.info("after OIDC click, url: %s", page.url)
+        _submit_idp_login(page, email, password)
+
+        # Current login UI either redirects directly to Penpot or shows consent first.
+        try:
+            page.wait_for_url(
+                re.compile(rf".*/ui/consent\?.*|^{re.escape(public_url)}/.*"),
+                timeout=60_000,
+            )
+        except PlaywrightTimeoutError:
+            logger.error("after sign-in, url=%s text=%s", page.url, page.inner_text("body")[:2000])
+            raise
+        if "/ui/consent" in page.url:
+            consent_button = page.get_by_role(
+                "button",
+                name=re.compile(r"accept|allow|authorize|continue", re.IGNORECASE),
+            ).first
+            # In this UI version, consent can auto-forward quickly after challenge validation.
+            if consent_button.is_visible(timeout=5_000):
+                consent_button.click(timeout=15_000)
+            page.wait_for_url(f"{public_url}/**", timeout=30_000)
+
+        validate_url = re.compile(rf"^{re.escape(public_url)}/#/auth/register/validate.*")
+        page.wait_for_url(validate_url, timeout=120_000)
+    except Exception:
+        context.close()
+        raise
+    return page
 
 
 def test_oauth_login(
     juju: jubilant.Juju,
     deployment_with_identity_bundle: set[str],
-    page: Page,
+    browser: Browser,
+    browser_context_args: dict,
 ):
     """
     arrange: deploy the Penpot charm with OAuth identity stack.
@@ -269,7 +289,9 @@ def test_oauth_login(
 
     for attempt in Retrying(stop=stop_after_attempt(3), wait=wait_fixed(10), reraise=True):
         with attempt:
-            _do_oidc_login(page, public_url, test_email, test_password)
+            page = _do_oidc_login(
+                browser, browser_context_args, public_url, test_email, test_password
+            )
 
     logger.info("final url: %s", page.url)
     logger.info("Final page content (first 1200): %s", page.content()[:1200])
