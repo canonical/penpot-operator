@@ -234,9 +234,13 @@ class PenpotCharm(ops.CharmBase):
                 },
             },
             checks={
+                # Penpot's JVM can take longer to start than the check threshold.
+                # A liveness ("alive") check would make Juju restart the whole
+                # container during startup, so use a readiness check instead: it
+                # only takes the unit out of rotation until the backend is ready.
                 "backend-ready": {
                     "override": "replace",
-                    "level": "alive",
+                    "level": "ready",
                     "period": "30s",
                     "exec": {
                         # pylint: disable=line-too-long

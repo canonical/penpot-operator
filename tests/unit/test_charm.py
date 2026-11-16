@@ -325,7 +325,7 @@ def test_penpot_pebble_layer(context: testing.Context[PenpotCharm]):
                     # pylint: disable=line-too-long
                     "command": 'bash -c "pebble services backend | grep -q inactive || curl -f -m 5 localhost:6060/readyz"'
                 },
-                "level": "alive",
+                "level": "ready",
                 "override": "replace",
                 "period": "30s",
             }
