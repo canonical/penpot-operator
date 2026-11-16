@@ -51,25 +51,6 @@ resource "juju_offer" "postgresql" {
   endpoints        = ["database"]
 }
 
-resource "juju_application" "redis_k8s" {
-  count = local.deploy_redis_k8s ? 1 : 0
-
-  name       = var.redis_k8s.app_name
-  model_uuid = var.model_uuid
-
-  charm {
-    name     = "redis-k8s"
-    channel  = local.redis_k8s_channel
-    revision = var.redis_k8s.revision
-    base     = var.redis_k8s.base
-  }
-
-  config      = var.redis_k8s.config
-  constraints = var.redis_k8s.constraints
-  resources   = var.redis_k8s.resources
-  units       = var.redis_k8s.units
-}
-
 resource "juju_application" "s3_integrator" {
   count = local.deploy_s3_integrator ? 1 : 0
 
@@ -103,21 +84,6 @@ resource "juju_integration" "penpot_postgresql" {
   }
 }
 
-resource "juju_integration" "penpot_redis" {
-  model_uuid = var.model_uuid
-
-  application {
-    name     = module.penpot.application.name
-    endpoint = module.penpot.requires.redis.endpoint
-  }
-
-  application {
-    name      = local.redis_target.name
-    offer_url = local.redis_target.offer_url
-    endpoint  = local.redis_target.endpoint
-  }
-}
-
 resource "juju_integration" "penpot_s3" {
   model_uuid = var.model_uuid
 
@@ -147,5 +113,35 @@ resource "juju_integration" "penpot_optional" {
     name      = each.value.name
     offer_url = each.value.offer_url
     endpoint  = each.value.endpoint
+  }
+}
+
+module "valkey" {
+  count  = local.deploy_valkey ? 1 : 0
+  source = "git::https://github.com/canonical/valkey-operator.git//terraform/charm?ref=9/edge"
+
+  app_name    = var.valkey.app_name
+  model_uuid  = var.model_uuid
+  base        = var.valkey.base
+  channel     = local.valkey_channel
+  config      = var.valkey.config
+  constraints = var.valkey.constraints
+  revision    = var.valkey.revision
+  units       = var.valkey.units
+  trust       = true
+}
+
+resource "juju_integration" "penpot_valkey" {
+  model_uuid = var.model_uuid
+
+  application {
+    name     = module.penpot.application.name
+    endpoint = module.penpot.requires.valkey.endpoint
+  }
+
+  application {
+    name      = local.valkey_target.name
+    offer_url = local.valkey_target.offer_url
+    endpoint  = local.valkey_target.endpoint
   }
 }

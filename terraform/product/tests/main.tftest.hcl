@@ -26,8 +26,8 @@ run "external_integrations" {
     postgresql_integration = {
       offer_url = "admin/database.postgresql"
     }
-    redis_integration = {
-      name = "redis"
+    valkey_integration = {
+      name = "valkey"
     }
     s3_integration = {
       offer_url = "admin/storage.s3"
@@ -44,14 +44,55 @@ run "external_integrations" {
   }
 
   assert {
-    condition     = length(juju_application.redis_k8s) == 0 && length(juju_application.s3_integrator) == 0
-    error_message = "the bundled redis-k8s and s3-integrator should not be deployed when their integrations are set"
+    condition     = length(module.valkey) == 0 && length(juju_application.s3_integrator) == 0
+    error_message = "the bundled valkey and s3-integrator should not be deployed when their integrations are set"
   }
 
   assert {
     condition     = keys(juju_integration.penpot_optional) == ["ingress"]
     error_message = "only the ingress optional integration should be created"
   }
+}
+
+run "stale_redis_k8s" {
+  command = plan
+
+  variables {
+    model_uuid          = run.setup_tests.model_uuid
+    database_model_uuid = run.setup_tests.database_model_uuid
+    redis_k8s           = {}
+  }
+
+  expect_failures = [var.redis_k8s]
+}
+
+run "stale_redis_integration" {
+  command = plan
+
+  variables {
+    model_uuid          = run.setup_tests.model_uuid
+    database_model_uuid = run.setup_tests.database_model_uuid
+    redis_integration = {
+      name = "redis"
+    }
+  }
+
+  expect_failures = [var.redis_integration]
+}
+
+run "invalid_valkey_integration" {
+  command = plan
+
+  variables {
+    model_uuid          = run.setup_tests.model_uuid
+    database_model_uuid = run.setup_tests.database_model_uuid
+    valkey_integration = {
+      name      = "valkey"
+      offer_url = "admin/cache.valkey"
+    }
+  }
+
+  expect_failures = [var.valkey_integration]
 }
 
 run "basic_deploy" {
@@ -61,19 +102,19 @@ run "basic_deploy" {
     risk                = "edge"
     penpot = {
       # renovate: depName="penpot"
-      revision = 87
+      revision = 96
     }
     postgresql = {
       # renovate: depName="postgresql"
       revision = 1236
     }
-    redis_k8s = {
-      # renovate: depName="redis-k8s"
-      revision = 42
-    }
     s3_integrator = {
       # renovate: depName="s3-integrator"
       revision = 637
+    }
+    valkey = {
+      # renovate: depName="valkey"
+      revision = 158
     }
   }
 
@@ -83,8 +124,8 @@ run "basic_deploy" {
   }
 
   assert {
-    condition     = keys(output.models.penpot.components) == ["penpot", "redis_k8s", "s3_integrator"]
-    error_message = "the penpot model should contain penpot, redis-k8s and s3-integrator"
+    condition     = keys(output.models.penpot.components) == ["penpot", "s3_integrator", "valkey"]
+    error_message = "the penpot model should contain penpot, s3-integrator and valkey"
   }
 
   assert {
