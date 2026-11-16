@@ -1,2 +1,1 @@
-ignore_files:
-  - lib/charms/redis_k8s/v0/redis.py
+ignore_files: []

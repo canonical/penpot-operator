@@ -10,7 +10,7 @@ from typing import cast
 
 import pytest
 from ops import pebble, testing
-from ops.testing import Exec, PeerRelation, Relation
+from ops.testing import Exec, PeerRelation, Relation, Secret
 from scenario.state import Container as ScenarioContainer
 
 from src.charm import PenpotCharm
@@ -21,6 +21,13 @@ SMTP_SECRET_ID = token_hex(16)
 PEER_SECRET_ID = token_hex(16)
 POSTGRESQL_PASSWORD = token_hex(16)
 S3_SECRET_KEY = token_hex(16)
+VALKEY_USERNAME = "relation-5-penpot"
+VALKEY_PASSWORD = token_hex(16)
+VALKEY_ENDPOINT = "valkey-0.valkey-endpoints:6379"
+# data-interfaces v1 rejects secret IDs that do not start with "secret:".
+VALKEY_USER_SECRET_ID = f"secret:{token_hex(10)}"
+VALKEY_TLS_SECRET_ID = f"secret:{token_hex(10)}"
+VALKEY_REDIS_URI = f"redis://{VALKEY_USERNAME}:{VALKEY_PASSWORD}@{VALKEY_ENDPOINT}/0"
 
 
 @pytest.fixture(name="context")
@@ -81,11 +88,35 @@ def postgresql_relation() -> Relation:
     )
 
 
-def redis_relation() -> Relation:
+def valkey_secrets(*, password: str = VALKEY_PASSWORD, tls: bool = False) -> set[Secret]:
+    """Secrets shared by the valkey charm over the valkey_client integration."""
+    return {
+        Secret(
+            id=VALKEY_USER_SECRET_ID,
+            tracked_content={"username": VALKEY_USERNAME, "password": password},
+        ),
+        Secret(id=VALKEY_TLS_SECRET_ID, tracked_content={"tls": "true" if tls else "false"}),
+    }
+
+
+def valkey_relation(
+    *, with_credentials: bool = True, endpoints: str = VALKEY_ENDPOINT
+) -> Relation:
+    """Valkey integration as written by the valkey charm (data-interfaces v1)."""
+    response = {
+        "resource": "*",
+        "request-id": "penpot-valkey-request",
+        "salt": "penpot-valkey-salt",
+        "endpoints": endpoints,
+        "secret-user": VALKEY_USER_SECRET_ID if with_credentials else None,
+        "secret-tls": VALKEY_TLS_SECRET_ID,
+        "mode": "sentinel",
+        "version": "9.0.0",
+    }
     return Relation(
-        endpoint="redis",
-        remote_app_name="redis",
-        remote_units_data={0: {"hostname": "redis-hostname", "port": "6379"}},
+        endpoint="valkey",
+        remote_app_name="valkey",
+        remote_app_data={"version": "v1", "requests": json.dumps([response])},
     )
 
 
