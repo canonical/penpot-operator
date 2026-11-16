@@ -13,7 +13,7 @@ run "basic_deploy" {
     base       = "ubuntu@24.04"
     channel    = "latest/edge"
     # renovate: depName="penpot"
-    revision = 86
+    revision = 96
   }
 
   assert {
@@ -44,5 +44,10 @@ run "basic_deploy" {
   assert {
     condition     = output.requires.oauth.endpoint == "oauth"
     error_message = "penpot module should provide 'requires.oauth' output"
+  }
+
+  assert {
+    condition     = output.requires.valkey.endpoint == "valkey"
+    error_message = "penpot module should provide 'requires.valkey' output"
   }
 }
