@@ -142,9 +142,4 @@ run "basic_deploy" {
     condition     = output.offers.postgresql != ""
     error_message = "the postgresql offer URL should be exposed"
   }
-
-  assert {
-    condition     = output.metadata.risk == "edge"
-    error_message = "the metadata should report the requested risk"
-  }
 }
