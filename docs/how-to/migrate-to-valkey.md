@@ -57,11 +57,5 @@ refuses to refresh a charm whose removed endpoint is still integrated. Migrate i
 3. Update the Penpot Terraform modules to the new version and apply the change. If you set
    `redis_k8s` or `redis_integration`, replace them with `valkey` or `valkey_integration` first.
 
-4. After Penpot is `active`, remove the old Redis application:
-
-   ```bash
-   juju remove-application redis-k8s
-   terraform state rm 'module.<name>.juju_application.redis_k8s[0]'
-   ```
-
-   Skip the `terraform state rm` command if the apply already removed the resource from the state.
+   Terraform deploys Valkey, integrates it with Penpot, and removes the old bundled `redis-k8s`
+   application, because the new module no longer manages it.
