@@ -48,14 +48,6 @@ refuses to refresh a charm whose removed endpoint is still integrated. Migrate i
    juju remove-relation penpot redis-k8s
    ```
 
-   If you don't pin the Penpot `revision` in your Terraform configuration, also refresh the charm.
-   Terraform keeps the deployed revision unless a charm input changes, so it doesn't pick up the
-   new revision by itself:
-
-   ```bash
-   juju refresh penpot
-   ```
-
 2. Drop the integration from the Terraform state:
 
    ```bash
@@ -64,8 +56,10 @@ refuses to refresh a charm whose removed endpoint is still integrated. Migrate i
 
 3. Update the Penpot Terraform modules to the new version and apply the change. If you set
    `redis_k8s` or `redis_integration`, replace them with `valkey` or `valkey_integration` first.
-   If you pin the Penpot `revision` (`penpot.revision` in the product module, `revision` in the
-   charm module), set it to 96 or later.
+   Set the Penpot revision to 96 or later (`penpot.revision` in the product module, `revision` in
+   the charm module), even if you don't usually pin it. Terraform keeps the deployed revision
+   unless a charm input changes, so the apply doesn't refresh Penpot without it. You can remove the
+   setting after the apply.
 
    Terraform deploys Valkey, integrates it with Penpot, and removes the old bundled `redis-k8s`
    application, because the new module no longer manages it.
