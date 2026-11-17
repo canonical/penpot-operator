@@ -68,13 +68,15 @@ refuses to refresh a charm whose removed endpoint is still integrated. Migrate i
    terraform apply -refresh-only
    ```
 
-3. In your configuration, remove `redis_k8s` and `redis_integration`, set `valkey` or
-   `valkey_integration` if you need to change the defaults, and update the module `ref` to the new
-   version. Then apply:
+3. Update the Penpot Terraform modules to the new version, then apply:
 
    ```bash
+   terraform init -upgrade
    terraform apply
    ```
+
+   If you set `redis_k8s` or `redis_integration`, replace them with `valkey` or
+   `valkey_integration` first.
 
 4. After Penpot is `active`, remove the old Redis application:
 
