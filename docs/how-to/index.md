@@ -17,6 +17,7 @@ Once you've finished setting up the charm, now you can perform a number of actio
 The following guides provide instructions on upgrading your deployment, including backup and redeployment processes.
 
 - [Upgrade](upgrade.md)
+- [Migrate from Redis to Valkey](migrate-to-valkey.md)
 
 ## Development
 

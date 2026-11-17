@@ -49,7 +49,7 @@ variable "metadata_version" {
 }
 
 variable "model_uuid" {
-  description = "UUID of the Kubernetes Juju model to deploy penpot, redis-k8s and s3-integrator into."
+  description = "UUID of the Kubernetes Juju model to deploy penpot, valkey and s3-integrator into."
   type        = string
   nullable    = false
 }
@@ -98,34 +98,29 @@ variable "postgresql_integration" {
   }
 }
 
+# The variables only exist to fail validation with a helpful message when they are still set.
+# tflint-ignore: terraform_unused_declarations
 variable "redis_integration" {
-  description = "Existing `redis` provider to integrate penpot with, given as an application `name` in `model_uuid` or an `offer_url`. When set, the bundled redis-k8s is not deployed."
-  type = object({
-    name      = optional(string)
-    offer_url = optional(string)
-    endpoint  = optional(string)
-  })
-  default = null
+  description = "Removed. Penpot now uses Valkey, set the valkey_integration variable instead."
+  type        = any
+  default     = null
 
   validation {
-    condition     = var.redis_integration == null || ((try(var.redis_integration.name, null) == null) != (try(var.redis_integration.offer_url, null) == null))
-    error_message = "Set exactly one of name or offer_url in redis_integration."
+    condition     = var.redis_integration == null
+    error_message = "The redis_integration variable was removed because Penpot uses Valkey instead of Redis. Remove it and use the valkey_integration variable instead. See docs/how-to/migrate-to-valkey.md."
   }
 }
 
+# tflint-ignore: terraform_unused_declarations
 variable "redis_k8s" {
-  description = "Configuration of the bundled redis-k8s charm, deployed unless `redis_integration` is set. When `channel` is null it defaults to `latest/<risk>`."
-  type = object({
-    app_name    = optional(string, "redis-k8s")
-    base        = optional(string, "ubuntu@22.04")
-    channel     = optional(string)
-    config      = optional(map(string), {})
-    constraints = optional(string)
-    resources   = optional(map(string), {})
-    revision    = optional(number)
-    units       = optional(number, 1)
-  })
-  default = {}
+  description = "Removed. Penpot now uses Valkey, set the valkey variable instead."
+  type        = any
+  default     = null
+
+  validation {
+    condition     = var.redis_k8s == null
+    error_message = "The redis_k8s variable was removed because the product module deploys Valkey instead of Redis. Remove it and use the valkey variable instead. See docs/how-to/migrate-to-valkey.md."
+  }
 }
 
 variable "risk" {
@@ -180,5 +175,34 @@ variable "smtp_integration" {
   validation {
     condition     = var.smtp_integration == null || ((try(var.smtp_integration.name, null) == null) != (try(var.smtp_integration.offer_url, null) == null))
     error_message = "Set exactly one of name or offer_url in smtp_integration."
+  }
+}
+
+variable "valkey" {
+  description = "Configuration of the bundled Valkey charm, deployed unless `valkey_integration` is set. When `channel` is null it defaults to `9/<risk>`."
+  type = object({
+    app_name    = optional(string, "valkey")
+    base        = optional(string, "ubuntu@26.04")
+    channel     = optional(string)
+    config      = optional(map(string), {})
+    constraints = optional(string)
+    revision    = optional(number)
+    units       = optional(number, 1)
+  })
+  default = {}
+}
+
+variable "valkey_integration" {
+  description = "Existing `valkey_client` provider to integrate penpot with, given as an application `name` in `model_uuid` or an `offer_url`. When set, the bundled Valkey is not deployed."
+  type = object({
+    name      = optional(string)
+    offer_url = optional(string)
+    endpoint  = optional(string)
+  })
+  default = null
+
+  validation {
+    condition     = var.valkey_integration == null || ((try(var.valkey_integration.name, null) == null) != (try(var.valkey_integration.offer_url, null) == null))
+    error_message = "Set exactly one of name or offer_url in valkey_integration."
   }
 }
