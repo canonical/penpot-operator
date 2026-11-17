@@ -55,6 +55,7 @@ Thinking about using the Penpot Operator for your next project? [Get in touch](h
   1. [Manage Penpot users](how-to/manage-users.md)
   1. [Contribute](how-to/contribute.md)
   1. [Upgrade](how-to/upgrade.md)
+  1. [Migrate from Redis to Valkey](how-to/migrate-to-valkey.md)
 1. [Reference](reference)
   1. [Actions](reference/actions.md)
   1. [Charm architecture](reference/charm-architecture.md)

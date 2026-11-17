@@ -107,7 +107,7 @@ variable "redis_integration" {
 
   validation {
     condition     = var.redis_integration == null
-    error_message = "The redis_integration variable was removed because Penpot uses Valkey instead of Redis. Remove it and use the valkey_integration variable instead. See docs/how-to/upgrade.md."
+    error_message = "The redis_integration variable was removed because Penpot uses Valkey instead of Redis. Remove it and use the valkey_integration variable instead. See docs/how-to/migrate-to-valkey.md."
   }
 }
 
@@ -119,7 +119,7 @@ variable "redis_k8s" {
 
   validation {
     condition     = var.redis_k8s == null
-    error_message = "The redis_k8s variable was removed because the product module deploys Valkey instead of Redis. Remove it and use the valkey variable instead. See docs/how-to/upgrade.md."
+    error_message = "The redis_k8s variable was removed because the product module deploys Valkey instead of Redis. Remove it and use the valkey variable instead. See docs/how-to/migrate-to-valkey.md."
   }
 }
 
