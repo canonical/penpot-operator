@@ -118,7 +118,7 @@ resource "juju_integration" "penpot_optional" {
 
 module "valkey" {
   count  = local.deploy_valkey ? 1 : 0
-  source = "git::https://github.com/canonical/valkey-operator.git//terraform/charm?ref=v9/1.30.0"
+  source = "git::https://github.com/canonical/valkey-operator.git//terraform/charm?ref=v9/1.30.0" # 9/edge
 
   app_name    = var.valkey.app_name
   model_uuid  = var.model_uuid
