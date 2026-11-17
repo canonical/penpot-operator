@@ -1,6 +1,6 @@
-# Migrate from Redis to Valkey
+# How to migrate from Redis to Valkey
 
-Penpot charm revision 96 and later replace the `redis` integration with the `valkey`
+Penpot charm revision 96 and later replaces the `redis` integration with the `valkey`
 integration. Juju doesn't refresh a charm that drops an endpoint still in use, so you must remove
 the `redis` integration first. Penpot is unavailable from that step until the end of the
 migration.

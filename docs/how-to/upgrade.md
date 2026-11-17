@@ -15,6 +15,6 @@ juju refresh penpot
 ```
 
 ```{important}
-Revisions before 96 use the `redis` integration. If you upgrade from one of them, follow
+Revisions before 96 use the `redis` relation. If you upgrade from an earlier revision, follow
 [How to migrate from Redis to Valkey](./migrate-to-valkey.md).
 ```
