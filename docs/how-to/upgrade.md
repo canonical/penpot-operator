@@ -49,7 +49,7 @@ active sessions or queued background jobs are lost during the switch.
 Version 2 of the `terraform/charm` and `terraform/product` modules replaces Redis with Valkey:
 
 - The charm module exposes `requires.valkey` instead of `requires.redis`.
-- The product module deploys Valkey instead of `redis-k8s`. The `redis_k8s` and `redis_integration`
+- The product module deploys `valkey` instead of `redis-k8s`. The `redis_k8s` and `redis_integration`
   variables are replaced by `valkey` and `valkey_integration`. Setting a removed variable fails
   the plan with an error.
 
