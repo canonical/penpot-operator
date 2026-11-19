@@ -253,7 +253,7 @@ prompt to confirm. For more details, see
 
 ## Next steps
 
-You now have a basic Penpot deployment. To go further, see:
+You now have a basic Penpot deployment. Check out these pages to learn more:
 
 - [Manage users](../how-to/manage-users.md)
 - [Configure S3](../how-to/configure-s3.md) to use a production object store instead of the single-node MicroCeph
