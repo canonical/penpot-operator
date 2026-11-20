@@ -3,7 +3,7 @@
 <!-- vale on -->
 
 [Penpot](https://penpot.app) is an open-source, web-based design and prototyping tool. The
-Penpot charm deploys it on Kubernetes and requires four integrations to run: PostgreSQL for
+Penpot charm deploys it on Kubernetes and requires four relations to run: PostgreSQL for
 data, Valkey as a message broker, S3-compatible object storage for uploaded files, and an
 ingress that provides its public HTTPS URL. In this tutorial you deploy the charm with each of
 these, and learn what each one does.
@@ -15,6 +15,23 @@ these, and learn what each one does.
 3. Deploy Penpot and integrate it with those services
 4. Create a user and log in to the web interface
 5. Clean up the environment
+
+### Charms you'll deploy
+
+The Penpot charm stays blocked until each required relation is in place. This tutorial
+deploys the following charms:
+
+| Application | Required? | What it's used for |
+|---|---|---|
+| `postgresql-k8s` | Yes | Stores Penpot's data: users, projects, and files |
+| `valkey` | Yes | Brokers messages between Penpot components |
+| `s3-integrator` | Yes | Connects Penpot to an S3-compatible object store for uploaded assets. This tutorial uses MicroCeph, installed on your working station, as the store |
+| `gateway-api-integrator` | Yes | Exposes Penpot outside the cluster. Penpot needs its public URL to work |
+| `ingress-configurator` | Yes | Tells the integrator which hostname and paths to serve Penpot on |
+| `self-signed-certificates` | Required for HTTPS | Issues the TLS certificate for the ingress |
+
+Penpot also supports optional relations, such as SMTP for email, SSO for login, and
+COS for monitoring. This tutorial doesn't use them. See [Next steps](#next-steps).
 
 ## What you'll need
 
@@ -77,23 +94,6 @@ Create a model to keep this tutorial's workload separate from your other work:
 juju add-model penpot-test
 ```
 
-## Charms you'll deploy
-
-The Penpot charm stays blocked until each required integration is in place. This tutorial
-deploys the following charms:
-
-| Application | Required? | What it's used for |
-|---|---|---|
-| `postgresql-k8s` | Yes | Stores Penpot's data: users, projects, and files |
-| `valkey` | Yes | Brokers messages between Penpot components |
-| `s3-integrator` | Yes | Connects Penpot to an S3-compatible object store for uploaded assets. This tutorial uses MicroCeph, installed on your working station, as the store |
-| `gateway-api-integrator` | Yes | Exposes Penpot outside the cluster. Penpot needs its public URL to work |
-| `ingress-configurator` | Yes | Tells the integrator which hostname and paths to serve Penpot on |
-| `self-signed-certificates` | Required for HTTPS | Issues the TLS certificate for the ingress |
-
-Penpot also supports optional integrations, such as SMTP for email, SSO for login, and
-COS for monitoring. This tutorial doesn't use them. See [Next steps](#next-steps).
-
 ## Deploy the storage services
 
 Deploy the database and cache:
@@ -139,8 +139,8 @@ Deploy `s3-integrator` pointing at the MicroCeph gateway:
 juju deploy s3-integrator --config "endpoint=http://$PREFSRC:7480" --config bucket=penpot
 ```
 
-Wait until the `s3-integrator/0` unit is `blocked` waiting for credentials, then give it the
-credentials:
+Run `juju status` and wait until the `s3-integrator/0` unit is `blocked` waiting for
+credentials, then give it the credentials:
 
 ```bash
 juju run s3-integrator/0 sync-s3-credentials --string-args access-key=penpot-access-key secret-key=penpot-secret-key
@@ -148,16 +148,16 @@ juju run s3-integrator/0 sync-s3-credentials --string-args access-key=penpot-acc
 
 ## Deploy ingress with TLS
 
-Penpot has to be reachable at the root of a hostname, and over HTTPS. Two charms provide this:
+Penpot has to be reachable at the root of a hostname, and over HTTPS. Two charms provide this capability:
 
 - `gateway-api-integrator` creates the Kubernetes Gateway API resources that route traffic into
   the cluster.
-- `ingress-configurator` tells it which hostname and paths to serve for Penpot. The
+- `ingress-configurator` tells the integrator which hostname and paths to serve for Penpot. The
   `ingress` relation of the integrator would publish Penpot under a path prefix, such as
   `/penpot-test-penpot`, which Penpot can't serve. The configurator lets Penpot be served
   from `/` on a hostname you choose.
 
-Deploy the integrator with the `--trust` flag, which lets it manage the Gateway API resources,
+Deploy the integrator with the `--trust` flag, which lets the charm manage the Gateway API resources,
 and set the gateway class shipped with Canonical Kubernetes:
 
 ```bash
@@ -227,17 +227,18 @@ Note the password in the output.
 
 ## Log in to Penpot
 
-1. Get the hostname you configured:
+Get the hostname you configured:
 
-    ```bash
-    echo https://$PREFSRC.sslip.io
-    ```
+```bash
+echo https://$PREFSRC.sslip.io
+```
 
-2. Open that URL in a private browser window.
-3. Your browser may display a warning about the connection's security because we used a
-   self-signed certificate. You can safely ignore this warning.
-4. Log in with the credentials from the `create-profile` action. After logging in, you should
-   see the Penpot dashboard, where you can create your first project.
+Open that URL in a private browser window. Your browser may display a warning about the
+connection's security because we used a self-signed certificate. You can safely ignore this
+warning.
+
+Log in with the credentials from the `create-profile` action. After logging in, you should
+see the Penpot dashboard, where you can create your first project.
 
 If you're using a Multipass VM, the sslip.io hostname resolves to the IP of the VM, so the URL is
 reachable from your host machine without further setup.
@@ -249,7 +250,7 @@ ingress, and logged in to it.
 
 To remove all applications and data, run `juju destroy-model penpot-test` and follow the
 prompt to confirm. For more details, see
-[Tear down your test environment](https://documentation.ubuntu.com/juju/3.6/howto/manage-your-juju-deployment/tear-down-your-juju-deployment-local-testing-and-development/).
+[Tear down your test environment](https://canonical.com/juju/docs/juju-cli/3.6/howto/manage-your-juju-deployment/tear-down-your-juju-deployment-local-testing-and-development/).
 
 ## Next steps
 
