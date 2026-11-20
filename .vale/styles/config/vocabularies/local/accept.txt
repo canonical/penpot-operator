@@ -1,3 +1,4 @@
+configurator
 IPs
 minio
 Penpot

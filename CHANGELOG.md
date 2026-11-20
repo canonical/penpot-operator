@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Each revision is versioned by the date of the revision.
 
+## 2026-11-19
+
+### Changed
+
+- Docs: refactor the getting started tutorial. It now uses Canonical Kubernetes, MicroCeph for
+  S3 storage, and Gateway API Integrator with Ingress Configurator for ingress. It explains the
+  role of each charm and adds next steps.
+
 ## 2026-11-16
 
 ### Changed
