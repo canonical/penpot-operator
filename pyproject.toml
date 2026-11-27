@@ -55,7 +55,7 @@ static = [
 ]
 integration = [
   "boto3",
-  "jubilant==1.9.0",
+  "jubilant==1.15.0",
   "kubernetes",
   "opcli @ git+https://github.com/canonical/charm-ci.git",
   "pytest",
