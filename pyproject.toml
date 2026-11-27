@@ -18,7 +18,7 @@ dependencies = [
   "dnspython==2.9.2",
   "dpcharmlibs-interfaces==1.2.2",
   "jsonschema==4.26.0",
-  "ops==3.7.0",
+  "ops==3.10.0",
   "pydantic[email]==2.14.4",
   "requests==2.34.2",
 ]
@@ -33,7 +33,7 @@ lint = [
   "jubilant~=1.0",
   "kubernetes",
   "mypy",
-  "ops[testing]==3.7.0",
+  "ops[testing]==3.10.0",
   "pep8-naming",
   "pytest",
   "pytest-playwright",
@@ -43,7 +43,7 @@ lint = [
 ]
 unit = [
   "coverage[toml]",
-  "ops[testing]==3.7.0",
+  "ops[testing]==3.10.0",
   "pytest",
 ]
 coverage-report = [
