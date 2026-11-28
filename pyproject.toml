@@ -14,7 +14,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "cosl==1.11.3",
+  "cosl==1.12.1",
   "dnspython==2.9.2",
   "dpcharmlibs-interfaces==1.2.2",
   "jsonschema==4.26.0",
